@@ -1,0 +1,26 @@
+{
+  "name": "linkedin-ai-pipeline",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "shared-lib",
+    "services/*",
+    "web-dashboard"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev:openclaw": "npm run dev -w services/openclaw",
+    "dev:trend": "npm run dev -w services/agent-trend-intelligence",
+    "dev:positioning": "npm run dev -w services/agent-positioning",
+    "dev:strategy": "npm run dev -w services/agent-content-strategy",
+    "dev:writing": "npm run dev -w services/agent-writing",
+    "dev:design": "npm run dev -w services/agent-design",
+    "dev:seo": "npm run dev -w services/agent-seo",
+    "dev:dashboard": "npm run dev -w web-dashboard",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

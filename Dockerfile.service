@@ -1,0 +1,32 @@
+# Используется для openclaw и всех agent-* сервисов.
+# Билд-контекст — корень репозитория (нужен доступ к shared-lib и npm workspaces).
+FROM node:20-alpine AS base
+WORKDIR /app
+
+FROM base AS deps
+COPY package.json package-lock.json* ./
+COPY shared-lib/package.json ./shared-lib/package.json
+COPY services/openclaw/package.json ./services/openclaw/package.json
+COPY services/agent-trend-intelligence/package.json ./services/agent-trend-intelligence/package.json
+COPY services/agent-positioning/package.json ./services/agent-positioning/package.json
+COPY services/agent-content-strategy/package.json ./services/agent-content-strategy/package.json
+COPY services/agent-writing/package.json ./services/agent-writing/package.json
+COPY services/agent-design/package.json ./services/agent-design/package.json
+COPY services/agent-seo/package.json ./services/agent-seo/package.json
+RUN npm install
+
+FROM deps AS build
+COPY . .
+RUN npm run build -w shared-lib
+# SERVICE_DIR передаётся через --build-arg, например services/openclaw
+ARG SERVICE_DIR
+RUN npm run build -w ${SERVICE_DIR}
+
+FROM base AS runtime
+ARG SERVICE_DIR
+ENV NODE_ENV=production
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/shared-lib ./shared-lib
+COPY --from=build /app/${SERVICE_DIR} ./service
+WORKDIR /app/service
+CMD ["node", "dist/index.js"]

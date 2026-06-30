@@ -1,0 +1,175 @@
+name: linkedin-ai-pipeline
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  openclaw:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE_DIR: services/openclaw
+    ports:
+      - "4000:4000"
+    environment:
+      PORT: 4000
+      REDIS_URL: redis://redis:6379
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB_NAME: linkedin_pipeline
+      MAX_RETRIES_PER_STAGE: 2
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+
+  agent-trend:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE_DIR: services/agent-trend-intelligence
+    ports:
+      - "4001:4001"
+    environment:
+      PORT: 4001
+      REDIS_URL: redis://redis:6379
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB_NAME: linkedin_pipeline
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  agent-positioning:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE_DIR: services/agent-positioning
+    ports:
+      - "4002:4002"
+    environment:
+      PORT: 4002
+      REDIS_URL: redis://redis:6379
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB_NAME: linkedin_pipeline
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  agent-strategy:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE_DIR: services/agent-content-strategy
+    ports:
+      - "4003:4003"
+    environment:
+      PORT: 4003
+      REDIS_URL: redis://redis:6379
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB_NAME: linkedin_pipeline
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  agent-writing:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE_DIR: services/agent-writing
+    ports:
+      - "4004:4004"
+    environment:
+      PORT: 4004
+      REDIS_URL: redis://redis:6379
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB_NAME: linkedin_pipeline
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  agent-design:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE_DIR: services/agent-design
+    ports:
+      - "4005:4005"
+    environment:
+      PORT: 4005
+      REDIS_URL: redis://redis:6379
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB_NAME: linkedin_pipeline
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  agent-seo:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE_DIR: services/agent-seo
+    ports:
+      - "4006:4006"
+    environment:
+      PORT: 4006
+      REDIS_URL: redis://redis:6379
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB_NAME: linkedin_pipeline
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  web-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      OPENCLAW_URL: http://openclaw:4000
+    depends_on:
+      - openclaw
+
+volumes:
+  redis_data:
+  mongo_data:
