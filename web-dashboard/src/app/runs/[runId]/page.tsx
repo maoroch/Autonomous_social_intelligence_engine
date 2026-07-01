@@ -32,6 +32,13 @@ export default function RunDetailPage({ params }: PageProps) {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // States for editing
+  const [hook, setHook] = useState("");
+  const [bodyText, setBodyText] = useState("");
+  const [cta, setCta] = useState("");
+  const [slideDeck, setSlideDeck] = useState<any[]>([]);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
+
   // Carousel slider state
   const [activeSlide, setActiveSlide] = useState(0);
 
@@ -42,6 +49,25 @@ export default function RunDetailPage({ params }: PageProps) {
         const data = await res.json();
         setRun(data.run);
         setStages(data.stages ?? []);
+        
+        // Populate editable states if awaiting_approval and not already edited
+        if (data.run.status === "awaiting_approval") {
+          const writingResult = data.stages.find((s: any) => s.stage === "writing")?.result;
+          const designResult = data.stages.find((s: any) => s.stage === "design")?.result;
+          
+          setHook(prev => prev || writingResult?.hook || "");
+          setBodyText(prev => prev || writingResult?.text || "");
+          setCta(prev => prev || writingResult?.cta || "");
+          setSlideDeck(prev => prev.length > 0 ? prev : (designResult?.render_data 
+            ? Object.entries(designResult.render_data).map(([key, val]: [string, any]) => ({
+                key,
+                title: val.title || "",
+                bullets: Array.isArray(val.bullets) ? val.bullets : [],
+                footer: val.footer || "",
+              }))
+            : []
+          ));
+        }
       } else {
         setError("Прогон не найден или произошла ошибка.");
       }
@@ -55,6 +81,7 @@ export default function RunDetailPage({ params }: PageProps) {
 
   useEffect(() => {
     fetchRunDetails();
+    
     // Poll run details while running
     let interval: NodeJS.Timeout;
     if (run?.status === "running") {
@@ -68,6 +95,18 @@ export default function RunDetailPage({ params }: PageProps) {
   const handleApprove = async () => {
     setActionLoading(true);
     try {
+      // Auto-save changes first if awaiting approval
+      if (run?.status === "awaiting_approval") {
+        await fetch(`/api/runs/${runId}/edit`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            postText: { hook, text: bodyText, cta },
+            slides: slideDeck
+          }),
+        });
+      }
+      
       const res = await fetch(`/api/runs/${runId}/approve`, { method: "POST" });
       if (res.ok) {
         fetchRunDetails();
@@ -93,6 +132,38 @@ export default function RunDetailPage({ params }: PageProps) {
     }
   };
 
+  const handleSaveChanges = async () => {
+    setSaveStatus("saving");
+    try {
+      const res = await fetch(`/api/runs/${runId}/edit`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          postText: { hook, text: bodyText, cta },
+          slides: slideDeck
+        }),
+      });
+      if (res.ok) {
+        setSaveStatus("success");
+        setTimeout(() => setSaveStatus("idle"), 3000);
+        fetchRunDetails();
+      } else {
+        setSaveStatus("error");
+      }
+    } catch (err) {
+      console.error(err);
+      setSaveStatus("error");
+    }
+  };
+
+  const handleSlideChange = (index: number, field: string, value: any) => {
+    setSlideDeck((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      return copy;
+    });
+  };
+
   if (loading) {
     return (
       <main className="container" style={{ textAlign: "center", padding: "100px 0" }}>
@@ -113,7 +184,6 @@ export default function RunDetailPage({ params }: PageProps) {
     );
   }
 
-  // Extract specific stage results
   const trendResult = stages.find((s) => s.stage === "trend")?.result;
   const positioningResult = stages.find((s) => s.stage === "positioning")?.result;
   const strategyResult = stages.find((s) => s.stage === "strategy")?.result;
@@ -121,16 +191,21 @@ export default function RunDetailPage({ params }: PageProps) {
   const designResult = stages.find((s) => s.stage === "design")?.result;
   const seoResult = stages.find((s) => s.stage === "seo")?.result;
 
-  const slides = designResult?.render_data 
-    ? Object.entries(designResult.render_data).map(([key, val]: [string, any]) => ({
-        key,
-        title: val.title || "Без заголовка",
-        bullets: Array.isArray(val.bullets) ? val.bullets : [],
-        footer: val.footer || "",
-      }))
-    : [];
-
   const accentColor = designResult?.accent_color || "var(--secondary)";
+  const isAwaitingApproval = run.status === "awaiting_approval";
+
+  // Use slideDeck state if editing, otherwise fall back to database result
+  const activeSlides = isAwaitingApproval && slideDeck.length > 0 
+    ? slideDeck 
+    : (designResult?.render_data 
+        ? Object.entries(designResult.render_data).map(([key, val]: [string, any]) => ({
+            key,
+            title: val.title || "",
+            bullets: Array.isArray(val.bullets) ? val.bullets : [],
+            footer: val.footer || "",
+          }))
+        : []
+      );
 
   return (
     <main className="container">
@@ -161,21 +236,34 @@ export default function RunDetailPage({ params }: PageProps) {
           </div>
           
           {/* Action Panel */}
-          {run.status === "awaiting_approval" && (
-            <div style={{ display: "flex", gap: 12 }}>
-              <button disabled={actionLoading} onClick={handleApprove} className="btn btn-primary" style={{ padding: "10px 20px" }}>
-                {actionLoading ? "..." : "Одобрить и опубликовать"}
-              </button>
-              <button disabled={actionLoading} onClick={handleReject} className="btn btn-danger" style={{ padding: "10px 20px" }}>
-                {actionLoading ? "..." : "Отклонить"}
-              </button>
-            </div>
-          )}
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            {isAwaitingApproval && (
+              <>
+                <button
+                  disabled={actionLoading || saveStatus === "saving"}
+                  onClick={handleSaveChanges}
+                  className="btn btn-secondary"
+                  style={{
+                    padding: "10px 20px",
+                    background: saveStatus === "success" ? "var(--green)" : saveStatus === "error" ? "var(--red)" : "transparent",
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  {saveStatus === "saving" ? "Сохранение..." : saveStatus === "success" ? "Сохранено! ✓" : saveStatus === "error" ? "Ошибка" : "Сохранить правки"}
+                </button>
+                <button disabled={actionLoading} onClick={handleApprove} className="btn btn-primary" style={{ padding: "10px 20px" }}>
+                  {actionLoading ? "..." : "Одобрить и опубликовать"}
+                </button>
+                <button disabled={actionLoading} onClick={handleReject} className="btn btn-danger" style={{ padding: "10px 20px" }}>
+                  {actionLoading ? "..." : "Отклонить"}
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Progress Tracker */}
         <div style={{ display: "flex", justifyContent: "space-between", position: "relative", marginTop: 40, padding: "0 10px" }}>
-          {/* Line behind stages */}
           <div style={{
             position: "absolute",
             top: 15,
@@ -188,7 +276,6 @@ export default function RunDetailPage({ params }: PageProps) {
           
           {["trend", "positioning", "strategy", "writing", "design", "seo", "human_approval"].map((stage, idx) => {
             const stagesOrder = ["trend", "positioning", "strategy", "writing", "design", "seo", "human_approval"];
-            const currentIdx = stagesOrder.indexOf(run.currentStage);
             const isCompleted = stages.some((s) => s.stage === stage) || (run.status === "awaiting_approval" && stage !== "human_approval");
             const isActive = run.currentStage === stage;
             
@@ -232,43 +319,79 @@ export default function RunDetailPage({ params }: PageProps) {
       <section className="grid-main">
         {/* Left Side: Post and Slides */}
         <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-          {/* Post Preview */}
+          {/* Post Preview (Editable or Read-only) */}
           {writingResult ? (
             <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-              <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: "50%",
-                  background: "linear-gradient(135deg, #0a66c2, #8b5cf6)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: "bold",
-                  color: "white"
-                }}>ME</div>
-                <div>
-                  <strong style={{ display: "block", fontSize: 15 }}>Автор публикации</strong>
-                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>LinkedIn Post Preview</span>
-                </div>
-              </div>
-              <div style={{ padding: 24 }}>
-                {/* LinkedIn Style Post */}
-                <div style={{
-                  whiteSpace: "pre-wrap",
-                  fontFamily: "-apple-system, system-ui, BlinkMacSystemFont, sans-serif",
-                  fontSize: 15,
-                  lineHeight: "1.5",
-                  color: "#e2e8f0"
-                }}>
-                  <strong style={{ fontSize: 16, display: "block", marginBottom: 12, color: "#fff" }}>
-                    {writingResult.hook}
-                  </strong>
-                  {writingResult.text}
-                  <div style={{ marginTop: 16, color: "var(--primary)", fontWeight: 600 }}>
-                    {writingResult.cta}
+              <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: "50%",
+                    background: "linear-gradient(135deg, #0a66c2, #8b5cf6)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: "bold",
+                    color: "white"
+                  }}>ME</div>
+                  <div>
+                    <strong style={{ display: "block", fontSize: 15 }}>Автор публикации</strong>
+                    <span style={{ fontSize: 12, color: "var(--text-muted)" }}>LinkedIn Post Editor</span>
                   </div>
                 </div>
+                {isAwaitingApproval && (
+                  <span style={{ fontSize: 12, color: "var(--secondary)", fontWeight: 600 }}>Режим правки ✍</span>
+                )}
+              </div>
+              <div style={{ padding: 24 }}>
+                {isAwaitingApproval ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Hook (Заголовок поста)</label>
+                      <input
+                        type="text"
+                        value={hook}
+                        onChange={(e) => setHook(e.target.value)}
+                        style={{ fontSize: 15, fontWeight: "bold" }}
+                      />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Тело публикации</label>
+                      <textarea
+                        rows={8}
+                        value={bodyText}
+                        onChange={(e) => setBodyText(e.target.value)}
+                        style={{ fontSize: 15, fontFamily: "inherit", resize: "vertical" }}
+                      />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>CTA (Призыв к действию)</label>
+                      <input
+                        type="text"
+                        value={cta}
+                        onChange={(e) => setCta(e.target.value)}
+                        style={{ fontSize: 15, color: "var(--primary)", fontWeight: 600 }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{
+                    whiteSpace: "pre-wrap",
+                    fontFamily: "-apple-system, system-ui, BlinkMacSystemFont, sans-serif",
+                    fontSize: 15,
+                    lineHeight: "1.5",
+                    color: "#e2e8f0"
+                  }}>
+                    <strong style={{ fontSize: 16, display: "block", marginBottom: 12, color: "#fff" }}>
+                      {writingResult.hook}
+                    </strong>
+                    {writingResult.text}
+                    <div style={{ marginTop: 16, color: "var(--primary)", fontWeight: 600 }}>
+                      {writingResult.cta}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -278,11 +401,11 @@ export default function RunDetailPage({ params }: PageProps) {
           )}
 
           {/* Carousel Presentation Preview */}
-          {slides.length > 0 ? (
+          {activeSlides.length > 0 ? (
             <div className="card" style={{ background: "rgba(10, 13, 22, 0.5)" }}>
               <h3 style={{ marginBottom: 20 }}>Слайды карусели</h3>
               
-              {/* Actual Carousel slide view */}
+              {/* Slide block */}
               <div style={{
                 aspectRatio: "1/1",
                 maxWidth: 460,
@@ -296,25 +419,55 @@ export default function RunDetailPage({ params }: PageProps) {
                 justifyContent: "space-between",
                 boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
                 position: "relative",
-                transition: "all 0.3s ease"
               }}>
                 <div>
-                  <h4 style={{ fontSize: 24, marginBottom: 24, color: "#fff", lineHeight: 1.3 }}>
-                    {slides[activeSlide].title}
-                  </h4>
-                  <ul style={{ paddingLeft: 20, margin: 0 }}>
-                    {slides[activeSlide].bullets.map((b: string, i: number) => (
-                      <li key={i} style={{ fontSize: 16, color: "#cbd5e1", marginBottom: 12, lineHeight: 1.4 }}>
-                        {b}
-                      </li>
-                    ))}
-                  </ul>
+                  {isAwaitingApproval ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      <label style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>Заголовок слайда</label>
+                      <input
+                        type="text"
+                        value={activeSlides[activeSlide].title}
+                        onChange={(e) => handleSlideChange(activeSlide, "title", e.target.value)}
+                        style={{ fontSize: 16, fontWeight: "bold", background: "rgba(0,0,0,0.2)" }}
+                      />
+                      <label style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, marginTop: 6 }}>Буллиты слайда (по одному на строку)</label>
+                      <textarea
+                        rows={4}
+                        value={activeSlides[activeSlide].bullets.join("\n")}
+                        onChange={(e) => handleSlideChange(activeSlide, "bullets", e.target.value.split("\n"))}
+                        style={{ fontSize: 14, fontFamily: "inherit", background: "rgba(0,0,0,0.2)", resize: "none" }}
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <h4 style={{ fontSize: 24, marginBottom: 24, color: "#fff", lineHeight: 1.3 }}>
+                        {activeSlides[activeSlide].title}
+                      </h4>
+                      <ul style={{ paddingLeft: 20, margin: 0 }}>
+                        {activeSlides[activeSlide].bullets.map((b: string, i: number) => (
+                          <li key={i} style={{ fontSize: 16, color: "#cbd5e1", marginBottom: 12, lineHeight: 1.4 }}>
+                            {b}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
                 </div>
                 
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, color: "var(--text-muted)", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 16 }}>
-                  <span>{slides[activeSlide].footer}</span>
+                  {isAwaitingApproval ? (
+                    <input
+                      type="text"
+                      value={activeSlides[activeSlide].footer}
+                      onChange={(e) => handleSlideChange(activeSlide, "footer", e.target.value)}
+                      placeholder="Подпись футера"
+                      style={{ fontSize: 12, background: "rgba(0,0,0,0.2)", padding: "4px 8px", width: "60%" }}
+                    />
+                  ) : (
+                    <span>{activeSlides[activeSlide].footer}</span>
+                  )}
                   <span style={{ fontWeight: 600, color: accentColor }}>
-                    Слайд {activeSlide + 1} из {slides.length}
+                    Слайд {activeSlide + 1} из {activeSlides.length}
                   </span>
                 </div>
               </div>
@@ -332,7 +485,7 @@ export default function RunDetailPage({ params }: PageProps) {
                 
                 {/* Dots indicator */}
                 <div style={{ display: "flex", gap: 6 }}>
-                  {slides.map((_, idx) => (
+                  {activeSlides.map((_, idx) => (
                     <span
                       key={idx}
                       onClick={() => setActiveSlide(idx)}
@@ -349,7 +502,7 @@ export default function RunDetailPage({ params }: PageProps) {
                 </div>
 
                 <button
-                  disabled={activeSlide === slides.length - 1}
+                  disabled={activeSlide === activeSlides.length - 1}
                   onClick={() => setActiveSlide((prev) => prev + 1)}
                   className="btn btn-secondary"
                   style={{ padding: "8px 16px", borderRadius: 6, fontSize: 13 }}
@@ -372,7 +525,6 @@ export default function RunDetailPage({ params }: PageProps) {
             <div className="card">
               <h3 style={{ marginBottom: 20 }}>SEO Аудит</h3>
               <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 20 }}>
-                {/* Circular Score Gauge */}
                 <div style={{
                   width: 80,
                   height: 80,
@@ -406,7 +558,6 @@ export default function RunDetailPage({ params }: PageProps) {
                 </div>
               </div>
 
-              {/* Recommendations checklist */}
               {seoResult.recommendations && seoResult.recommendations.length > 0 ? (
                 <div>
                   <strong style={{ fontSize: 13, display: "block", marginBottom: 10 }}>Рекомендации:</strong>
