@@ -44,6 +44,7 @@ export const QueueName = {
   WRITING: "queue-agent-writing",
   DESIGN: "queue-agent-design",
   SEO: "queue-agent-seo",
+  PUBLISHING: "queue-agent-publishing",
   PIPELINE_EVENTS: "queue-pipeline-events",
 } as const;
 
@@ -57,6 +58,7 @@ export const STAGE_TO_QUEUE: Partial<Record<PipelineStage, QueueName>> = {
   [PipelineStage.WRITING]: QueueName.WRITING,
   [PipelineStage.DESIGN]: QueueName.DESIGN,
   [PipelineStage.SEO]: QueueName.SEO,
+  [PipelineStage.PUBLISHING]: QueueName.PUBLISHING,
 };
 
 export const JobStatus = {

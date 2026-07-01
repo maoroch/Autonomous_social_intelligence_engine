@@ -29,6 +29,8 @@ export default function DashboardPage() {
   // Form state
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
+  const [profileId, setProfileId] = useState("");
+  const [profiles, setProfiles] = useState<any[]>([]);
   
   // Filters & Status
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -66,6 +68,10 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchRuns();
     fetchHealth();
+    fetch("/api/profiles").then(res => res.json()).then(data => {
+      setProfiles(data);
+      if (data.length > 0) setProfileId(data[0]._id);
+    });
     // Poll runs and health every 8 seconds
     const interval = setInterval(() => {
       fetchRuns();
@@ -87,6 +93,7 @@ export default function DashboardPage() {
             title,
             summary,
           },
+          profileId,
         }),
       });
       if (res.ok) {
@@ -231,6 +238,13 @@ export default function DashboardPage() {
           <div className="card">
             <h3 style={{ marginBottom: 16, fontSize: 18 }}>Запустить новый пайплайн</h3>
             <form onSubmit={handleStartRun} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Профиль автора</label>
+                <select value={profileId} onChange={e => setProfileId(e.target.value)} style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--border)", background: "rgba(255,255,255,0.05)", color: "white" }}>
+                  <option value="" disabled>Выберите профиль</option>
+                  {profiles.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                </select>
+              </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Тема (Необязательно)</label>
                 <input

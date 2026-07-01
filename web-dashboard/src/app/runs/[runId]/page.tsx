@@ -357,6 +357,16 @@ export default function RunDetailPage({ params }: PageProps) {
                   Вперед →
                 </button>
               </div>
+
+              {/* PNG Download */}
+              {designResult?.imageId && (
+                <div style={{ marginTop: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                  <img src={`/api/proxy/images/${designResult.imageId}`} alt="Generated Carousel" style={{ maxWidth: "200px", borderRadius: "8px", border: `2px solid ${accentColor}` }} />
+                  <a href={`/api/proxy/images/${designResult.imageId}`} download={`carousel_${run.runId}.png`} className="btn btn-primary" style={{ padding: "8px 16px", textDecoration: "none" }}>
+                    Скачать PNG Карусель
+                  </a>
+                </div>
+              )}
             </div>
           ) : designResult ? (
             <div className="card" style={{ textAlign: "center", color: "var(--text-muted)" }}>

@@ -11,7 +11,8 @@ import {
   WritingOutputSchema,
 } from "@pipeline/shared/schemas";
 import { AiClient } from "@pipeline/shared/ai";
-import { connectMongo, getCollection, Collections } from "@pipeline/shared/db";
+import { connectMongo, getCollection, Collections, type PipelineRunDoc } from "@pipeline/shared/db";
+import { ObjectId } from "mongodb";
 
 const logger = createLogger("agent-writing");
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
@@ -93,13 +94,23 @@ async function processWritingJob(job: AgentJob): Promise<unknown> {
   logger.info({ runId: job.runId }, "Starting text generation for the LinkedIn post...");
 
   // 1. Получаем выбранную тему из БД
-  const runsCol = getCollection(Collections.PIPELINE_RUNS);
+  const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
   const run = await runsCol.findOne({ runId: job.runId });
   const topic = run?.topic ?? { title: "Rise of AI and Tech", summary: "" };
 
   // 2. Получаем профиль автора из БД
   const profilesCol = getCollection(Collections.AUTHOR_PROFILES);
-  const dbProfile = await profilesCol.findOne({});
+  let dbProfile = null;
+  if (run?.profileId) {
+    try {
+      dbProfile = await profilesCol.findOne({ _id: new ObjectId(run.profileId) });
+    } catch(err) {
+      logger.warn({ runId: job.runId, profileId: run.profileId }, "Failed to find specified profile, falling back to default");
+    }
+  }
+  if (!dbProfile) {
+    dbProfile = await profilesCol.findOne({});
+  }
   const authorProfile = dbProfile 
     ? {
         topics: Array.isArray(dbProfile.topics) ? dbProfile.topics : DEFAULT_PROFILE.topics,

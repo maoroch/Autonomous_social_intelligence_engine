@@ -1,5 +1,5 @@
 {
-  "name": "@pipeline/agent-design",
+  "name": "@pipeline/agent-publishing",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,15 +12,12 @@
   "dependencies": {
     "@pipeline/shared": "*",
     "bullmq": "^5.34.0",
-    "canvas": "^3.2.3",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2",
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@types/express": "^5.0.0",
-    "@types/node": "^22.10.5",
+    "typescript": "^5.7.3",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.3"
+    "@types/node": "^22.10.5"
   }
 }

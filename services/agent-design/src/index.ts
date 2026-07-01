@@ -11,7 +11,9 @@ import {
   DesignOutputSchema,
 } from "@pipeline/shared/schemas";
 import { AiClient } from "@pipeline/shared/ai";
-import { connectMongo, getCollection, Collections } from "@pipeline/shared/db";
+import { connectMongo, getCollection, Collections, getDb } from "@pipeline/shared/db";
+import { GridFSBucket } from "mongodb";
+import { createCanvas } from "canvas";
 
 const logger = createLogger("agent-design");
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
@@ -178,8 +180,62 @@ Please generate the carousel slide deck design structure in JSON format.`;
   // Валидируем финальный результат Zod схемой
   const validated = DesignOutputSchema.parse(sanitized);
 
-  logger.info({ runId: job.runId, cardCount: validated.card_count }, "Carousel design structure generated successfully");
-  return validated;
+  // Generate PNG
+  const slides = Object.values(validated.render_data as Record<string, any>);
+  const slideWidth = 1080;
+  const slideHeight = 1080;
+  const totalWidth = slideWidth * slides.length;
+
+  const canvas = createCanvas(totalWidth, slideHeight);
+  const ctx = canvas.getContext("2d");
+
+  slides.forEach((slide, index) => {
+    const xOffset = index * slideWidth;
+
+    // Background
+    ctx.fillStyle = validated.accent_color;
+    ctx.fillRect(xOffset, 0, slideWidth, slideHeight);
+
+    // Title
+    ctx.fillStyle = "white";
+    ctx.font = "bold 60px Arial";
+    ctx.fillText(slide.title || "Slide Title", xOffset + 100, 200, slideWidth - 200);
+
+    // Bullets
+    ctx.font = "40px Arial";
+    let y = 350;
+    for (const bullet of (slide.bullets || [])) {
+      ctx.fillText(`• ${bullet}`, xOffset + 100, y, slideWidth - 200);
+      y += 80;
+    }
+
+    // Footer
+    ctx.font = "30px Arial";
+    ctx.fillText(slide.footer || "", xOffset + 100, slideHeight - 100, slideWidth - 200);
+  });
+
+  const buffer = canvas.toBuffer("image/png");
+
+  // Save to GridFS
+  const db = getDb();
+  const bucket = new GridFSBucket(db, { bucketName: "carousel_images" });
+
+  const uploadStream = bucket.openUploadStream(`carousel_${job.runId}.png`, {
+    contentType: "image/png"
+  });
+
+  const imageIdPromise = new Promise<string>((resolve, reject) => {
+    uploadStream.on("error", reject);
+    uploadStream.on("finish", () => {
+      resolve(uploadStream.id.toString());
+    });
+  });
+
+  uploadStream.end(buffer);
+  const imageId = await imageIdPromise;
+
+  logger.info({ runId: job.runId, cardCount: validated.card_count, imageId }, "Carousel design structure and PNG generated successfully");
+  return { ...validated, imageId };
 }
 
 const worker = createWorker<AgentJob>(

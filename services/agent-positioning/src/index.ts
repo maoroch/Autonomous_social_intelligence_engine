@@ -12,7 +12,8 @@ import {
   type TrendItem,
 } from "@pipeline/shared/schemas";
 import { AiClient } from "@pipeline/shared/ai";
-import { connectMongo, getCollection, Collections } from "@pipeline/shared/db";
+import { connectMongo, getCollection, Collections, type PipelineRunDoc } from "@pipeline/shared/db";
+import { ObjectId } from "mongodb";
 
 const logger = createLogger("agent-positioning");
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
@@ -54,9 +55,22 @@ function parseCleanJson(text: string): any {
 async function processPositioningJob(job: AgentJob): Promise<unknown> {
   logger.info({ runId: job.runId }, "Evaluating topic positioning against author profile...");
 
+  const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
+  const run = await runsCol.findOne({ runId: job.runId });
+
   // 1. Получаем профиль автора из БД
   const profilesCol = getCollection(Collections.AUTHOR_PROFILES);
-  const dbProfile = await profilesCol.findOne({});
+  let dbProfile = null;
+  if (run?.profileId) {
+    try {
+      dbProfile = await profilesCol.findOne({ _id: new ObjectId(run.profileId) });
+    } catch(err) {
+      logger.warn({ runId: job.runId, profileId: run.profileId }, "Failed to find specified profile, falling back to default");
+    }
+  }
+  if (!dbProfile) {
+    dbProfile = await profilesCol.findOne({});
+  }
   
   const authorProfile = dbProfile 
     ? {
@@ -77,8 +91,6 @@ async function processPositioningJob(job: AgentJob): Promise<unknown> {
   // Если из предыдущего шага не пришел список тем (например, ручной запуск),
   // пробуем достать тему из самого PipelineRun
   if (trends.length === 0) {
-    const runsCol = getCollection(Collections.PIPELINE_RUNS);
-    const run = await runsCol.findOne({ runId: job.runId });
     if (run?.topic && run.topic.title) {
       trends = [
         {
@@ -166,7 +178,6 @@ ${job.extraInstructions ? `Additional guidance: ${job.extraInstructions}` : ""}`
 
   // 4. Если тема одобрена, обновляем запись PipelineRun в БД выбранной темой
   if (accepted && selectedTopic) {
-    const runsCol = getCollection(Collections.PIPELINE_RUNS);
     await runsCol.updateOne(
       { runId: job.runId },
       {

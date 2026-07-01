@@ -46,6 +46,7 @@ export async function startPipelineRun(
   queues: AgentQueues,
   logger: Logger,
   initialTopic: { title: string; summary: string } = { title: "", summary: "" },
+  profileId?: string
 ): Promise<string> {
   const runId = nanoid();
   const now = new Date();
@@ -55,6 +56,7 @@ export async function startPipelineRun(
     status: PipelineRunStatus.RUNNING,
     currentStage: PipelineStage.TREND,
     topic: initialTopic,
+    profileId,
     retries: {},
     createdAt: now,
     updatedAt: now,
@@ -62,7 +64,7 @@ export async function startPipelineRun(
 
   await getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS).insertOne(run);
 
-  await enqueueStage(queues, runId, PipelineStage.TREND, {});
+  await enqueueStage(queues, runId, PipelineStage.TREND, { profileId });
   logger.info({ runId }, "pipeline run started");
 
   return runId;

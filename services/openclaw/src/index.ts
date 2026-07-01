@@ -2,7 +2,8 @@ import "dotenv/config";
 import express from "express";
 import { createQueue, createWorker } from "@pipeline/shared/queue";
 import { createLogger } from "@pipeline/shared/logger";
-import { connectMongo } from "@pipeline/shared/db";
+import { connectMongo, getDb } from "@pipeline/shared/db";
+import { GridFSBucket, ObjectId } from "mongodb";
 import { QueueName, PipelineStage, type AgentJob, PipelineEventSchema, type PipelineEvent } from "@pipeline/shared";
 import {
   startPipelineRun,
@@ -107,10 +108,31 @@ async function main() {
 
   app.get("/health", (_req, res) => res.json({ status: "ok", service: "openclaw" }));
 
+  app.get("/images/:id", async (req, res) => {
+    try {
+      const db = getDb();
+      const bucket = new GridFSBucket(db, { bucketName: "carousel_images" });
+      const id = new ObjectId(req.params.id);
+
+      const downloadStream = bucket.openDownloadStream(id);
+
+      downloadStream.on('error', (error) => {
+        logger.error({ err: error, id: req.params.id }, "Error downloading image");
+        res.status(404).send("Image not found");
+      });
+
+      res.set('Content-Type', 'image/png');
+      downloadStream.pipe(res);
+    } catch (err) {
+      res.status(400).send("Invalid image ID");
+    }
+  });
+
   // Ручной запуск прогона пайплайна (на следующем шаге заменится на Scheduler).
   app.post("/runs", async (req, res) => {
     const topic = req.body?.topic ?? { title: "", summary: "" };
-    const runId = await startPipelineRun(queues, logger, topic);
+    const profileId = req.body?.profileId;
+    const runId = await startPipelineRun(queues, logger, topic, profileId);
     res.status(201).json({ runId });
   });
 

@@ -16,6 +16,7 @@
     "dev:writing": "npm run dev -w services/agent-writing",
     "dev:design": "npm run dev -w services/agent-design",
     "dev:seo": "npm run dev -w services/agent-seo",
+    "dev:publishing": "npm run dev -w services/agent-publishing",
     "dev:dashboard": "npm run dev -w web-dashboard",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"

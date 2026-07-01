@@ -14,6 +14,7 @@ export interface PipelineRunDoc {
     title: string;
     summary: string;
   };
+  profileId?: string;
   retries: Record<string, number>; // stage -> кол-во повторов
   createdAt: Date;
   updatedAt: Date;

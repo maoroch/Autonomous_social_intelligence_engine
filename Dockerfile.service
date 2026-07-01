@@ -3,6 +3,16 @@
 FROM node:20-alpine AS base
 WORKDIR /app
 
+# Install native dependencies needed for node-canvas
+RUN apk add --no-cache \
+    build-base \
+    cairo-dev \
+    pango-dev \
+    jpeg-dev \
+    giflib-dev \
+    librsvg-dev \
+    pixman-dev
+
 FROM base AS deps
 COPY package.json package-lock.json* ./
 COPY shared-lib/package.json ./shared-lib/package.json
