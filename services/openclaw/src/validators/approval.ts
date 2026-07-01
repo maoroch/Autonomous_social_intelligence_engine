@@ -74,5 +74,36 @@ export function createApprovalRouter(logger: Logger): Router {
     res.json({ ok: true });
   });
 
+  router.put("/runs/:runId/edit", async (req, res) => {
+    const { runId } = req.params;
+    const { postText, slides } = req.body;
+
+    logger.info({ runId }, "received inline edits from human");
+
+    if (postText) {
+      await stageResults().updateOne(
+        { runId, stage: "writing" },
+        { $set: { "result.hook": postText.hook, "result.text": postText.text, "result.cta": postText.cta } }
+      );
+    }
+
+    if (slides && Array.isArray(slides)) {
+      const render_data: Record<string, any> = {};
+      slides.forEach((slide: any) => {
+        render_data[slide.key] = {
+          title: slide.title,
+          bullets: slide.bullets,
+          footer: slide.footer
+        };
+      });
+      await stageResults().updateOne(
+        { runId, stage: "design" },
+        { $set: { "result.render_data": render_data } }
+      );
+    }
+
+    res.json({ ok: true });
+  });
+
   return router;
 }
