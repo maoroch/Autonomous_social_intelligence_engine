@@ -113,6 +113,30 @@ async function processPositioningJob(job: AgentJob): Promise<unknown> {
     };
   }
 
+  let fewShotText = "";
+  try {
+    const col = getCollection(Collections.GOLDEN_POSITIONING);
+    const examples = await col.find({}).limit(2).toArray();
+    if (examples.length > 0) {
+      fewShotText = `\nSTYLE EXAMPLES (FEW-SHOT EXAMPLES):
+Here are examples of how to evaluate topic positioning against an author profile:
+${examples.map((ex: any, i) => `
+--- Example ${i+1} ---
+Input Topic:
+${JSON.stringify(ex.input.topic, null, 2)}
+
+Input Author Profile:
+${JSON.stringify(ex.input.authorProfile, null, 2)}
+
+Expected Output:
+${JSON.stringify(ex.expected_output, null, 2)}
+----------------------`).join("\n")}
+`;
+    }
+  } catch (err) {
+    logger.warn({ err }, "Failed to fetch golden positioning examples");
+  }
+
   // 3. Формируем запрос к LLM для отбора лучшей темы
   const systemPrompt = `You are a positioning assistant for a software engineer's professional blog.
 Your task is to analyze a list of tech trends/topics and match them against the author's profile.
@@ -125,7 +149,7 @@ Evaluation Rules:
 2. Evaluate how relevant the topics are to the author's allowed topics (Node.js, Next.js, AI, SaaS, Backend, Supabase, etc.).
 3. Choose the SINGLE most relevant topic from the list.
 4. Calculate a relevance score (0 to 100) for this chosen topic. If the relevance is 70 or higher, set "accepted" to true. Otherwise, set it to false.
-
+${fewShotText}
 You must return a single, valid JSON object containing:
 - "relevance": relevance score (0-100) of the selected topic.
 - "reason": detailed explanation of why this topic was selected and how it matches the author's positioning.

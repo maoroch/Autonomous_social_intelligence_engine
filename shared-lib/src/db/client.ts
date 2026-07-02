@@ -39,4 +39,9 @@ export const Collections = {
   STAGE_RESULTS: "stage_results",
   AUTHOR_PROFILES: "author_profiles",
   PUBLICATIONS: "publications",
+  GOLDEN_WRITING: "golden_writing",
+  GOLDEN_POSITIONING: "golden_positioning",
+  GOLDEN_SEO: "golden_seo",
+  GOLDEN_STRATEGY: "golden_strategy",
+  GOLDEN_TREND: "golden_trend",
 } as const;

@@ -6,3 +6,6 @@ dist/
 npm-debug.log*
 .DS_Store
 *.tsbuildinfo
+
+*.json
+golden_datasets/

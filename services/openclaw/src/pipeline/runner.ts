@@ -121,6 +121,11 @@ export async function handleAgentCompleted(
     createdAt: new Date(),
   });
 
+  if (stage === PipelineStage.PUBLISHING) {
+    logger.info({ runId }, "publishing completed successfully");
+    return;
+  }
+
   // QA-проверка Open Claw: на MVP — упрощённая, отбраковка по relevance/accepted для Positioning.
   if (stage === PipelineStage.POSITIONING && result.accepted === false) {
     await runs.updateOne(
@@ -201,6 +206,21 @@ export async function handleAgentFailed(
   const run = await runs.findOne({ runId });
   if (!run) {
     logger.warn({ runId }, "received failure event for unknown run");
+    return;
+  }
+
+  if (stage === PipelineStage.PUBLISHING) {
+    await runs.updateOne(
+      { runId },
+      {
+        $set: {
+          status: PipelineRunStatus.FAILED,
+          failedReason: `Publishing failed: ${errorMessage}`,
+          updatedAt: new Date(),
+        },
+      },
+    );
+    logger.error({ runId, errorMessage }, "publishing failed");
     return;
   }
 

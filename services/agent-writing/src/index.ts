@@ -124,6 +124,34 @@ async function processWritingJob(job: AgentJob): Promise<unknown> {
   // 3. Получаем стратегию из payload
   const strategy = job.payload ?? {};
 
+  // 3.5. Получаем примеры стилей (Golden Dataset) из базы
+  const goldenCol = getCollection(Collections.GOLDEN_WRITING);
+  const selectedFormat = strategy.format || "tutorial";
+  let goldenPosts: any[] = [];
+  try {
+    goldenPosts = await goldenCol.find({ format: selectedFormat }).limit(2).toArray();
+    if (goldenPosts.length === 0) {
+      goldenPosts = await goldenCol.find({}).limit(2).toArray();
+    }
+  } catch (err) {
+    logger.warn({ err }, "Failed to fetch golden posts style examples");
+  }
+
+  let fewShotText = "";
+  if (goldenPosts.length > 0) {
+    fewShotText = `\nSTYLE EXAMPLES (FEW-SHOT EXAMPLES):
+Here are examples of high-performing LinkedIn posts matching the format "${selectedFormat}". 
+Study their tone, spacing, scannability, list structure, hook strength, and copy their style:
+${goldenPosts.map((gp, i) => `
+--- Example ${i+1} ---
+Hook: ${gp.hook}
+Text:
+${gp.text}
+CTA: ${gp.cta}
+----------------------`).join("\n")}
+`;
+  }
+
   // 4. Формируем промпт к LLM
   const systemPrompt = `You are a professional LinkedIn content writer specializing in tech/programming topics.
 Your job is to write an engaging, high-performing LinkedIn post based on the provided topic and content strategy.
@@ -135,7 +163,7 @@ Style Guidelines:
 4. Emojis: ${authorProfile.use_emoji ? "Use relevant emojis sparingly to make the text lively." : "Do NOT use emojis."}
 5. Call to Action: ${authorProfile.cta_style}
 6. Forbidden Words: Never use these words: ${authorProfile.forbidden_words.join(", ")}
-
+${fewShotText}
 You must return a single, valid JSON object containing:
 - "text": The complete text of the post.
 - "hook": The first line (Hook) of the post.

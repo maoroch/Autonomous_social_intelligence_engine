@@ -110,6 +110,30 @@ async function processStrategyJob(job: AgentJob): Promise<unknown> {
       }
     : DEFAULT_PROFILE;
 
+  let fewShotText = "";
+  try {
+    const col = getCollection(Collections.GOLDEN_STRATEGY);
+    const examples = await col.find({}).limit(2).toArray();
+    if (examples.length > 0) {
+      fewShotText = `\nSTYLE EXAMPLES (FEW-SHOT EXAMPLES):
+Here are examples of how to design a content strategy based on a topic and author profile:
+${examples.map((ex: any, i) => `
+--- Example ${i+1} ---
+Input Topic:
+${JSON.stringify(ex.input.topic, null, 2)}
+
+Input Author Profile:
+${JSON.stringify(ex.input.authorProfile, null, 2)}
+
+Expected Output:
+${JSON.stringify(ex.expected_output, null, 2)}
+----------------------`).join("\n")}
+`;
+    }
+  } catch (err) {
+    logger.warn({ err }, "Failed to fetch golden strategy examples");
+  }
+
   // 3. Формируем промпт к LLM
   const systemPrompt = `You are a content strategist specializing in tech content marketing for LinkedIn.
 Your task is to analyze a topic and design a content strategy for a LinkedIn post.
@@ -129,7 +153,7 @@ You must match the topic with the author's profile and choose:
 Author Profile Context:
 - Tone of Voice: ${authorProfile.tone}
 - Main Topics of Expertise: ${JSON.stringify(authorProfile.topics)}
-
+${fewShotText}
 Output must be a single, valid JSON object:
 {
   "format": "lessons_learned",

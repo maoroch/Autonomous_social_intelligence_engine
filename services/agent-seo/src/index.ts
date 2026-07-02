@@ -78,6 +78,27 @@ async function processSeoJob(job: AgentJob): Promise<unknown> {
     logger.warn({ runId: job.runId }, "Post text is empty for SEO audit");
   }
 
+  let fewShotText = "";
+  try {
+    const col = getCollection(Collections.GOLDEN_SEO);
+    const examples = await col.find({}).limit(2).toArray();
+    if (examples.length > 0) {
+      fewShotText = `\nSTYLE EXAMPLES (FEW-SHOT EXAMPLES):
+Here are examples of how to audit a post and suggest specific, actionable recommendations:
+${examples.map((ex: any, i) => `
+--- Example ${i+1} ---
+Input Post:
+${JSON.stringify(ex.input.post, null, 2)}
+
+Expected Output:
+${JSON.stringify(ex.expected_output, null, 2)}
+----------------------`).join("\n")}
+`;
+    }
+  } catch (err) {
+    logger.warn({ err }, "Failed to fetch golden SEO examples");
+  }
+
   const systemPrompt = `You are a LinkedIn SEO and content optimization expert.
 Your job is to audit a drafted LinkedIn post and provide a rating (score) and a list of specific, actionable recommendations.
 Analyze the following aspects:
@@ -86,7 +107,7 @@ Analyze the following aspects:
 3. Keywords & HashTags: Are relevant keywords present? Should hashtags be added?
 4. CTA (Call to Action): Is there a clear, engaging call to action or question at the end?
 5. Formatting & Length: Does it fit LinkedIn's style (avoiding walls of text)?
-
+${fewShotText}
 You must return a single, valid JSON object containing:
 - "score": A rating from 0 to 100 based on the quality and engagement potential of the post.
 - "recommendations": An array of strings, each containing a specific improvement. If the post is excellent, this list can be empty.

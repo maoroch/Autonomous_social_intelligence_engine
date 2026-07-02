@@ -11,12 +11,15 @@ import {
   TrendAgentOutputSchema,
 } from "@pipeline/shared/schemas";
 import { AiClient } from "@pipeline/shared/ai";
+import { connectMongo, getCollection, Collections } from "@pipeline/shared/db";
 import { aggregateRawTrends, formatTrendsForLLM } from "./aggregator.js";
 
 const logger = createLogger("agent-trend-intelligence");
 
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 const PORT = Number(process.env.PORT ?? 4001);
+const MONGO_URI = process.env.MONGO_URI ?? "mongodb://localhost:27017";
+const MONGO_DB_NAME = process.env.MONGO_DB_NAME ?? "linkedin_pipeline";
 
 const openrouterApiKey = process.env.OPENROUTER_API_KEY ?? "";
 const groqApiKey = process.env.GROQ_API_KEY ?? "";
@@ -100,6 +103,27 @@ async function processTrendJob(job: AgentJob): Promise<unknown> {
 
   logger.info({ runId: job.runId, limit, rawCount: rawTrends.length }, "Sending raw trends to LLM...");
 
+  let fewShotText = "";
+  try {
+    const col = getCollection(Collections.GOLDEN_TREND);
+    const examples = await col.find({}).limit(2).toArray();
+    if (examples.length > 0) {
+      fewShotText = `\nSTYLE EXAMPLES (FEW-SHOT EXAMPLES):
+Here are examples of how to group multiple raw signals into high-quality technology trends:
+${examples.map((ex: any, i) => `
+--- Example ${i+1} ---
+Input Sources:
+${ex.input_sources.map((s: string) => `- ${s}`).join("\n")}
+
+Expected Output:
+${JSON.stringify(ex.expected_output, null, 2)}
+----------------------`).join("\n")}
+`;
+    }
+  } catch (err) {
+    logger.warn({ err }, "Failed to fetch golden trend examples");
+  }
+
   const systemPrompt = `You are a professional technology trend spotter. You analyze raw developer discussions, trending repositories, and articles to identify the most significant IT/programming/software trends of the day.
 Your output must be a single, valid JSON object containing an "items" array of trend objects.
 Each trend object must contain:
@@ -108,7 +132,7 @@ Each trend object must contain:
 3. "score": An integer from 0 to 100 indicating popularity/urgency.
 4. "keywords": Array of 3-5 tags.
 5. "sources": Array of relevant source URLs from the inputs (use the EXACT URLs provided in the input, do not hallucinate URLs).
-
+${fewShotText}
 Output format:
 {
   "items": [
@@ -186,4 +210,12 @@ worker.on("error", (err) => logger.error({ err }, "worker error"));
 
 const app = express();
 app.get("/health", (_req, res) => res.json({ status: "ok", service: "agent-trend-intelligence" }));
-app.listen(PORT, () => logger.info({ port: PORT }, "agent-trend-intelligence listening"));
+app.listen(PORT, async () => {
+  try {
+    await connectMongo(MONGO_URI, MONGO_DB_NAME);
+    logger.info("Connected to MongoDB");
+  } catch (err) {
+    logger.error({ err }, "Failed to connect to MongoDB");
+  }
+  logger.info({ port: PORT }, "agent-trend-intelligence listening");
+});
