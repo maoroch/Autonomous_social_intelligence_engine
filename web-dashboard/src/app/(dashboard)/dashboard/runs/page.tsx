@@ -47,7 +47,7 @@ export default function RunsHistoryPage() {
   return (
     <main className="container">
       <div style={{ marginBottom: 24 }}>
-        <Link href="/" style={{ fontSize: 14, fontWeight: 500 }}>
+        <Link href="/dashboard" style={{ fontSize: 14, fontWeight: 500 }}>
           ← Назад к дашборду
         </Link>
       </div>
@@ -55,7 +55,7 @@ export default function RunsHistoryPage() {
       <div className="card" style={{ minHeight: 500 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 16 }}>
           <h1 style={{ margin: 0, fontSize: 24 }}>Архив и история прогонов</h1>
-          
+
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             {/* Search Input */}
             <input
@@ -115,7 +115,7 @@ export default function RunsHistoryPage() {
                       Текущая стадия: <strong style={{ color: "var(--text-main)", textTransform: "uppercase" }}>{run.currentStage}</strong>
                     </span>
                   </div>
-                  <strong style={{ fontSize: 16, color: "#fff", display: "block", marginBottom: 4 }}>
+                  <strong style={{ fontSize: 16, color: "var(--text-main)", display: "block", marginBottom: 4 }}>
                     {run.topic.title || "(Тема генерируется...)"}
                   </strong>
                   <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
@@ -124,7 +124,7 @@ export default function RunsHistoryPage() {
                 </div>
                 <div>
                   <Link
-                    href={`/runs/${run.runId}`}
+                    href={`/dashboard/runs/${run.runId}`}
                     className="btn btn-secondary"
                     style={{ padding: "8px 16px", fontSize: 13, borderRadius: 6 }}
                   >

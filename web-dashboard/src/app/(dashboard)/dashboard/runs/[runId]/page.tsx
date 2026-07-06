@@ -67,29 +67,29 @@ export default function RunDetailPage({ params }: PageProps) {
         if (designStage?.result?.template_name) {
           setSelectedTemplate(designStage.result.template_name);
         }
-        
+
         const newPreviewId = designStage?.result?.preview_cover_1_id || designStage?.result?.imageId || null;
         if (isReRenderingRef.current && newPreviewId && newPreviewId !== prevPreviewIdRef.current) {
           setIsReRendering(false);
           isReRenderingRef.current = false;
         }
-        
+
         // Populate editable states if awaiting_approval and not already edited
         if (data.run.status === "awaiting_approval") {
           const writingResult = stagesReversed.find((s: any) => s.stage === "writing")?.result;
           const designResult = designStage?.result;
-          
+
           setHook(prev => prev || writingResult?.hook || "");
           setBodyText(prev => prev || writingResult?.text || "");
           setCta(prev => prev || writingResult?.cta || "");
-          setSlideDeck(prev => prev.length > 0 ? prev : (designResult?.render_data 
+          setSlideDeck(prev => prev.length > 0 ? prev : (designResult?.render_data
             ? Object.entries(designResult.render_data).map(([key, val]: [string, any]) => ({
-                key,
-                title: val.title || "",
-                bullets: Array.isArray(val.bullets) ? val.bullets : [],
-                footer: val.footer || "",
-                illustration: val.illustration || "none",
-              }))
+              key,
+              title: val.title || "",
+              bullets: Array.isArray(val.bullets) ? val.bullets : [],
+              footer: val.footer || "",
+              illustration: val.illustration || "none",
+            }))
             : []
           ));
         }
@@ -106,7 +106,7 @@ export default function RunDetailPage({ params }: PageProps) {
 
   useEffect(() => {
     fetchRunDetails();
-    
+
     // Poll run details while running or re-rendering
     let interval: NodeJS.Timeout;
     if (run?.status === "running" || isReRendering) {
@@ -131,7 +131,7 @@ export default function RunDetailPage({ params }: PageProps) {
           }),
         });
       }
-      
+
       const res = await fetch(`/api/runs/${runId}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -163,11 +163,11 @@ export default function RunDetailPage({ params }: PageProps) {
 
   const handleSaveChanges = async () => {
     setSaveStatus("saving");
-    
+
     // Store current preview ID to track changes
     const designStage = [...stages].reverse().find((s) => s.stage === "design");
     prevPreviewIdRef.current = designStage?.result?.preview_cover_1_id || designStage?.result?.imageId || null;
-    
+
     try {
       const res = await fetch(`/api/runs/${runId}/edit`, {
         method: "PUT",
@@ -231,23 +231,23 @@ export default function RunDetailPage({ params }: PageProps) {
   const isAwaitingApproval = run.status === "awaiting_approval";
 
   // Use slideDeck state if editing, otherwise fall back to database result
-  const activeSlides = isAwaitingApproval && slideDeck.length > 0 
-    ? slideDeck 
-    : (designResult?.render_data 
-        ? Object.entries(designResult.render_data).map(([key, val]: [string, any]) => ({
-            key,
-            title: val.title || "",
-            bullets: Array.isArray(val.bullets) ? val.bullets : [],
-            footer: val.footer || "",
-            illustration: val.illustration || "none",
-          }))
-        : []
-      );
+  const activeSlides = isAwaitingApproval && slideDeck.length > 0
+    ? slideDeck
+    : (designResult?.render_data
+      ? Object.entries(designResult.render_data).map(([key, val]: [string, any]) => ({
+        key,
+        title: val.title || "",
+        bullets: Array.isArray(val.bullets) ? val.bullets : [],
+        footer: val.footer || "",
+        illustration: val.illustration || "none",
+      }))
+      : []
+    );
 
   return (
     <main className="container">
       <div style={{ marginBottom: 24 }}>
-        <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 500 }}>
+        <Link href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 500 }}>
           ← Назад к дашборду
         </Link>
       </div>
@@ -267,11 +267,11 @@ export default function RunDetailPage({ params }: PageProps) {
                 </span>
               ) : null}
             </div>
-            <h1 style={{ margin: 0, fontSize: 28, color: "#fff" }}>
+            <h1 style={{ margin: 0, fontSize: 28, color: "var(--text-main)" }}>
               {run.topic.title || "Генерация темы..."}
             </h1>
           </div>
-          
+
           {/* Action Panel */}
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             {isAwaitingApproval && (
@@ -307,24 +307,24 @@ export default function RunDetailPage({ params }: PageProps) {
             left: 20,
             right: 20,
             height: 2,
-            background: "rgba(255,255,255,0.08)",
+            background: "#e5e7eb",
             zIndex: 1
           }} />
-          
+
           {["trend", "positioning", "strategy", "writing", "design", "seo", "human_approval"].map((stage, idx) => {
             const stagesOrder = ["trend", "positioning", "strategy", "writing", "design", "seo", "human_approval"];
             const isCompleted = stages.some((s) => s.stage === stage) || (run.status === "awaiting_approval" && stage !== "human_approval");
             const isActive = run.currentStage === stage;
-            
+
             return (
               <div key={stage} style={{ display: "flex", flexDirection: "column", alignItems: "center", zIndex: 2, flex: 1 }}>
                 <div style={{
                   width: 32,
                   height: 32,
                   borderRadius: "50%",
-                  background: isCompleted ? "var(--green)" : isActive ? "var(--secondary)" : "var(--bg-main)",
-                  border: `2px solid ${isCompleted ? "var(--green)" : isActive ? "var(--secondary)" : "rgba(255,255,255,0.2)"}`,
-                  boxShadow: isActive ? "0 0 12px var(--secondary)" : "none",
+                  background: isCompleted ? "var(--green)" : isActive ? "var(--secondary)" : "#f3f4f6",
+                  border: `2px solid ${isCompleted ? "var(--green)" : isActive ? "var(--secondary)" : "#d1d5db"}`,
+                  boxShadow: isActive ? "0 0 12px rgba(99, 102, 241, 0.4)" : "none",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -339,7 +339,7 @@ export default function RunDetailPage({ params }: PageProps) {
                   fontSize: 11,
                   fontWeight: 600,
                   marginTop: 8,
-                  color: isActive ? "var(--secondary)" : isCompleted ? "#fff" : "var(--text-muted)",
+                  color: isActive ? "var(--secondary)" : isCompleted ? "var(--green)" : "var(--text-muted)",
                   textTransform: "uppercase",
                   letterSpacing: "0.02em",
                   textAlign: "center"
@@ -417,10 +417,10 @@ export default function RunDetailPage({ params }: PageProps) {
                     whiteSpace: "pre-wrap",
                     fontFamily: "-apple-system, system-ui, BlinkMacSystemFont, sans-serif",
                     fontSize: 15,
-                    lineHeight: "1.5",
-                    color: "#e2e8f0"
+                    lineHeight: "1.6",
+                    color: "var(--text-main)"
                   }}>
-                    <strong style={{ fontSize: 16, display: "block", marginBottom: 12, color: "#fff" }}>
+                    <strong style={{ fontSize: 16, display: "block", marginBottom: 12, color: "var(--text-main)" }}>
                       {writingResult.hook}
                     </strong>
                     {writingResult.text}
@@ -439,47 +439,47 @@ export default function RunDetailPage({ params }: PageProps) {
 
           {/* Carousel Presentation Preview */}
           {activeSlides.length > 0 ? (
-            <div className="card" style={{ background: "rgba(10, 13, 22, 0.5)" }}>
+            <div className="card">
               <h3 style={{ marginBottom: 20 }}>Слайды карусели</h3>
-              
+
               {/* Slide block */}
               <div style={{
                 aspectRatio: "1/1",
                 maxWidth: 460,
                 margin: "0 auto 20px auto",
                 background: "#1e293b",
-                border: `4px solid ${accentColor}`,
+                border: `3px solid ${accentColor}`,
                 borderRadius: 16,
-                padding: 32,
+                padding: 28,
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "space-between",
-                boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
                 position: "relative",
               }}>
                 <div>
                   {isAwaitingApproval ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                      <label style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>Заголовок слайда</label>
+                      <label style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontWeight: 600 }}>Заголовок слайда</label>
                       <input
                         type="text"
                         value={activeSlides[activeSlide].title}
                         onChange={(e) => handleSlideChange(activeSlide, "title", e.target.value)}
-                        style={{ fontSize: 16, fontWeight: "bold", background: "rgba(0,0,0,0.2)" }}
+                        style={{ fontSize: 16, fontWeight: "bold", background: "rgba(255,255,255,0.12)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", width: "100%" }}
                       />
-                      <label style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, marginTop: 6 }}>Буллиты слайда (по одному на строку)</label>
+                      <label style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontWeight: 600, marginTop: 4 }}>Буллиты слайда (по одному на строку)</label>
                       <textarea
                         rows={4}
                         value={activeSlides[activeSlide].bullets.join("\n")}
                         onChange={(e) => handleSlideChange(activeSlide, "bullets", e.target.value.split("\n"))}
-                        style={{ fontSize: 14, fontFamily: "inherit", background: "rgba(0,0,0,0.2)", resize: "none" }}
+                        style={{ fontSize: 14, fontFamily: "inherit", background: "rgba(255,255,255,0.12)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", resize: "none", width: "100%" }}
                       />
-                      <label style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, marginTop: 6 }}>Иллюстрация слайда</label>
+                      <label style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontWeight: 600, marginTop: 4 }}>Иллюстрация слайда</label>
                       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                         <select
                           value={activeSlides[activeSlide].illustration || "none"}
                           onChange={(e) => handleSlideChange(activeSlide, "illustration", e.target.value)}
-                          style={{ flex: 1, padding: "8px", borderRadius: "6px", background: "rgba(0,0,0,0.3)", color: "#fff", border: "1px solid var(--border)", fontSize: "13px" }}
+                          style={{ flex: 1, padding: "8px", borderRadius: "6px", background: "rgba(255,255,255,0.12)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", fontSize: "13px" }}
                         >
                           <option value="none">Без иллюстрации</option>
                           {availableIllustrations.map((ill) => (
@@ -522,15 +522,15 @@ export default function RunDetailPage({ params }: PageProps) {
                     </>
                   )}
                 </div>
-                
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, color: "var(--text-muted)", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 16 }}>
+
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, color: "rgba(255,255,255,0.5)", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 16 }}>
                   {isAwaitingApproval ? (
                     <input
                       type="text"
                       value={activeSlides[activeSlide].footer}
                       onChange={(e) => handleSlideChange(activeSlide, "footer", e.target.value)}
                       placeholder="Подпись футера"
-                      style={{ fontSize: 12, background: "rgba(0,0,0,0.2)", padding: "4px 8px", width: "60%" }}
+                      style={{ fontSize: 12, background: "rgba(255,255,255,0.12)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", padding: "4px 8px", width: "60%" }}
                     />
                   ) : (
                     <span>{activeSlides[activeSlide].footer}</span>
@@ -551,7 +551,7 @@ export default function RunDetailPage({ params }: PageProps) {
                 >
                   ← Назад
                 </button>
-                
+
                 {/* Dots indicator */}
                 <div style={{ display: "flex", gap: 6 }}>
                   {activeSlides.map((_, idx) => (
@@ -562,7 +562,7 @@ export default function RunDetailPage({ params }: PageProps) {
                         width: 8,
                         height: 8,
                         borderRadius: "50%",
-                        background: activeSlide === idx ? accentColor : "rgba(255,255,255,0.2)",
+                        background: activeSlide === idx ? accentColor : "#d1d5db",
                         cursor: "pointer",
                         transition: "background 0.2s"
                       }}
@@ -581,40 +581,42 @@ export default function RunDetailPage({ params }: PageProps) {
               </div>
 
               {/* Template Style Toggle Selector */}
-              <div style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 24, marginBottom: 12 }}>
+              <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 24, marginBottom: 12 }}>
                 <button
                   type="button"
                   onClick={() => setSelectedTemplate("cover-1")}
                   className="btn"
                   style={{
-                    padding: "8px 16px",
-                    borderRadius: 6,
+                    padding: "8px 18px",
+                    borderRadius: 8,
                     fontSize: 13,
-                    background: selectedTemplate === "cover-1" ? "var(--green)" : "rgba(255,255,255,0.06)",
-                    color: selectedTemplate === "cover-1" ? "#000" : "#fff",
-                    border: "none",
+                    background: selectedTemplate === "cover-1" ? "var(--green)" : "#f3f4f6",
+                    color: selectedTemplate === "cover-1" ? "#fff" : "#374151",
+                    border: selectedTemplate === "cover-1" ? "2px solid var(--green)" : "2px solid #e5e7eb",
                     cursor: "pointer",
                     fontWeight: 600,
+                    transition: "all 0.15s ease",
                   }}
                 >
-                  Светлая сетка (Стиль 1)
+                  ☀️ Светлая сетка (Стиль 1)
                 </button>
                 <button
                   type="button"
                   onClick={() => setSelectedTemplate("cover-2")}
                   className="btn"
                   style={{
-                    padding: "8px 16px",
-                    borderRadius: 6,
+                    padding: "8px 18px",
+                    borderRadius: 8,
                     fontSize: 13,
-                    background: selectedTemplate === "cover-2" ? "#CC84FF" : "rgba(255,255,255,0.06)",
-                    color: selectedTemplate === "cover-2" ? "#000" : "#fff",
-                    border: "none",
+                    background: selectedTemplate === "cover-2" ? "#8b5cf6" : "#f3f4f6",
+                    color: selectedTemplate === "cover-2" ? "#fff" : "#374151",
+                    border: selectedTemplate === "cover-2" ? "2px solid #8b5cf6" : "2px solid #e5e7eb",
                     cursor: "pointer",
                     fontWeight: 600,
+                    transition: "all 0.15s ease",
                   }}
                 >
-                  Темный фиолетовый (Стиль 2)
+                  🌙 Тёмный (Стиль 2)
                 </button>
               </div>
 
@@ -708,7 +710,7 @@ export default function RunDetailPage({ params }: PageProps) {
                   width: 80,
                   height: 80,
                   borderRadius: "50%",
-                  background: `conic-gradient(${seoResult.score >= 80 ? "var(--green)" : "var(--amber)"} ${seoResult.score * 3.6}deg, rgba(255,255,255,0.06) 0deg)`,
+                  background: `conic-gradient(${seoResult.score >= 80 ? "var(--green)" : "var(--amber)"} ${seoResult.score * 3.6}deg, #e5e7eb 0deg)`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center"
@@ -717,13 +719,13 @@ export default function RunDetailPage({ params }: PageProps) {
                     width: 68,
                     height: 68,
                     borderRadius: "50%",
-                    background: "var(--bg-main)",
+                    background: "#ffffff",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     flexDirection: "column"
                   }}>
-                    <span style={{ fontSize: 20, fontWeight: "bold", color: "#fff" }}>{seoResult.score}</span>
+                    <span style={{ fontSize: 20, fontWeight: "bold", color: "var(--text-main)" }}>{seoResult.score}</span>
                     <span style={{ fontSize: 9, color: "var(--text-muted)", textTransform: "uppercase" }}>score</span>
                   </div>
                 </div>
@@ -762,15 +764,15 @@ export default function RunDetailPage({ params }: PageProps) {
               <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 14 }}>
                 <div>
                   <span style={{ display: "block", color: "var(--text-muted)", fontSize: 11, fontWeight: 600, textTransform: "uppercase" }}>Формат публикации</span>
-                  <strong style={{ color: "#fff" }}>{strategyResult.format}</strong>
+                  <strong style={{ color: "var(--text-main)" }}>{strategyResult.format}</strong>
                 </div>
                 <div>
                   <span style={{ display: "block", color: "var(--text-muted)", fontSize: 11, fontWeight: 600, textTransform: "uppercase" }}>Целевая аудитория</span>
-                  <strong style={{ color: "#fff" }}>{strategyResult.target_audience}</strong>
+                  <strong style={{ color: "var(--text-main)" }}>{strategyResult.target_audience}</strong>
                 </div>
                 <div>
                   <span style={{ display: "block", color: "var(--text-muted)", fontSize: 11, fontWeight: 600, textTransform: "uppercase" }}>Ключевой месседж (Core Idea)</span>
-                  <p style={{ margin: "4px 0 0 0", color: "#cbd5e1", lineHeight: 1.4 }}>{strategyResult.core_idea}</p>
+                  <p style={{ margin: "4px 0 0 0", color: "var(--text-secondary)", lineHeight: 1.4 }}>{strategyResult.core_idea}</p>
                 </div>
               </div>
             </div>
@@ -789,7 +791,7 @@ export default function RunDetailPage({ params }: PageProps) {
                 </div>
                 <div>
                   <span style={{ display: "block", color: "var(--text-muted)", fontSize: 11, fontWeight: 600, textTransform: "uppercase" }}>Обоснование позиционирования</span>
-                  <p style={{ margin: "4px 0 0 0", color: "#cbd5e1", lineHeight: 1.4 }}>{positioningResult.reason}</p>
+                  <p style={{ margin: "4px 0 0 0", color: "var(--text-secondary)", lineHeight: 1.4 }}>{positioningResult.reason}</p>
                 </div>
               </div>
             </div>
@@ -802,8 +804,8 @@ export default function RunDetailPage({ params }: PageProps) {
               <summary style={{ cursor: "pointer", color: "var(--text-muted)", fontWeight: 500 }}>Посмотреть RAW JSON стадий</summary>
               <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
                 {stages.map((s) => (
-                  <div key={s.stage} style={{ background: "rgba(0,0,0,0.2)", borderRadius: 8, padding: 12 }}>
-                    <strong style={{ display: "block", textTransform: "uppercase", fontSize: 11, color: "var(--secondary)", marginBottom: 6 }}>
+                  <div key={s.stage} style={{ background: "#f8fafc", border: "1px solid var(--border)", borderRadius: 8, padding: 12 }}>
+                    <strong style={{ display: "block", textTransform: "uppercase", fontSize: 11, color: "var(--primary)", marginBottom: 6 }}>
                       {s.stage}
                     </strong>
                     <pre style={{ margin: 0, fontSize: 11, overflowX: "auto", color: "var(--text-muted)" }}>

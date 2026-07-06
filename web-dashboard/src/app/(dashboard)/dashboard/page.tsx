@@ -137,7 +137,7 @@ export default function DashboardPage() {
       <section className="grid-3" style={{ marginBottom: 40 }}>
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <span style={{ fontSize: 13, textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 600 }}>Всего прогонов</span>
-          <span style={{ fontSize: 36, fontWeight: 700, color: "#fff" }}>{stats.total}</span>
+          <span style={{ fontSize: 36, fontWeight: 700, color: "var(--text-main)" }}>{stats.total}</span>
           <span style={{ fontSize: 12, color: "var(--text-muted)" }}>активных и архивных задач</span>
         </div>
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -190,12 +190,12 @@ export default function DashboardPage() {
                     justifyContent: "space-between",
                     alignItems: "center",
                     padding: "16px 20px",
-                    background: "rgba(255, 255, 255, 0.02)",
+                    background: "#ffffff",
                     border: "1px solid var(--border)",
                     borderRadius: 12,
-                    transition: "border-color 0.2s",
+                    transition: "border-color 0.2s, background 0.2s",
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(139, 92, 246, 0.2)")}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#0A66C2")}
                   onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
                 >
                   <div style={{ flex: 1, marginRight: 16 }}>
@@ -207,7 +207,7 @@ export default function DashboardPage() {
                         ID: {run.runId.substring(0, 8)}...
                       </span>
                     </div>
-                    <strong style={{ fontSize: 16, color: "#fff", display: "block", marginBottom: 4 }}>
+                    <strong style={{ fontSize: 16, color: "var(--text-main)", display: "block", marginBottom: 4 }}>
                       {run.topic.title || "(Сбор трендов в процессе...)"}
                     </strong>
                     {run.topic.summary && (
@@ -219,7 +219,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <Link
-                      href={`/runs/${run.runId}`}
+                      href={`/dashboard/runs/${run.runId}`}
                       className="btn btn-secondary"
                       style={{ padding: "8px 16px", fontSize: 13, borderRadius: 6 }}
                     >
@@ -240,7 +240,7 @@ export default function DashboardPage() {
             <form onSubmit={handleStartRun} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Профиль автора</label>
-                <select value={profileId} onChange={e => setProfileId(e.target.value)} style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--border)", background: "rgba(255,255,255,0.05)", color: "white" }}>
+                <select value={profileId} onChange={e => setProfileId(e.target.value)} style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--border)", background: "#ffffff", color: "var(--text-main)" }}>
                   <option value="" disabled>Выберите профиль</option>
                   {profiles.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
                 </select>

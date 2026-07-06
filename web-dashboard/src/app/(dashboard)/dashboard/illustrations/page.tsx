@@ -77,7 +77,7 @@ export default function IllustrationsPage() {
     <main className="container" style={{ padding: "40px 20px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
         <div>
-          <h2 style={{ fontSize: "28px", fontWeight: 700, margin: 0, background: "linear-gradient(135deg, #fff 0%, #a5b4fc 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+          <h2 style={{ fontSize: "28px", fontWeight: 700, margin: 0, color: "var(--text-main)" }}>
             Библиотека SVG Иллюстраций
           </h2>
           <p style={{ margin: "8px 0 0 0", color: "var(--text-muted)", fontSize: "14px" }}>
@@ -94,7 +94,7 @@ export default function IllustrationsPage() {
       </div>
 
       {editingIll && (
-        <div className="card" style={{ marginBottom: 32, padding: 24, border: "1px solid var(--border)", borderRadius: 16, background: "rgba(30, 30, 40, 0.6)", backdropFilter: "blur(12px)" }}>
+        <div className="card" style={{ marginBottom: 32, padding: 24, border: "1px solid var(--border)", borderRadius: 16 }}>
           <h3 style={{ margin: "0 0 20px 0", fontSize: "20px", fontWeight: 600 }}>
             {editingIll._id ? "Редактировать иллюстрацию" : "Новая иллюстрация"}
           </h3>
@@ -108,7 +108,7 @@ export default function IllustrationsPage() {
                 value={editingIll.name || ""}
                 onChange={(e) => setEditingIll({ ...editingIll, name: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "") })}
                 placeholder="Например: database, react, server"
-                style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid var(--border)", background: "rgba(0,0,0,0.2)", color: "#fff" }}
+                style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid var(--border)", background: "#ffffff", color: "var(--text-main)" }}
               />
             </div>
             <div>
@@ -121,7 +121,7 @@ export default function IllustrationsPage() {
                 value={editingIll.svgContent || ""}
                 onChange={(e) => setEditingIll({ ...editingIll, svgContent: e.target.value })}
                 placeholder="<svg ...>...</svg>"
-                style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid var(--border)", background: "rgba(0,0,0,0.2)", color: "#fff", fontFamily: "monospace", fontSize: 13 }}
+                style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid var(--border)", background: "#f8fafc", color: "var(--text-main)", fontFamily: "monospace", fontSize: 13 }}
               />
             </div>
             <div style={{ display: "flex", gap: 12 }}>
@@ -138,7 +138,7 @@ export default function IllustrationsPage() {
           placeholder="Поиск по названию..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ width: "100%", maxWidth: "350px", padding: "10px 16px", borderRadius: "8px", border: "1px solid var(--border)", background: "rgba(255,255,255,0.05)", color: "#fff" }}
+          style={{ width: "100%", maxWidth: "350px", padding: "10px 16px", borderRadius: "8px", border: "1px solid var(--border)", background: "#ffffff", color: "var(--text-main)" }}
         />
       </div>
 
@@ -160,7 +160,7 @@ export default function IllustrationsPage() {
                 padding: 16,
                 borderRadius: 16,
                 border: "1px solid var(--border)",
-                background: "rgba(20, 20, 30, 0.4)",
+                background: "#ffffff",
                 transition: "transform 0.2s ease, border-color 0.2s ease",
               }}
             >
@@ -170,7 +170,7 @@ export default function IllustrationsPage() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  background: "rgba(0,0,0,0.3)",
+                  background: "#f1f5f9",
                   borderRadius: 12,
                   marginBottom: 16,
                   padding: 12,
