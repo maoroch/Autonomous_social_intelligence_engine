@@ -9,30 +9,60 @@ interface DevToArticle {
   tags: string[];
 }
 
-export async function fetchDevTo(limit = 15): Promise<Array<{ title: string; url: string; score: number }>> {
+export async function fetchDevTo(profileTopics: string[] = [], limit = 15): Promise<Array<{ title: string; url: string; score: number }>> {
+  const tags = ["javascript", "webdev"];
+  const topicLower = profileTopics.map((t) => t.toLowerCase());
+  
+  if (topicLower.some((t) => t.includes("react"))) tags.push("react");
+  if (topicLower.some((t) => t.includes("next.js") || t.includes("nextjs"))) tags.push("nextjs");
+  if (topicLower.some((t) => t.includes("node"))) tags.push("node");
+  if (topicLower.some((t) => t.includes("python"))) tags.push("python");
+  if (topicLower.some((t) => t.includes("typescript"))) tags.push("typescript");
+  if (topicLower.some((t) => t.includes("database") || t.includes("postgres") || t.includes("mysql") || t.includes("mongodb"))) tags.push("database");
+  if (topicLower.some((t) => t.includes("architecture") || t.includes("system design"))) tags.push("architecture");
+
+  const activeTags = tags.slice(0, 3);
+  const fetchUrls = [
+    "https://dev.to/api/articles?top=3",
+    ...activeTags.map((tag) => `https://dev.to/api/articles?tag=${tag}&top=10`)
+  ];
+
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-    // Запрос популярных статей
-    const response = await fetch("https://dev.to/api/articles?top=3", {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      },
-      signal: controller.signal,
+    const promises = fetchUrls.map(async (url) => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(url, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+          },
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          return (await res.json()) as DevToArticle[];
+        }
+      } catch (e) {
+        logger.warn({ url, e }, "Failed to fetch Dev.to URL");
+      }
+      return [];
     });
-    clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch Dev.to articles, status: ${response.status}`);
-    }
-
-    const articles = (await response.json()) as DevToArticle[];
+    const results = await Promise.all(promises);
+    const flattened = results.flat();
     
-    return articles.slice(0, limit).map((article) => ({
+    // Deduplicate articles by URL
+    const unique = new Map<string, DevToArticle>();
+    for (const art of flattened) {
+      if (art.url) unique.set(art.url, art);
+    }
+    
+    const allArticles = Array.from(unique.values());
+    
+    return allArticles.slice(0, limit).map((article) => ({
       title: article.title,
       url: article.url,
-      score: Math.min(100, (article.public_reactions_count || 10) * 2), // Преобразуем количество реакций в условный score
+      score: Math.min(100, (article.public_reactions_count || 10) * 2),
     }));
   } catch (err) {
     logger.error({ err }, "Error fetching Dev.to trends");

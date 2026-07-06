@@ -14,15 +14,15 @@ export interface RawTrendItem {
   score: number;
 }
 
-export async function aggregateRawTrends(): Promise<RawTrendItem[]> {
+export async function aggregateRawTrends(profileTopics: string[] = []): Promise<RawTrendItem[]> {
   logger.info("Starting aggregation of raw trends...");
   
   const [hn, github, devto, reddit, linkedin] = await Promise.all([
     fetchHackerNews().catch((err) => { logger.error({ err }, "HN fetcher failed"); return []; }),
     fetchGithubTrending().catch((err) => { logger.error({ err }, "GitHub fetcher failed"); return []; }),
-    fetchDevTo().catch((err) => { logger.error({ err }, "Dev.to fetcher failed"); return []; }),
-    fetchReddit().catch((err) => { logger.error({ err }, "Reddit fetcher failed"); return []; }),
-    fetchLinkedInTrends().catch((err) => { logger.error({ err }, "LinkedIn fetcher failed"); return []; }),
+    fetchDevTo(profileTopics).catch((err) => { logger.error({ err }, "Dev.to fetcher failed"); return []; }),
+    fetchReddit(profileTopics).catch((err) => { logger.error({ err }, "Reddit fetcher failed"); return []; }),
+    fetchLinkedInTrends(profileTopics).catch((err) => { logger.error({ err }, "LinkedIn fetcher failed"); return []; }),
   ]);
 
   const allTrends: RawTrendItem[] = [

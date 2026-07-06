@@ -6,6 +6,7 @@ import Link from "next/link";
 interface AuthorProfile {
   _id: string;
   name: string;
+  username?: string;
   topics: string[];
   forbidden_words: string[];
   cta_style?: string;
@@ -74,7 +75,7 @@ export default function ProfilesPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <h2 style={{ margin: 0 }}>Профили Авторов</h2>
         <button
-          onClick={() => setEditingProfile({ name: "", topics: [], forbidden_words: [], use_emoji: false, cta_style: "", tone: "" })}
+          onClick={() => setEditingProfile({ name: "", username: "", topics: [], forbidden_words: [], use_emoji: false, cta_style: "", tone: "" })}
           className="btn btn-primary"
         >
           + Создать профиль
@@ -85,6 +86,14 @@ export default function ProfilesPage() {
         <div className="card" style={{ marginBottom: 24 }}>
           <h3>{editingProfile._id ? "Редактировать профиль" : "Новый профиль"}</h3>
           <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 16 }}>
+            <div>
+              <label style={{ display: "block", marginBottom: 8, fontSize: 13, color: "var(--text-muted)" }}>Никнейм/Юзернейм (для футера слайдов)</label>
+              <input
+                value={editingProfile.username || ""}
+                onChange={(e) => setEditingProfile({ ...editingProfile, username: e.target.value })}
+                placeholder="Например: @maoroch"
+              />
+            </div>
             <div>
               <label style={{ display: "block", marginBottom: 8, fontSize: 13, color: "var(--text-muted)" }}>Имя профиля</label>
               <input
@@ -157,7 +166,7 @@ export default function ProfilesPage() {
               <div>
                 <h3 style={{ margin: "0 0 8px 0" }}>{profile.name}</h3>
                 <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Темы: {profile.topics.join(", ") || "—"}</p>
-                <p style={{ margin: "4px 0 0 0", fontSize: 13, color: "var(--text-muted)" }}>Тон: {profile.tone || "—"} | Эмодзи: {profile.use_emoji ? "Да" : "Нет"}</p>
+                <p style={{ margin: "4px 0 0 0", fontSize: 13, color: "var(--text-muted)" }}>Никнейм: {profile.username || "—"} | Тон: {profile.tone || "—"} | Эмодзи: {profile.use_emoji ? "Да" : "Нет"}</p>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button className="btn btn-secondary" onClick={() => setEditingProfile(profile)}>Редактировать</button>

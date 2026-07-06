@@ -12,6 +12,7 @@ import {
   type AgentQueues,
 } from "./pipeline/runner.js";
 import { createApprovalRouter } from "./validators/approval.js";
+import { illustrationsRouter } from "./validators/illustrations.js";
 
 const logger = createLogger("openclaw");
 
@@ -138,6 +139,7 @@ async function main() {
   });
 
   app.use("/approval", createApprovalRouter(logger));
+  app.use("/illustrations", illustrationsRouter());
 
   app.listen(PORT, () => logger.info({ port: PORT }, "openclaw listening"));
 }

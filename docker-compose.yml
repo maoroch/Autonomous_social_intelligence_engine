@@ -186,6 +186,8 @@ services:
       - "3000:3000"
     environment:
       OPENCLAW_URL: http://openclaw:4000
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB_NAME: linkedin_pipeline
     depends_on:
       - openclaw
 

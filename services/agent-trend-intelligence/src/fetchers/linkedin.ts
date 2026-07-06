@@ -11,12 +11,19 @@ export interface LinkedInTrendItem {
   score: number;
 }
 
-export async function fetchLinkedInTrends(): Promise<LinkedInTrendItem[]> {
-  logger.info({ SEARXNG_URL, SEARXNG_QUERY }, "Fetching LinkedIn trends via SearXNG...");
+export async function fetchLinkedInTrends(profileTopics: string[] = []): Promise<LinkedInTrendItem[]> {
+  let query = SEARXNG_QUERY;
+  if (profileTopics.length > 0) {
+    const topicsSlice = profileTopics.slice(0, 5);
+    const topicsOr = topicsSlice.map((t) => `"${t}"`).join(" OR ");
+    query = `(${topicsOr}) site:linkedin.com/pulse OR site:linkedin.com/posts`;
+  }
+
+  logger.info({ SEARXNG_URL, query }, "Fetching LinkedIn trends via SearXNG...");
   
   try {
     const url = new URL(`${SEARXNG_URL}/search`);
-    url.searchParams.set("q", SEARXNG_QUERY);
+    url.searchParams.set("q", query);
     url.searchParams.set("format", "json");
     
     const res = await fetch(url.toString(), {

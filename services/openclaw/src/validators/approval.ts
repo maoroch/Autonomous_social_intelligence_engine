@@ -105,7 +105,8 @@ export function createApprovalRouter(logger: Logger): Router {
           key: slide.key,
           title: slide.title,
           bullets: slide.bullets,
-          footer: slide.footer
+          footer: slide.footer,
+          illustration: slide.illustration
         };
       });
       await stageResults().updateOne(

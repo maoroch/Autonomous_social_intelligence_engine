@@ -45,6 +45,14 @@ export default function RunDetailPage({ params }: PageProps) {
 
   // Carousel slider state
   const [activeSlide, setActiveSlide] = useState(0);
+  const [availableIllustrations, setAvailableIllustrations] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch("/api/illustrations")
+      .then(res => res.json())
+      .then(data => setAvailableIllustrations(data))
+      .catch(err => console.error("Failed to load illustrations", err));
+  }, []);
 
   const fetchRunDetails = async () => {
     try {
@@ -80,6 +88,7 @@ export default function RunDetailPage({ params }: PageProps) {
                 title: val.title || "",
                 bullets: Array.isArray(val.bullets) ? val.bullets : [],
                 footer: val.footer || "",
+                illustration: val.illustration || "none",
               }))
             : []
           ));
@@ -230,6 +239,7 @@ export default function RunDetailPage({ params }: PageProps) {
             title: val.title || "",
             bullets: Array.isArray(val.bullets) ? val.bullets : [],
             footer: val.footer || "",
+            illustration: val.illustration || "none",
           }))
         : []
       );
@@ -464,6 +474,27 @@ export default function RunDetailPage({ params }: PageProps) {
                         onChange={(e) => handleSlideChange(activeSlide, "bullets", e.target.value.split("\n"))}
                         style={{ fontSize: 14, fontFamily: "inherit", background: "rgba(0,0,0,0.2)", resize: "none" }}
                       />
+                      <label style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, marginTop: 6 }}>Иллюстрация слайда</label>
+                      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                        <select
+                          value={activeSlides[activeSlide].illustration || "none"}
+                          onChange={(e) => handleSlideChange(activeSlide, "illustration", e.target.value)}
+                          style={{ flex: 1, padding: "8px", borderRadius: "6px", background: "rgba(0,0,0,0.3)", color: "#fff", border: "1px solid var(--border)", fontSize: "13px" }}
+                        >
+                          <option value="none">Без иллюстрации</option>
+                          {availableIllustrations.map((ill) => (
+                            <option key={ill._id} value={ill.name}>{ill.name}</option>
+                          ))}
+                        </select>
+                        {activeSlides[activeSlide].illustration && activeSlides[activeSlide].illustration !== "none" && (
+                          <div
+                            style={{ width: 36, height: 36, background: "rgba(255,255,255,0.1)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", padding: 4 }}
+                            dangerouslySetInnerHTML={{
+                              __html: availableIllustrations.find(i => i.name === activeSlides[activeSlide].illustration)?.svgContent || ""
+                            }}
+                          />
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <>
@@ -477,6 +508,17 @@ export default function RunDetailPage({ params }: PageProps) {
                           </li>
                         ))}
                       </ul>
+                      {activeSlides[activeSlide].illustration && activeSlides[activeSlide].illustration !== "none" && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16 }}>
+                          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>Иллюстрация: <strong>{activeSlides[activeSlide].illustration}</strong></span>
+                          <div
+                            style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", padding: 2 }}
+                            dangerouslySetInnerHTML={{
+                              __html: availableIllustrations.find(i => i.name === activeSlides[activeSlide].illustration)?.svgContent || ""
+                            }}
+                          />
+                        </div>
+                      )}
                     </>
                   )}
                 </div>

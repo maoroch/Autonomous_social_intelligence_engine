@@ -49,6 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <a href="/">Дашборд</a>
               <a href="/runs">История прогонов</a>
               <a href="/profiles">Профили авторов</a>
+              <a href="/illustrations">Иллюстрации</a>
             </nav>
           </div>
         </header>

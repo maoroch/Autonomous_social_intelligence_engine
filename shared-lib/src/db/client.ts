@@ -44,4 +44,5 @@ export const Collections = {
   GOLDEN_SEO: "golden_seo",
   GOLDEN_STRATEGY: "golden_strategy",
   GOLDEN_TREND: "golden_trend",
+  SVG_ILLUSTRATIONS: "svg_illustrations",
 } as const;

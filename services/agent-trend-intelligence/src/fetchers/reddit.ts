@@ -18,8 +18,23 @@ interface RedditResponse {
   };
 }
 
-export async function fetchReddit(limit = 10): Promise<Array<{ title: string; url: string; score: number }>> {
+export async function fetchReddit(profileTopics: string[] = [], limit = 10): Promise<Array<{ title: string; url: string; score: number }>> {
   const subreddits = ["programming", "node"];
+  const topicLower = profileTopics.map((t) => t.toLowerCase());
+
+  if (topicLower.some((t) => t.includes("react") || t.includes("next.js") || t.includes("nextjs") || t.includes("frontend"))) {
+    subreddits.push("reactjs");
+  }
+  if (topicLower.some((t) => t.includes("web") || t.includes("full stack") || t.includes("fullstack"))) {
+    subreddits.push("webdev");
+  }
+  if (topicLower.some((t) => t.includes("python") || t.includes("flask") || t.includes("fastapi"))) {
+    subreddits.push("Python");
+  }
+  if (topicLower.some((t) => t.includes("typescript"))) {
+    subreddits.push("typescript");
+  }
+
   const results: Array<{ title: string; url: string; score: number }> = [];
 
   for (const sub of subreddits) {

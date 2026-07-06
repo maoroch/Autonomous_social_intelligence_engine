@@ -258,8 +258,45 @@ Please generate the carousel slide deck design structure in JSON format.`;
     const zip = new AdmZipClass();
     let firstSlideBuffer: Buffer | null = null;
 
+    // Load author profile to get the custom footer username
+    let customUsername = "@maoroch";
+    try {
+      const runsCol = db.collection(Collections.PIPELINE_RUNS);
+      const runDoc = await runsCol.findOne({ runId });
+      const profilesCol = db.collection(Collections.AUTHOR_PROFILES);
+      let profileDoc = null;
+      if (runDoc?.profileId) {
+        const { ObjectId } = await import("mongodb");
+        profileDoc = await profilesCol.findOne({ _id: new ObjectId(runDoc.profileId) });
+      }
+      if (!profileDoc) {
+        profileDoc = await profilesCol.findOne({});
+      }
+      if (profileDoc && profileDoc.username) {
+        customUsername = profileDoc.username.startsWith("@") ? profileDoc.username : `@${profileDoc.username}`;
+      }
+    } catch (err) {
+      logger.warn({ err, runId }, "Failed to load custom username for footer rendering");
+    }
+
+    // Load all illustrations from MongoDB to search and embed them
+    const illustrationsCol = db.collection(Collections.SVG_ILLUSTRATIONS);
+    const illustrationsList = await illustrationsCol.find({}).toArray();
+    const illustrationsMap = new Map<string, string>();
+    for (const item of illustrationsList) {
+      illustrationsMap.set(item.name, item.svgContent);
+    }
+
+    const usedIllustrations = new Set<string>();
+
     // Helper to find the best illustration
-    function getIllustrationName(text: string): string {
+    function getIllustrationName(slideItem: any, used: Set<string>): string {
+      // Manual override check
+      if (slideItem.illustration !== undefined) {
+        return slideItem.illustration || "none";
+      }
+
+      const text = `${slideItem.title || ""} ${slideItem.badge || ""} ${(slideItem.bullets || []).join(" ")}`;
       const t = text.toLowerCase();
       
       const directMap: Record<string, string> = {
@@ -286,7 +323,12 @@ Please generate the carousel slide deck design structure in JSON format.`;
       };
 
       for (const [key, val] of Object.entries(directMap)) {
-        if (t.includes(key)) return val;
+        if (t.includes(key)) {
+          if (!used.has(val) && illustrationsMap.has(val)) {
+            used.add(val);
+            return val;
+          }
+        }
       }
 
       const categoryMap: Record<string, string[]> = {
@@ -305,12 +347,21 @@ Please generate the carousel slide deck design structure in JSON format.`;
       for (const [illustration, keywords] of Object.entries(categoryMap)) {
         for (const kw of keywords) {
           if (t.includes(kw)) {
-            return illustration;
+            if (!used.has(illustration) && illustrationsMap.has(illustration)) {
+              used.add(illustration);
+              return illustration;
+            }
           }
         }
       }
 
-      return "laptop";
+      // Check if general fallback 'laptop' is available and not yet used
+      if (!used.has("laptop") && illustrationsMap.has("laptop")) {
+        used.add("laptop");
+        return "laptop";
+      }
+
+      return "none";
     }
 
     for (let index = 0; index < slidesList.length; index++) {
@@ -327,7 +378,11 @@ Please generate the carousel slide deck design structure in JSON format.`;
 
       const badgeText = escapeHtml(slide.badge || (isCover ? (styleName === "cover-1" ? "The fix" : "AI Agents") : "Setup"));
       const titleText = escapeHtml(slide.title || "");
-      const footerLeft = escapeHtml(slide.footer || "@maoroch");
+      let footerLeftVal = slide.footer || customUsername;
+      if (footerLeftVal === "@username" || footerLeftVal === "@maoroch") {
+        footerLeftVal = customUsername;
+      }
+      const footerLeft = escapeHtml(footerLeftVal);
       const pageText = `${index + 1}/${slidesList.length}`;
 
       let bodyHtml = "";
@@ -349,17 +404,12 @@ Please generate the carousel slide deck design structure in JSON format.`;
       }
 
       // Dynamic illustration match
-      const slideText = `${slide.title || ""} ${slide.badge || ""} ${(slide.bullets || []).join(" ")}`;
-      const illName = getIllustrationName(slideText);
-      const svgPath = path.resolve(__dirname, `../template/svg-illustrations/${illName}.svg`);
+      const illName = getIllustrationName(slide, usedIllustrations);
+      slide.illustration = illName; // Save matched illustration name back to the slide metadata
+
       let svgContent = "";
-      if (fs.existsSync(svgPath)) {
-        svgContent = fs.readFileSync(svgPath, "utf8");
-      } else {
-        const fallbackPath = path.resolve(__dirname, `../template/svg-illustrations/laptop.svg`);
-        if (fs.existsSync(fallbackPath)) {
-          svgContent = fs.readFileSync(fallbackPath, "utf8");
-        }
+      if (illName && illName !== "none") {
+        svgContent = illustrationsMap.get(illName) || "";
       }
 
       html = html
@@ -566,9 +616,39 @@ worker.on("error", (err) => logger.error({ err }, "worker error"));
 const app = express();
 app.get("/health", (_req, res) => res.json({ status: "ok", service: "agent-design" }));
 
+async function seedSvgIllustrations() {
+  try {
+    const col = getCollection<any>(Collections.SVG_ILLUSTRATIONS);
+    const count = await col.countDocuments();
+    if (count === 0) {
+      logger.info("Initializing/Seeding SVG illustrations to MongoDB...");
+      const dirPath = path.resolve(__dirname, "../template/svg-illustrations");
+      if (fs.existsSync(dirPath)) {
+        const files = fs.readdirSync(dirPath);
+        const docs = [];
+        for (const file of files) {
+          if (file.endsWith(".svg")) {
+            const name = path.basename(file, ".svg");
+            const svgContent = fs.readFileSync(path.join(dirPath, file), "utf8");
+            docs.push({ name, svgContent });
+          }
+        }
+        if (docs.length > 0) {
+          await col.insertMany(docs);
+          logger.info({ count: docs.length }, "Seeded SVG illustrations to MongoDB");
+        }
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "Failed to seed SVG illustrations");
+  }
+}
+
 async function start() {
   await connectMongo(MONGO_URI, MONGO_DB_NAME);
   logger.info("Connected to MongoDB");
+
+  await seedSvgIllustrations();
 
   app.listen(PORT, () => logger.info({ port: PORT }, "agent-design listening"));
 }

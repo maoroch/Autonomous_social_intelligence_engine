@@ -12,6 +12,7 @@ import {
 } from "@pipeline/shared/schemas";
 import { AiClient } from "@pipeline/shared/ai";
 import { connectMongo, getCollection, Collections } from "@pipeline/shared/db";
+import { ObjectId } from "mongodb";
 import { aggregateRawTrends, formatTrendsForLLM } from "./aggregator.js";
 
 const logger = createLogger("agent-trend-intelligence");
@@ -93,11 +94,97 @@ function sanitizeLlmOutput(rawObj: any): any {
   return { items: sanitizedItems };
 }
 
+async function fetchJinaReaderContent(url: string): Promise<string> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
+
+  try {
+    const res = await fetch(`https://r.jina.ai/${url}`, {
+      signal: controller.signal,
+      headers: {
+        "X-No-Cache": "true",
+      }
+    });
+    if (!res.ok) {
+      return "";
+    }
+    const text = await res.text();
+    // Truncate to manage context window length
+    return text.substring(0, 3000);
+  } catch (err) {
+    logger.warn({ err, url }, "Failed to fetch content from Jina Reader");
+    return "";
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 async function processTrendJob(job: AgentJob): Promise<unknown> {
   logger.info({ runId: job.runId }, "Starting trend aggregation from sources...");
 
-  const rawTrends = await aggregateRawTrends();
+  // 1. Fetch Author Profile from DB to personalize target trend niche
+  let profileTopics: string[] = [];
+  try {
+    const runsCol = getCollection<any>(Collections.PIPELINE_RUNS);
+    const run = await runsCol.findOne({ runId: job.runId });
+    const profilesCol = getCollection<any>(Collections.AUTHOR_PROFILES);
+    let dbProfile = null;
+
+    if (run?.profileId) {
+      try {
+        dbProfile = await profilesCol.findOne({ _id: new ObjectId(run.profileId) });
+      } catch (err) {
+        logger.warn({ runId: job.runId, profileId: run.profileId }, "Failed to find specified profile, falling back to default");
+      }
+    }
+    if (!dbProfile) {
+      dbProfile = await profilesCol.findOne({});
+    }
+
+    if (dbProfile && Array.isArray(dbProfile.topics)) {
+      profileTopics = dbProfile.topics;
+    }
+  } catch (err) {
+    logger.warn({ err, runId: job.runId }, "Failed to load author profile for personalization");
+  }
+
+  const rawTrends = await aggregateRawTrends(profileTopics);
   const rawTrendsText = formatTrendsForLLM(rawTrends);
+
+  // 2. Fetch full text context of top candidates using Jina Reader
+  const sortedTrends = [...rawTrends].sort((a, b) => b.score - a.score);
+  const candidates = sortedTrends.filter((item) => {
+    if (!item.url) return false;
+    try {
+      const parsed = new URL(item.url);
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch {
+      return false;
+    }
+  });
+
+  const topCandidates = candidates.slice(0, 6);
+  logger.info({ runId: job.runId, urlsCount: topCandidates.length }, "Scraping full content for top candidate trend URLs...");
+  
+  const contentPromises = topCandidates.map(async (item) => {
+    const content = await fetchJinaReaderContent(item.url);
+    return {
+      title: item.title,
+      url: item.url,
+      source: item.sourceName,
+      content,
+    };
+  });
+  
+  const scrapedResults = await Promise.all(contentPromises);
+  const activeScraped = scrapedResults.filter(r => r.content.trim().length > 0);
+  logger.info({ runId: job.runId, scrapedCount: activeScraped.length }, "Completed scraping candidate articles");
+
+  let scrapedText = "";
+  if (activeScraped.length > 0) {
+    scrapedText = "\n\nFULL CONTENT OF TOP TRENDING ARTICLES (FOR CONTEXT & ACCURACY):\n" +
+      activeScraped.map((r, i) => `--- Article ${i+1}: "${r.title}" (Source: ${r.source}, URL: ${r.url}) ---\n${r.content}\n------------------------------------------------`).join("\n\n");
+  }
 
   const limit = typeof job.payload?.topics_limit === "number" ? job.payload.topics_limit : 5;
 
@@ -124,6 +211,15 @@ ${JSON.stringify(ex.expected_output, null, 2)}
     logger.warn({ err }, "Failed to fetch golden trend examples");
   }
 
+  let personalizationPrompt = "";
+  if (profileTopics.length > 0) {
+    personalizationPrompt = `\nCRITICAL PERSONALIZATION REQUIREMENT:
+The author of the publication focuses on the following professional areas/niche topics:
+${profileTopics.map((t: string) => `- ${t}`).join("\n")}
+
+You MUST prioritize and identify trends that are highly relevant to the author's professional areas and target audience. Filter out general tech news that has no relevance to these areas.\n`;
+  }
+
   const systemPrompt = `You are a professional technology trend spotter. You analyze raw developer discussions, trending repositories, and articles to identify the most significant IT/programming/software trends of the day.
 Your output must be a single, valid JSON object containing an "items" array of trend objects.
 Each trend object must contain:
@@ -132,6 +228,7 @@ Each trend object must contain:
 3. "score": An integer from 0 to 100 indicating popularity/urgency.
 4. "keywords": Array of 3-5 tags.
 5. "sources": Array of relevant source URLs from the inputs (use the EXACT URLs provided in the input, do not hallucinate URLs).
+${personalizationPrompt}
 ${fewShotText}
 Output format:
 {
@@ -150,7 +247,7 @@ Return ONLY valid raw JSON. Do NOT include conversational text, comments, or mar
 
   const userPrompt = `Here are the raw trend items collected from Hacker News, GitHub, Dev.to, and Reddit:
 
-${rawTrendsText}
+${rawTrendsText}${scrapedText}
 
 ${job.extraInstructions ? `Additional instructions from Orchestrator: ${job.extraInstructions}\n` : ""}
 Analyze these raw inputs and identify up to ${limit} most important and coherent technology trends. Ensure every trend includes the source URLs that contributed to it.`;
