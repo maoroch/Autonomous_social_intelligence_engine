@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Card style 2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --purple-pill: #352650;
+      --purple-accent: #CC84FF;
+      --bg: #0F0F24;
+      --white: #FFFFFF;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: #e9e9e9;
+      font-family: "Outfit", sans-serif;
+    }
+
+    .stage {
+      min-height: 1350px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: 0;
+      margin: 0;
+    }
+
+    .post {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background: var(--bg);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 155px 108px 108px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 34px;
+      height: 103px;
+      border-radius: 51.5px;
+      background: var(--purple-pill);
+      flex-shrink: 0;
+      width: fit-content;
+    }
+
+    .badge span {
+      font-family: "Outfit", sans-serif;
+      font-weight: 600;
+      font-size: 45px;
+      color: var(--purple-accent);
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .headline {
+      margin: 60px 0 0;
+      max-width: 864px;
+      font-family: "Outfit", sans-serif;
+      font-weight: 800;
+      font-size: 60px;
+      line-height: 1.2;
+      color: var(--white);
+    }
+
+    .body-text {
+      position: relative;
+      z-index: 1;
+      margin: 40px 0 0;
+      max-width: 900px;
+      font-family: "Outfit", sans-serif;
+      font-weight: 500;
+      font-size: 45px;
+      line-height: 1.4;
+      color: var(--white);
+    }
+
+    .illustration-container {
+      position: relative;
+      z-index: 1;
+      margin-top: 30px;
+      margin-bottom: 60px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 380px;
+    }
+
+    .illustration-container svg {
+      height: 100%;
+      width: auto;
+    }
+
+    .spacer {
+      flex: 1 1 auto;
+    }
+
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .footer span {
+      font-family: "Outfit", sans-serif;
+      font-weight: 500;
+      font-size: 40px;
+      color: var(--white);
+      line-height: 1;
+    }
+
+    .progress {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .progress .pill {
+      width: 88px;
+      height: 44px;
+      border-radius: 22px;
+      background: var(--purple-pill);
+    }
+
+    .progress .dot {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--purple-pill);
+      opacity: 0.5;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="stage">
+    <div class="post">
+
+      <h1 class="headline">{{TITLE}}</h1>
+
+      <p class="body-text">{{BODY}}</p>
+
+      <div class="spacer"></div>
+
+      <div class="illustration-container">
+        {{ILLUSTRATION}}
+      </div>
+
+      <div class="footer">
+        <span>{{FOOTER_LEFT}}</span>
+        <div class="progress">
+          {{PROGRESS}}
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>

@@ -1,0 +1,22 @@
+<svg width="160" height="110" viewBox="0 0 160 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="qa" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto">
+      <path d="M0,0 L5,2.5 L0,5 Z" fill="#10b981"/>
+    </marker>
+  </defs>
+  <ellipse cx="80" cy="102" rx="55" ry="6" fill="rgba(108,127,255,0.10)"/>
+  <rect x="12" y="28" width="60" height="14" rx="4" fill="#052e16" stroke="#10b981" stroke-width="1.5"/>
+  <text x="42" y="38" text-anchor="middle" font-size="8" fill="#34d399" font-family="monospace">job:trend</text>
+  <rect x="12" y="46" width="60" height="14" rx="4" fill="#1e2a5e" stroke="#3d4f9f" stroke-width="1.5"/>
+  <text x="42" y="56" text-anchor="middle" font-size="8" fill="#6c7fff" font-family="monospace">job:write</text>
+  <rect x="12" y="64" width="60" height="14" rx="4" fill="#1e2a5e" stroke="#3d4f9f" stroke-width="1.5"/>
+  <text x="42" y="74" text-anchor="middle" font-size="8" fill="#6c7fff" font-family="monospace">job:design</text>
+  <rect x="12" y="82" width="60" height="14" rx="4" fill="#1a1a2e" stroke="#2d3a6e" stroke-width="1"/>
+  <text x="42" y="92" text-anchor="middle" font-size="8" fill="#3d4f9f" font-family="monospace">job:seo</text>
+  <path d="M72 35 L100 35" stroke="#10b981" stroke-width="2" marker-end="url(#qa)"/>
+  <path d="M72 53 L100 53" stroke="#3d4f9f" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <circle cx="120" cy="55" r="28" fill="#0f1628" stroke="#3d4f9f" stroke-width="1.5"/>
+  <text x="120" y="50" text-anchor="middle" font-size="8" fill="#6c7fff" font-family="sans-serif" font-weight="700">Worker</text>
+  <text x="120" y="62" text-anchor="middle" font-size="9" fill="#34d399" font-family="monospace">processing</text>
+  <circle cx="120" cy="55" r="20" fill="none" stroke="#10b981" stroke-width="1" stroke-dasharray="3,3"/>
+</svg>

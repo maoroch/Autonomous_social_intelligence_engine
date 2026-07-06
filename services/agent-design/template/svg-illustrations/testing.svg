@@ -1,0 +1,27 @@
+<svg width="160" height="110" viewBox="0 0 160 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <ellipse cx="80" cy="102" rx="55" ry="6" fill="rgba(34,211,153,0.10)"/>
+  <!-- test file -->
+  <rect x="30" y="15" width="65" height="82" rx="5" fill="#0f1628" stroke="#1e2a5e" stroke-width="1.5"/>
+  <!-- file header -->
+  <rect x="30" y="15" width="65" height="16" rx="5" fill="#1e2a5e"/>
+  <rect x="30" y="23" width="65" height="8" fill="#1e2a5e"/>
+  <text x="62" y="26" text-anchor="middle" font-size="7" fill="#6c7fff" font-family="monospace">agent.test.ts</text>
+  <!-- test lines -->
+  <text x="38" y="42" font-size="6.5" fill="#a855f7" font-family="monospace">describe(</text>
+  <text x="38" y="51" font-size="6.5" fill="#34d399" font-family="monospace">  ✓ returns</text>
+  <text x="38" y="59" font-size="6.5" fill="#34d399" font-family="monospace">    valid JSON</text>
+  <text x="38" y="68" font-size="6.5" fill="#34d399" font-family="monospace">  ✓ handles</text>
+  <text x="38" y="76" font-size="6.5" fill="#34d399" font-family="monospace">    retry</text>
+  <text x="38" y="85" font-size="6.5" fill="#ef4444" font-family="monospace">  ✗ timeout</text>
+  <!-- results badge -->
+  <rect x="100" y="25" width="46" height="62" rx="6" fill="#0f1628" stroke="#1e2a5e" stroke-width="1.5"/>
+  <text x="123" y="40" text-anchor="middle" font-size="7" fill="#6b7280" font-family="sans-serif">Results</text>
+  <line x1="106" y1="44" x2="140" y2="44" stroke="#1e2a5e" stroke-width="1"/>
+  <text x="108" y="55" font-size="7" fill="#34d399" font-family="monospace">pass: 12</text>
+  <text x="108" y="65" font-size="7" fill="#ef4444" font-family="monospace">fail: 1</text>
+  <text x="108" y="75" font-size="7" fill="#6b7280" font-family="monospace">skip: 2</text>
+  <!-- progress bar -->
+  <rect x="106" y="78" width="34" height="5" rx="2.5" fill="#1e2a5e"/>
+  <rect x="106" y="78" width="27" height="5" rx="2.5" fill="#10b981"/>
+  <text x="123" y="91" text-anchor="middle" font-size="6.5" fill="#34d399" font-family="monospace">80%</text>
+</svg>

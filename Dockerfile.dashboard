@@ -3,6 +3,7 @@ WORKDIR /app
 
 FROM base AS deps
 COPY package.json package-lock.json* ./
+COPY shared-lib/package.json ./shared-lib/package.json
 COPY web-dashboard/package.json ./web-dashboard/package.json
 RUN npm install
 

@@ -114,6 +114,7 @@ async function main() {
       const bucket = new GridFSBucket(db, { bucketName: "carousel_images" });
       const id = new ObjectId(req.params.id);
 
+      const file = await db.collection("carousel_images.files").findOne({ _id: id });
       const downloadStream = bucket.openDownloadStream(id);
 
       downloadStream.on('error', (error) => {
@@ -121,7 +122,7 @@ async function main() {
         res.status(404).send("Image not found");
       });
 
-      res.set('Content-Type', 'image/png');
+      res.set('Content-Type', file?.contentType || 'image/png');
       downloadStream.pipe(res);
     } catch (err) {
       res.status(400).send("Invalid image ID");

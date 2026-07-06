@@ -1,0 +1,21 @@
+<svg width="160" height="110" viewBox="0 0 160 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <ellipse cx="80" cy="102" rx="55" ry="6" fill="rgba(108,127,255,0.10)"/>
+  <ellipse cx="80" cy="30" rx="35" ry="10" fill="#1e2a5e" stroke="#3d4f9f" stroke-width="1.5"/>
+  <rect x="45" y="30" width="70" height="18" fill="#1e2a5e"/>
+  <line x1="45" y1="30" x2="45" y2="48" stroke="#3d4f9f" stroke-width="1.5"/>
+  <line x1="115" y1="30" x2="115" y2="48" stroke="#3d4f9f" stroke-width="1.5"/>
+  <ellipse cx="80" cy="48" rx="35" ry="10" fill="#1e2a5e" stroke="#3d4f9f" stroke-width="1.5"/>
+  <rect x="45" y="48" width="70" height="18" fill="#1e2a5e"/>
+  <line x1="45" y1="48" x2="45" y2="66" stroke="#3d4f9f" stroke-width="1.5"/>
+  <line x1="115" y1="48" x2="115" y2="66" stroke="#3d4f9f" stroke-width="1.5"/>
+  <ellipse cx="80" cy="66" rx="35" ry="10" fill="#1e2a5e" stroke="#3d4f9f" stroke-width="1.5"/>
+  <text x="80" y="33" text-anchor="middle" font-size="8" fill="#6c7fff" font-family="monospace">users</text>
+  <text x="80" y="51" text-anchor="middle" font-size="8" fill="#a78bfa" font-family="monospace">posts</text>
+  <text x="80" y="69" text-anchor="middle" font-size="8" fill="#34d399" font-family="monospace">analytics</text>
+  <path d="M115 48 L135 48" stroke="#3d4f9f" stroke-width="1" stroke-dasharray="2,2"/>
+  <circle cx="140" cy="48" r="8" fill="#0f1628" stroke="#3d4f9f" stroke-width="1.5"/>
+  <text x="140" y="52" text-anchor="middle" font-size="7" fill="#6c7fff" font-family="monospace">SQL</text>
+  <path d="M45 30 L25 20" stroke="#3d4f9f" stroke-width="1" stroke-dasharray="2,2"/>
+  <circle cx="20" cy="18" r="7" fill="#0f1628" stroke="#3d4f9f" stroke-width="1.5"/>
+  <text x="20" y="22" text-anchor="middle" font-size="9" fill="#34d399" font-family="monospace">&#8593;</text>
+</svg>

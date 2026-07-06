@@ -16,7 +16,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return new NextResponse(imageBuffer, {
       status: 200,
       headers: {
-        "Content-Type": "image/png",
+        "Content-Type": response.headers.get("Content-Type") || "image/png",
         "Cache-Control": "public, max-age=86400",
       },
     });

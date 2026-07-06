@@ -172,6 +172,8 @@ services:
       REDIS_URL: redis://redis:6379
       MONGO_URI: mongodb://mongo:27017
       MONGO_DB_NAME: linkedin_pipeline
+      LINKEDIN_ACCESS_TOKEN: ${LINKEDIN_ACCESS_TOKEN:-}
+      LINKEDIN_OWNER_URN: ${LINKEDIN_OWNER_URN:-}
     depends_on:
       redis:
         condition: service_healthy

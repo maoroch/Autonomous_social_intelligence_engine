@@ -1,0 +1,23 @@
+<svg width="160" height="110" viewBox="0 0 160 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <ellipse cx="80" cy="102" rx="55" ry="6" fill="rgba(34,211,153,0.10)"/>
+  <!-- speedometer arc -->
+  <path d="M28 76 A54 54 0 0 1 132 76" fill="none" stroke="#1e3a2e" stroke-width="12" stroke-linecap="round"/>
+  <path d="M28 76 A54 54 0 0 1 80 24" fill="none" stroke="#10b981" stroke-width="12" stroke-linecap="round"/>
+  <path d="M80 24 A54 54 0 0 1 118 44" fill="none" stroke="#34d399" stroke-width="12" stroke-linecap="round" opacity="0.6"/>
+  <path d="M118 44 A54 54 0 0 1 132 76" fill="none" stroke="#6ee7b7" stroke-width="12" stroke-linecap="round" opacity="0.3"/>
+  <!-- tick marks -->
+  <line x1="28" y1="76" x2="34" y2="76" stroke="#374151" stroke-width="2"/>
+  <line x1="36" y1="50" x2="40" y2="54" stroke="#374151" stroke-width="2"/>
+  <line x1="80" y1="22" x2="80" y2="28" stroke="#374151" stroke-width="2"/>
+  <line x1="124" y1="50" x2="120" y2="54" stroke="#374151" stroke-width="2"/>
+  <line x1="132" y1="76" x2="126" y2="76" stroke="#374151" stroke-width="2"/>
+  <!-- needle -->
+  <line x1="80" y1="76" x2="112" y2="44" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="80" cy="76" r="5" fill="#f59e0b"/>
+  <circle cx="80" cy="76" r="2" fill="#0f1628"/>
+  <!-- speed label -->
+  <text x="80" y="92" text-anchor="middle" font-size="10" fill="#34d399" font-family="monospace" font-weight="700">180ms</text>
+  <!-- small labels -->
+  <text x="24" y="86" font-size="7" fill="#6b7280" font-family="monospace">0</text>
+  <text x="132" y="86" font-size="7" fill="#6b7280" font-family="monospace">∞</text>
+</svg>

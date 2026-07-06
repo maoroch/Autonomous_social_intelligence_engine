@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -38,6 +38,10 @@ export default function RunDetailPage({ params }: PageProps) {
   const [cta, setCta] = useState("");
   const [slideDeck, setSlideDeck] = useState<any[]>([]);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
+  const [selectedTemplate, setSelectedTemplate] = useState<"cover-1" | "cover-2">("cover-2");
+  const [isReRendering, setIsReRendering] = useState(false);
+  const isReRenderingRef = useRef(false);
+  const prevPreviewIdRef = useRef<string | null>(null);
 
   // Carousel slider state
   const [activeSlide, setActiveSlide] = useState(0);
@@ -49,11 +53,23 @@ export default function RunDetailPage({ params }: PageProps) {
         const data = await res.json();
         setRun(data.run);
         setStages(data.stages ?? []);
+
+        const stagesReversed = [...(data.stages || [])].reverse();
+        const designStage = stagesReversed.find((s: any) => s.stage === "design");
+        if (designStage?.result?.template_name) {
+          setSelectedTemplate(designStage.result.template_name);
+        }
+        
+        const newPreviewId = designStage?.result?.preview_cover_1_id || designStage?.result?.imageId || null;
+        if (isReRenderingRef.current && newPreviewId && newPreviewId !== prevPreviewIdRef.current) {
+          setIsReRendering(false);
+          isReRenderingRef.current = false;
+        }
         
         // Populate editable states if awaiting_approval and not already edited
         if (data.run.status === "awaiting_approval") {
-          const writingResult = data.stages.find((s: any) => s.stage === "writing")?.result;
-          const designResult = data.stages.find((s: any) => s.stage === "design")?.result;
+          const writingResult = stagesReversed.find((s: any) => s.stage === "writing")?.result;
+          const designResult = designStage?.result;
           
           setHook(prev => prev || writingResult?.hook || "");
           setBodyText(prev => prev || writingResult?.text || "");
@@ -82,15 +98,15 @@ export default function RunDetailPage({ params }: PageProps) {
   useEffect(() => {
     fetchRunDetails();
     
-    // Poll run details while running
+    // Poll run details while running or re-rendering
     let interval: NodeJS.Timeout;
-    if (run?.status === "running") {
-      interval = setInterval(fetchRunDetails, 4000);
+    if (run?.status === "running" || isReRendering) {
+      interval = setInterval(fetchRunDetails, 3000);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [runId, run?.status]);
+  }, [runId, run?.status, isReRendering]);
 
   const handleApprove = async () => {
     setActionLoading(true);
@@ -107,7 +123,11 @@ export default function RunDetailPage({ params }: PageProps) {
         });
       }
       
-      const res = await fetch(`/api/runs/${runId}/approve`, { method: "POST" });
+      const res = await fetch(`/api/runs/${runId}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ template_name: selectedTemplate }),
+      });
       if (res.ok) {
         fetchRunDetails();
       }
@@ -134,6 +154,11 @@ export default function RunDetailPage({ params }: PageProps) {
 
   const handleSaveChanges = async () => {
     setSaveStatus("saving");
+    
+    // Store current preview ID to track changes
+    const designStage = [...stages].reverse().find((s) => s.stage === "design");
+    prevPreviewIdRef.current = designStage?.result?.preview_cover_1_id || designStage?.result?.imageId || null;
+    
     try {
       const res = await fetch(`/api/runs/${runId}/edit`, {
         method: "PUT",
@@ -145,8 +170,9 @@ export default function RunDetailPage({ params }: PageProps) {
       });
       if (res.ok) {
         setSaveStatus("success");
+        setIsReRendering(true);
+        isReRenderingRef.current = true;
         setTimeout(() => setSaveStatus("idle"), 3000);
-        fetchRunDetails();
       } else {
         setSaveStatus("error");
       }
@@ -184,12 +210,13 @@ export default function RunDetailPage({ params }: PageProps) {
     );
   }
 
-  const trendResult = stages.find((s) => s.stage === "trend")?.result;
-  const positioningResult = stages.find((s) => s.stage === "positioning")?.result;
-  const strategyResult = stages.find((s) => s.stage === "strategy")?.result;
-  const writingResult = stages.find((s) => s.stage === "writing")?.result;
-  const designResult = stages.find((s) => s.stage === "design")?.result;
-  const seoResult = stages.find((s) => s.stage === "seo")?.result;
+  const stagesReversed = [...stages].reverse();
+  const trendResult = stagesReversed.find((s) => s.stage === "trend")?.result;
+  const positioningResult = stagesReversed.find((s) => s.stage === "positioning")?.result;
+  const strategyResult = stagesReversed.find((s) => s.stage === "strategy")?.result;
+  const writingResult = stagesReversed.find((s) => s.stage === "writing")?.result;
+  const designResult = stagesReversed.find((s) => s.stage === "design")?.result;
+  const seoResult = stagesReversed.find((s) => s.stage === "seo")?.result;
 
   const accentColor = designResult?.accent_color || "var(--secondary)";
   const isAwaitingApproval = run.status === "awaiting_approval";
@@ -511,14 +538,114 @@ export default function RunDetailPage({ params }: PageProps) {
                 </button>
               </div>
 
-              {/* PNG Download */}
-              {designResult?.imageId && (
-                <div style={{ marginTop: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-                  <img src={`/api/proxy/images/${designResult.imageId}`} alt="Generated Carousel" style={{ maxWidth: "200px", borderRadius: "8px", border: `2px solid ${accentColor}` }} />
-                  <a href={`/api/proxy/images/${designResult.imageId}`} download={`carousel_${run.runId}.png`} className="btn btn-primary" style={{ padding: "8px 16px", textDecoration: "none" }}>
-                    Скачать PNG Карусель
-                  </a>
-                </div>
+              {/* Template Style Toggle Selector */}
+              <div style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 24, marginBottom: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTemplate("cover-1")}
+                  className="btn"
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 6,
+                    fontSize: 13,
+                    background: selectedTemplate === "cover-1" ? "var(--green)" : "rgba(255,255,255,0.06)",
+                    color: selectedTemplate === "cover-1" ? "#000" : "#fff",
+                    border: "none",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                  }}
+                >
+                  Светлая сетка (Стиль 1)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTemplate("cover-2")}
+                  className="btn"
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 6,
+                    fontSize: 13,
+                    background: selectedTemplate === "cover-2" ? "#CC84FF" : "rgba(255,255,255,0.06)",
+                    color: selectedTemplate === "cover-2" ? "#000" : "#fff",
+                    border: "none",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                  }}
+                >
+                  Темный фиолетовый (Стиль 2)
+                </button>
+              </div>
+
+              {/* Dynamic ZIP Export / PNG Preview */}
+              {designResult && (
+                (() => {
+                  const currentPreviewId = selectedTemplate === "cover-1"
+                    ? (designResult.preview_cover_1_id || designResult.imageId)
+                    : (designResult.preview_cover_2_id || designResult.imageId);
+
+                  const currentZipId = selectedTemplate === "cover-1"
+                    ? (designResult.zip_cover_1_id || designResult.imageId)
+                    : (designResult.zip_cover_2_id || designResult.imageId);
+
+                  return (
+                    <div style={{ marginTop: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                      {isReRendering && (
+                        <div style={{
+                          padding: "6px 12px",
+                          borderRadius: "4px",
+                          background: "rgba(204, 132, 255, 0.15)",
+                          border: "1px solid #CC84FF",
+                          color: "#CC84FF",
+                          fontSize: "12px",
+                          fontWeight: 500,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          marginBottom: 8,
+                        }}>
+                          ⏳ Генерация новых изображений...
+                        </div>
+                      )}
+                      {currentPreviewId && (
+                        <div style={{ textAlign: "center" }}>
+                          <span style={{ fontSize: 12, color: "var(--text-muted)", display: "block", marginBottom: 8 }}>Предпросмотр обложки:</span>
+                          <img
+                            src={`/api/proxy/images/${currentPreviewId}`}
+                            alt={`Preview ${selectedTemplate}`}
+                            style={{
+                              maxWidth: "260px",
+                              borderRadius: "8px",
+                              border: `2px solid ${selectedTemplate === "cover-1" ? "var(--green)" : "#CC84FF"}`,
+                              boxShadow: "0 10px 20px rgba(0,0,0,0.3)"
+                            }}
+                          />
+                        </div>
+                      )}
+                      {currentZipId && (
+                        <div style={{ textAlign: "center", marginTop: 8 }}>
+                          <a
+                            href={`/api/proxy/images/${currentZipId}`}
+                            download={`carousel_${run?.runId || "run"}_${selectedTemplate}.zip`}
+                            className="btn btn-primary"
+                            style={{
+                              padding: "10px 20px",
+                              textDecoration: "none",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 8,
+                              fontWeight: 600,
+                            }}
+                          >
+                            📦 Скачать ZIP Архив (Слайды PNG)
+                          </a>
+                          <span style={{ display: "block", fontSize: 11, color: "var(--text-muted)", marginTop: 6 }}>
+                            Архив содержит обложку и карточки поста в формате PNG
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()
               )}
             </div>
           ) : designResult ? (

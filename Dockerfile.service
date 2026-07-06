@@ -35,6 +35,9 @@ RUN npm run build -w ${SERVICE_DIR}
 FROM base AS runtime
 ARG SERVICE_DIR
 ENV NODE_ENV=production
+RUN if [ "$SERVICE_DIR" = "services/agent-design" ]; then \
+      apk add --no-cache chromium ttf-freefont; \
+    fi
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/shared-lib ./shared-lib
 COPY --from=build /app/${SERVICE_DIR} ./service

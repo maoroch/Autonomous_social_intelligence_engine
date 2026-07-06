@@ -72,7 +72,12 @@ export const DesignOutputSchema = z.object({
   template_type: DesignTemplateType,
   card_count: z.number().int().min(1),
   accent_color: z.string(),
+  template_name: z.string().optional(),
   render_data: z.record(z.string(), z.unknown()),
+  preview_cover_1_id: z.string().optional(),
+  preview_cover_2_id: z.string().optional(),
+  zip_cover_1_id: z.string().optional(),
+  zip_cover_2_id: z.string().optional(),
 });
 export type DesignOutput = z.infer<typeof DesignOutputSchema>;
 

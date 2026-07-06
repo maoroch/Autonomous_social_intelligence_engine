@@ -1,0 +1,13 @@
+<svg width="160" height="110" viewBox="0 0 160 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <ellipse cx="80" cy="102" rx="55" ry="6" fill="rgba(108,127,255,0.10)"/>
+  <rect x="20" y="20" width="120" height="76" rx="8" fill="#0d1117" stroke="#30363d" stroke-width="1.5"/>
+  <rect x="20" y="20" width="120" height="20" rx="8" fill="#161b22"/>
+  <rect x="20" y="28" width="120" height="12" fill="#161b22"/>
+  <circle cx="32" cy="30" r="3.5" fill="#ef4444"/>
+  <circle cx="44" cy="30" r="3.5" fill="#f59e0b"/>
+  <circle cx="56" cy="30" r="3.5" fill="#10b981"/>
+  <text x="30" y="55" font-family="monospace" font-size="8.5" fill="#34d399">$ npm run dev</text>
+  <text x="30" y="67" font-family="monospace" font-size="8" fill="#6c7fff">&#9658; openclaw ready</text>
+  <text x="30" y="78" font-family="monospace" font-size="8" fill="#6c7fff">&#9658; agents: 6 online</text>
+  <text x="30" y="89" font-family="monospace" font-size="8.5" fill="#ffffff">$ <tspan fill="#10b981">_</tspan></text>
+</svg>

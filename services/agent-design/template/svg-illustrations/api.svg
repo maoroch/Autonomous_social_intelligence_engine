@@ -1,0 +1,19 @@
+<svg width="160" height="110" viewBox="0 0 160 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <ellipse cx="80" cy="102" rx="55" ry="6" fill="rgba(108,127,255,0.10)"/>
+  <rect x="10" y="42" width="42" height="22" rx="5" fill="#0f1628" stroke="#3d4f9f" stroke-width="1.5"/>
+  <text x="31" y="57" text-anchor="middle" font-size="9" fill="#6c7fff" font-family="monospace" font-weight="700">Client</text>
+  <rect x="59" y="28" width="42" height="16" rx="4" fill="#052e16" stroke="#10b981" stroke-width="1.5"/>
+  <text x="80" y="39" text-anchor="middle" font-size="8" fill="#34d399" font-family="monospace">GET /api</text>
+  <rect x="59" y="49" width="42" height="16" rx="4" fill="#1e2a5e" stroke="#3d4f9f" stroke-width="1.5"/>
+  <text x="80" y="60" text-anchor="middle" font-size="8" fill="#6c7fff" font-family="monospace">POST /run</text>
+  <rect x="59" y="70" width="42" height="16" rx="4" fill="#3b1515" stroke="#ef4444" stroke-width="1.5"/>
+  <text x="80" y="81" text-anchor="middle" font-size="8" fill="#f87171" font-family="monospace">DELETE /</text>
+  <rect x="108" y="42" width="42" height="22" rx="5" fill="#0f1628" stroke="#3d4f9f" stroke-width="1.5"/>
+  <text x="129" y="57" text-anchor="middle" font-size="9" fill="#a78bfa" font-family="monospace" font-weight="700">Server</text>
+  <path d="M52 53 L59 36" stroke="#10b981" stroke-width="1.5"/>
+  <path d="M52 53 L59 57" stroke="#6c7fff" stroke-width="1.5"/>
+  <path d="M52 53 L59 78" stroke="#ef4444" stroke-width="1.5"/>
+  <path d="M101 36 L108 53" stroke="#10b981" stroke-width="1.5"/>
+  <path d="M101 57 L108 53" stroke="#6c7fff" stroke-width="1.5"/>
+  <path d="M101 78 L108 53" stroke="#ef4444" stroke-width="1.5"/>
+</svg>

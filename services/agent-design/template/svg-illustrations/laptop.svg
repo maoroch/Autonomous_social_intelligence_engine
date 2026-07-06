@@ -1,0 +1,11 @@
+<svg width="160" height="110" viewBox="0 0 160 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <ellipse cx="80" cy="100" rx="55" ry="7" fill="rgba(108,127,255,0.12)"/>
+  <rect x="25" y="25" width="110" height="68" rx="6" fill="#1e2a5e" stroke="#3d4f9f" stroke-width="1.5"/>
+  <rect x="33" y="33" width="94" height="52" rx="3" fill="#0d1117"/>
+  <text x="42" y="52" font-family="monospace" font-size="8.5" fill="#6c7fff">const agent = {</text>
+  <text x="42" y="63" font-family="monospace" font-size="8.5" fill="#a78bfa">  run: async () =></text>
+  <text x="42" y="74" font-family="monospace" font-size="8.5" fill="#34d399">    pipeline.start()</text>
+  <text x="42" y="80" font-family="monospace" font-size="8.5" fill="#6c7fff">}</text>
+  <rect x="18" y="93" width="124" height="8" rx="3" fill="#1e2a5e" stroke="#3d4f9f" stroke-width="1"/>
+  <rect x="68" y="94" width="24" height="5" rx="2" fill="#3d4f9f"/>
+</svg>

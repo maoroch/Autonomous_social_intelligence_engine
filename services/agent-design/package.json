@@ -11,13 +11,15 @@
   },
   "dependencies": {
     "@pipeline/shared": "*",
+    "adm-zip": "^0.5.12",
     "bullmq": "^5.34.0",
-    "canvas": "^3.2.3",
+    "puppeteer-core": "^22.10.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.5",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.5",
     "tsx": "^4.19.2",

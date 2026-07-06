@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Instagram post 1</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green-light: #9FFFA2;
+      --green-dark: #007204;
+      --ink: #000000;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: #e9e9e9;
+      font-family: "Outfit", sans-serif;
+    }
+
+    .stage {
+      min-height: 1350px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: 0;
+      margin: 0;
+    }
+
+    .post {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background-color: #ffffff;
+      background-image:
+        linear-gradient(to right, #ececec 1px, transparent 1px),
+        linear-gradient(to bottom, #ececec 1px, transparent 1px);
+      background-size: 82px 82px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 155px 108px 108px;
+    }
+
+    .badge {
+      position: relative;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 34px;
+      height: 103px;
+      border-radius: 51.5px;
+      background: var(--green-light);
+      flex-shrink: 0;
+      width: fit-content;
+    }
+
+    .badge span {
+      font-family: "Outfit", sans-serif;
+      font-weight: 600;
+      font-size: 45px;
+      color: var(--green-dark);
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .headline {
+      position: relative;
+      z-index: 1;
+      margin: 60px 0 0;
+      max-width: 800px;
+      font-family: "Outfit", sans-serif;
+      font-weight: 700;
+      font-size: 68px;
+      line-height: 1.15;
+      color: var(--ink);
+    }
+
+    .body-text {
+      position: relative;
+      z-index: 1;
+      margin: 30px 0 0;
+      max-width: 900px;
+      font-family: "Outfit", sans-serif;
+      font-weight: 500;
+      font-size: 45px;
+      line-height: 1.4;
+      color: var(--ink);
+    }
+
+    .illustration-container {
+      position: relative;
+      z-index: 1;
+      margin-top: 30px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 380px;
+    }
+
+    .illustration-container svg {
+      height: 100%;
+      width: auto;
+    }
+
+    .spacer {
+      flex: 1 1 auto;
+    }
+
+    .footer {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .footer span {
+      font-family: "Outfit", sans-serif;
+      font-weight: 500;
+      font-size: 40px;
+      color: var(--ink);
+      line-height: 1;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="stage">
+    <div class="post">
+      <div class="badge"><span>{{BADGE}}</span></div>
+
+      <h1 class="headline">{{TITLE}}</h1>
+
+      <p class="body-text">{{BODY}}</p>
+
+      <div class="spacer"></div>
+
+      <div class="illustration-container">
+        {{ILLUSTRATION}}
+      </div>
+
+      <div class="footer">
+        <span>{{FOOTER_LEFT}}</span>
+        <span>{{PAGE_NUMBER}}</span>
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>

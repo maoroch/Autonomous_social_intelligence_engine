@@ -44,20 +44,39 @@ export class AiClient {
   }
 
   async complete(messages: ChatMessage[], options: AiCompletionOptions = {}): Promise<AiCompletionResult> {
-    try {
-      return await this.callOpenRouter(messages, options);
-    } catch (err) {
-      console.warn("OpenRouter call failed. Falling back to Groq. Error:", err);
+    const maxAttempts = 3;
+    let delay = 12000; // 12 seconds
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        return await this.callGroq(messages, options);
-      } catch (groqErr) {
-        throw new Error(
-          `Both AI providers failed. OpenRouter error: ${
-            err instanceof Error ? err.message : String(err)
-          }. Groq error: ${groqErr instanceof Error ? groqErr.message : String(groqErr)}`
-        );
+        return await this.callOpenRouter(messages, options);
+      } catch (err) {
+        console.warn(`OpenRouter call failed (attempt ${attempt}/${maxAttempts}). Error:`, err);
+        try {
+          return await this.callGroq(messages, options);
+        } catch (groqErr) {
+          console.warn(`Groq call failed (attempt ${attempt}/${maxAttempts}). Error:`, groqErr);
+          
+          const is429 = (err instanceof ProviderError && err.status === 429) || 
+                        (groqErr instanceof ProviderError && groqErr.status === 429);
+          
+          if (is429 && attempt < maxAttempts) {
+            console.warn(`Rate limit (429) encountered. Retrying in ${delay / 1000}s...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            delay += 10000;
+            continue;
+          }
+          
+          if (attempt === maxAttempts) {
+            throw new Error(
+              `Both AI providers failed after ${maxAttempts} attempts. OpenRouter error: ${
+                err instanceof Error ? err.message : String(err)
+              }. Groq error: ${groqErr instanceof Error ? groqErr.message : String(groqErr)}`
+            );
+          }
+        }
       }
     }
+    throw new Error("Unexpected end of LLM call loop");
   }
 
   private async checkRateLimit(provider: "openrouter" | "groq"): Promise<boolean> {
@@ -141,23 +160,33 @@ export class AiClient {
   }
 
   private async callGroq(messages: ChatMessage[], options: AiCompletionOptions): Promise<AiCompletionResult> {
-    const model = options.model ?? this.config.groqModel ?? DEFAULT_GROQ_MODEL;
+    let model = options.model ?? this.config.groqModel ?? DEFAULT_GROQ_MODEL;
 
     await this.acquireToken("groq");
 
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.config.groqApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature: options.temperature ?? 0.7,
-        max_tokens: options.maxTokens ?? 2000,
-      }),
-    });
+    const makeRequest = async (selectedModel: string) => {
+      return await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.config.groqApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: selectedModel,
+          messages,
+          temperature: options.temperature ?? 0.7,
+          max_tokens: options.maxTokens ?? 2000,
+        }),
+      });
+    };
+
+    let res = await makeRequest(model);
+
+    if (!res.ok && res.status === 429 && model !== "llama-3.1-8b-instant") {
+      console.warn("Groq rate limited on primary model. Trying fallback llama-3.1-8b-instant...");
+      res = await makeRequest("llama-3.1-8b-instant");
+      model = "llama-3.1-8b-instant";
+    }
 
     if (!res.ok) {
       throw new ProviderError("groq", res.status, await safeText(res));

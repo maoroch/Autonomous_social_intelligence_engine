@@ -1,0 +1,50 @@
+<svg width="160" height="110" viewBox="0 0 160 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <ellipse cx="80" cy="102" rx="55" ry="6" fill="rgba(168,85,247,0.10)"/>
+  <!-- input layer -->
+  <circle cx="25" cy="30" r="7" fill="#1e1035" stroke="#a855f7" stroke-width="1.5"/>
+  <circle cx="25" cy="55" r="7" fill="#1e1035" stroke="#a855f7" stroke-width="1.5"/>
+  <circle cx="25" cy="80" r="7" fill="#1e1035" stroke="#a855f7" stroke-width="1.5"/>
+  <!-- hidden layer 1 -->
+  <circle cx="65" cy="22" r="7" fill="#1e1035" stroke="#6366f1" stroke-width="1.5"/>
+  <circle cx="65" cy="42" r="7" fill="#1e1035" stroke="#6366f1" stroke-width="1.5"/>
+  <circle cx="65" cy="62" r="7" fill="#1e1035" stroke="#6366f1" stroke-width="1.5"/>
+  <circle cx="65" cy="82" r="7" fill="#1e1035" stroke="#6366f1" stroke-width="1.5"/>
+  <!-- hidden layer 2 -->
+  <circle cx="105" cy="30" r="7" fill="#1e1035" stroke="#6366f1" stroke-width="1.5"/>
+  <circle cx="105" cy="55" r="7" fill="#1e1035" stroke="#6366f1" stroke-width="1.5"/>
+  <circle cx="105" cy="80" r="7" fill="#1e1035" stroke="#6366f1" stroke-width="1.5"/>
+  <!-- output layer -->
+  <circle cx="142" cy="40" r="7" fill="#052e16" stroke="#10b981" stroke-width="2"/>
+  <circle cx="142" cy="70" r="7" fill="#1e1035" stroke="#6366f1" stroke-width="1.5"/>
+  <!-- connections input->h1 -->
+  <line x1="32" y1="30" x2="58" y2="22" stroke="#a855f7" stroke-width="0.6" opacity="0.4"/>
+  <line x1="32" y1="30" x2="58" y2="42" stroke="#a855f7" stroke-width="0.6" opacity="0.4"/>
+  <line x1="32" y1="30" x2="58" y2="62" stroke="#a855f7" stroke-width="0.6" opacity="0.3"/>
+  <line x1="32" y1="55" x2="58" y2="22" stroke="#a855f7" stroke-width="0.6" opacity="0.3"/>
+  <line x1="32" y1="55" x2="58" y2="42" stroke="#a855f7" stroke-width="0.8" opacity="0.6"/>
+  <line x1="32" y1="55" x2="58" y2="62" stroke="#a855f7" stroke-width="0.6" opacity="0.4"/>
+  <line x1="32" y1="55" x2="58" y2="82" stroke="#a855f7" stroke-width="0.6" opacity="0.3"/>
+  <line x1="32" y1="80" x2="58" y2="62" stroke="#a855f7" stroke-width="0.6" opacity="0.4"/>
+  <line x1="32" y1="80" x2="58" y2="82" stroke="#a855f7" stroke-width="0.8" opacity="0.6"/>
+  <!-- connections h1->h2 -->
+  <line x1="72" y1="22" x2="98" y2="30" stroke="#6366f1" stroke-width="0.6" opacity="0.4"/>
+  <line x1="72" y1="42" x2="98" y2="30" stroke="#6366f1" stroke-width="0.8" opacity="0.6"/>
+  <line x1="72" y1="42" x2="98" y2="55" stroke="#6366f1" stroke-width="0.6" opacity="0.4"/>
+  <line x1="72" y1="62" x2="98" y2="55" stroke="#6366f1" stroke-width="0.8" opacity="0.6"/>
+  <line x1="72" y1="62" x2="98" y2="80" stroke="#6366f1" stroke-width="0.6" opacity="0.4"/>
+  <line x1="72" y1="82" x2="98" y2="80" stroke="#6366f1" stroke-width="0.8" opacity="0.6"/>
+  <!-- connections h2->output (highlighted path) -->
+  <line x1="112" y1="30" x2="135" y2="40" stroke="#10b981" stroke-width="1.5" opacity="0.8"/>
+  <line x1="112" y1="55" x2="135" y2="40" stroke="#10b981" stroke-width="1.5" opacity="0.8"/>
+  <line x1="112" y1="55" x2="135" y2="70" stroke="#6366f1" stroke-width="0.6" opacity="0.4"/>
+  <line x1="112" y1="80" x2="135" y2="70" stroke="#6366f1" stroke-width="0.6" opacity="0.4"/>
+  <!-- active node glow -->
+  <circle cx="65" cy="42" r="10" fill="none" stroke="#6366f1" stroke-width="1" opacity="0.3"/>
+  <circle cx="142" cy="40" r="10" fill="none" stroke="#10b981" stroke-width="1" opacity="0.4"/>
+  <!-- node dots -->
+  <circle cx="25" cy="30" r="2.5" fill="#a855f7"/>
+  <circle cx="25" cy="55" r="2.5" fill="#a855f7"/>
+  <circle cx="25" cy="80" r="2.5" fill="#a855f7"/>
+  <circle cx="142" cy="40" r="3" fill="#10b981"/>
+  <circle cx="142" cy="70" r="2.5" fill="#6366f1"/>
+</svg>

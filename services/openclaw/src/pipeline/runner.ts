@@ -113,6 +113,16 @@ export async function handleAgentCompleted(
     return;
   }
 
+  if (run.status === PipelineRunStatus.AWAITING_APPROVAL) {
+    logger.info({ runId, stage }, "received completed event for manual edit re-rendering. Updating stage result.");
+    const stageResultsCol = getCollection<StageResultDoc>(Collections.STAGE_RESULTS);
+    await stageResultsCol.updateOne(
+      { runId, stage },
+      { $set: { result, updatedAt: new Date() } }
+    );
+    return;
+  }
+
   await getCollection<StageResultDoc>(Collections.STAGE_RESULTS).insertOne({
     runId,
     stage,

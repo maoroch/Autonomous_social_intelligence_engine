@@ -1,0 +1,31 @@
+<svg width="160" height="110" viewBox="0 0 160 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="a1" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto">
+      <path d="M0,0 L5,2.5 L0,5 Z" fill="#3d4f9f"/>
+    </marker>
+    <marker id="a2" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto">
+      <path d="M0,0 L5,2.5 L0,5 Z" fill="#10b981"/>
+    </marker>
+  </defs>
+  <ellipse cx="80" cy="102" rx="55" ry="6" fill="rgba(52,211,153,0.10)"/>
+  <circle cx="22" cy="55" r="14" fill="#0f1628" stroke="#3d4f9f" stroke-width="1.5"/>
+  <text x="22" y="52" text-anchor="middle" font-size="6" fill="#6c7fff" font-family="sans-serif" font-weight="700">Trend</text>
+  <text x="22" y="61" text-anchor="middle" font-size="6" fill="#6c7fff" font-family="sans-serif">Agent</text>
+  <path d="M36 55 L48 55" stroke="#3d4f9f" stroke-width="1.5" marker-end="url(#a1)"/>
+  <circle cx="60" cy="55" r="14" fill="#0f1628" stroke="#3d4f9f" stroke-width="1.5"/>
+  <text x="60" y="52" text-anchor="middle" font-size="5.5" fill="#6c7fff" font-family="sans-serif" font-weight="700">Write</text>
+  <text x="60" y="61" text-anchor="middle" font-size="5.5" fill="#6c7fff" font-family="sans-serif">Agent</text>
+  <path d="M74 55 L86 55" stroke="#3d4f9f" stroke-width="1.5" marker-end="url(#a1)"/>
+  <circle cx="98" cy="55" r="14" fill="#0f1628" stroke="#3d4f9f" stroke-width="1.5"/>
+  <text x="98" y="52" text-anchor="middle" font-size="5.5" fill="#6c7fff" font-family="sans-serif" font-weight="700">Design</text>
+  <text x="98" y="61" text-anchor="middle" font-size="5.5" fill="#6c7fff" font-family="sans-serif">Agent</text>
+  <path d="M112 55 L124 55" stroke="#10b981" stroke-width="1.5" marker-end="url(#a2)"/>
+  <circle cx="137" cy="55" r="14" fill="#052e16" stroke="#10b981" stroke-width="2"/>
+  <text x="137" y="52" text-anchor="middle" font-size="5.5" fill="#34d399" font-family="sans-serif" font-weight="700">Publish</text>
+  <circle cx="146" cy="46" r="5" fill="#10b981"/>
+  <text x="146" y="49" text-anchor="middle" font-size="8" fill="white" font-weight="bold">&#10003;</text>
+  <rect x="50" y="78" width="60" height="16" rx="8" fill="#0f0f23" stroke="#3d4f9f" stroke-width="1"/>
+  <text x="80" y="89" text-anchor="middle" font-size="8" fill="#6c7fff" font-family="sans-serif" font-weight="600">Open Claw</text>
+  <path d="M22 69 Q22 86 50 86" stroke="#2d3a6e" stroke-width="1" stroke-dasharray="2,2" fill="none"/>
+  <path d="M137 69 Q137 86 110 86" stroke="#2d3a6e" stroke-width="1" stroke-dasharray="2,2" fill="none"/>
+</svg>
