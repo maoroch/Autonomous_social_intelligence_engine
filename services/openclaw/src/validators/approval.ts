@@ -3,6 +3,7 @@ import { getCollection, Collections, type PipelineRunDoc, type StageResultDoc } 
 import { PipelineRunStatus, PipelineStage, QueueName, type AgentJob } from "@pipeline/shared";
 import type { Logger } from "@pipeline/shared/logger";
 import { createQueue } from "@pipeline/shared/queue";
+import type { AgentQueues } from "../pipeline/runner.js";
 
 /**
  * Роуты, которые дёргает Next.js dashboard для Human Approval flow.
@@ -130,6 +131,64 @@ export function createApprovalRouter(logger: Logger): Router {
     }
 
     res.json({ ok: true });
+  });
+
+  router.post("/runs/:runId/reprocess", async (req, res) => {
+    const { runId } = req.params;
+    const { notes } = req.body;
+
+    logger.info({ runId, notes }, "requested manual reprocess of run");
+
+    try {
+      const run = await runs().findOne({ runId });
+      if (!run) {
+        return res.status(404).json({ error: "run not found" });
+      }
+
+      // We cycle back to WRITING stage with user notes in extraInstructions
+      // Get the existing strategy stage result to feed into WRITING as input payload
+      const strategyDoc = await stageResults().findOne({ runId, stage: PipelineStage.STRATEGY });
+      const strategyResult = (strategyDoc?.result as Record<string, unknown>) ?? {};
+
+      // Reset the run status to running, set currentStage to writing
+      await runs().updateOne(
+        { runId },
+        {
+          $set: {
+            status: PipelineRunStatus.RUNNING,
+            currentStage: PipelineStage.WRITING,
+            updatedAt: new Date(),
+          }
+        }
+      );
+
+      // We recreate the queues structure locally
+      const queues: AgentQueues = {
+        [PipelineStage.TREND]: createQueue<AgentJob>(QueueName.TREND, process.env.REDIS_URL ?? "redis://localhost:6379"),
+        [PipelineStage.POSITIONING]: createQueue<AgentJob>(QueueName.POSITIONING, process.env.REDIS_URL ?? "redis://localhost:6379"),
+        [PipelineStage.STRATEGY]: createQueue<AgentJob>(QueueName.STRATEGY, process.env.REDIS_URL ?? "redis://localhost:6379"),
+        [PipelineStage.WRITING]: createQueue<AgentJob>(QueueName.WRITING, process.env.REDIS_URL ?? "redis://localhost:6379"),
+        [PipelineStage.DESIGN]: createQueue<AgentJob>(QueueName.DESIGN, process.env.REDIS_URL ?? "redis://localhost:6379"),
+        [PipelineStage.SEO]: createQueue<AgentJob>(QueueName.SEO, process.env.REDIS_URL ?? "redis://localhost:6379"),
+      };
+
+      const extraInstructions = notes ? `Инструкции от пользователя по переделке: ${notes}` : "Пользователь попросил переделать публикацию.";
+
+      // Delete stage results from writing onwards so they are regenerated
+      await stageResults().deleteMany({
+        runId,
+        stage: { $in: [PipelineStage.WRITING, PipelineStage.DESIGN, PipelineStage.SEO] }
+      });
+
+      const { enqueueStage } = await import("../pipeline/runner.js");
+      await enqueueStage(queues, runId, PipelineStage.WRITING, strategyResult, extraInstructions);
+
+      logger.info({ runId }, "successfully cycled run back to WRITING stage for manual reprocess");
+      res.json({ ok: true });
+    } catch (err: any) {
+      logger.error({ err, runId }, "failed to cycle run back for reprocess");
+      res.status(500).json({ error: err.message });
+    }
   });
 
   return router;

@@ -70,7 +70,7 @@ export async function startPipelineRun(
   return runId;
 }
 
-async function enqueueStage(
+export async function enqueueStage(
   queues: AgentQueues,
   runId: string,
   stage: PipelineStage,

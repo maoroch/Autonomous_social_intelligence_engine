@@ -43,9 +43,35 @@ export default function RunDetailPage({ params }: PageProps) {
   const isReRenderingRef = useRef(false);
   const prevPreviewIdRef = useRef<string | null>(null);
 
+  // States for reprocessing
+  const [isReprocessModalOpen, setIsReprocessModalOpen] = useState(false);
+  const [reprocessNotes, setReprocessNotes] = useState("");
+
   // Carousel slider state
   const [activeSlide, setActiveSlide] = useState(0);
   const [availableIllustrations, setAvailableIllustrations] = useState<any[]>([]);
+
+  const handleReprocess = async () => {
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/runs/${runId}/reprocess`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: reprocessNotes }),
+      });
+      if (res.ok) {
+        setIsReprocessModalOpen(false);
+        setReprocessNotes("");
+        fetchRunDetails();
+      } else {
+        alert("Не удалось отправить на перегенерацию.");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetch("/api/illustrations")
@@ -277,6 +303,22 @@ export default function RunDetailPage({ params }: PageProps) {
             {isAwaitingApproval && (
               <>
                 <button
+                  disabled={actionLoading}
+                  onClick={() => setIsReprocessModalOpen(true)}
+                  className="btn"
+                  style={{
+                    padding: "10px 20px",
+                    background: "#f3f4f6",
+                    color: "#374151",
+                    border: "1px solid #d1d5db",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    fontWeight: 600,
+                  }}
+                >
+                  🔄 Переделать пост
+                </button>
+                <button
                   disabled={actionLoading || saveStatus === "saving"}
                   onClick={handleSaveChanges}
                   className="btn btn-secondary"
@@ -355,7 +397,7 @@ export default function RunDetailPage({ params }: PageProps) {
       {/* Main Grid: Post, Slides vs Audits */}
       <section className="grid-main">
         {/* Left Side: Post and Slides */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 32, minWidth: 0, width: "100%" }}>
           {/* Post Preview (Editable or Read-only) */}
           {writingResult ? (
             <div className="card" style={{ padding: 0, overflow: "hidden" }}>
@@ -447,8 +489,8 @@ export default function RunDetailPage({ params }: PageProps) {
                 aspectRatio: "1/1",
                 maxWidth: 460,
                 margin: "0 auto 20px auto",
-                background: "#1e293b",
-                border: `3px solid ${accentColor}`,
+                background: selectedTemplate === "cover-1" ? "#ffffff" : "#1e293b",
+                border: selectedTemplate === "cover-1" ? "3px solid var(--green)" : `3px solid ${accentColor}`,
                 borderRadius: 16,
                 padding: 28,
                 display: "flex",
@@ -460,26 +502,53 @@ export default function RunDetailPage({ params }: PageProps) {
                 <div>
                   {isAwaitingApproval ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                      <label style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontWeight: 600 }}>Заголовок слайда</label>
+                      <label style={{ fontSize: 11, color: selectedTemplate === "cover-1" ? "#6b7280" : "rgba(255,255,255,0.6)", fontWeight: 600 }}>Заголовок слайда</label>
                       <input
                         type="text"
                         value={activeSlides[activeSlide].title}
                         onChange={(e) => handleSlideChange(activeSlide, "title", e.target.value)}
-                        style={{ fontSize: 16, fontWeight: "bold", background: "rgba(255,255,255,0.12)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", width: "100%" }}
+                        style={{
+                          fontSize: 16,
+                          fontWeight: "bold",
+                          background: selectedTemplate === "cover-1" ? "#f9fafb" : "rgba(255,255,255,0.12)",
+                          color: selectedTemplate === "cover-1" ? "#111827" : "#fff",
+                          border: selectedTemplate === "cover-1" ? "1px solid #d1d5db" : "1px solid rgba(255,255,255,0.2)",
+                          width: "100%",
+                          padding: "6px 10px",
+                          borderRadius: "6px"
+                        }}
                       />
-                      <label style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontWeight: 600, marginTop: 4 }}>Буллиты слайда (по одному на строку)</label>
+                      <label style={{ fontSize: 11, color: selectedTemplate === "cover-1" ? "#6b7280" : "rgba(255,255,255,0.6)", fontWeight: 600, marginTop: 4 }}>Буллиты слайда (по одному на строку)</label>
                       <textarea
                         rows={4}
                         value={activeSlides[activeSlide].bullets.join("\n")}
                         onChange={(e) => handleSlideChange(activeSlide, "bullets", e.target.value.split("\n"))}
-                        style={{ fontSize: 14, fontFamily: "inherit", background: "rgba(255,255,255,0.12)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", resize: "none", width: "100%" }}
+                        style={{
+                          fontSize: 14,
+                          fontFamily: "inherit",
+                          background: selectedTemplate === "cover-1" ? "#f9fafb" : "rgba(255,255,255,0.12)",
+                          color: selectedTemplate === "cover-1" ? "#111827" : "#fff",
+                          border: selectedTemplate === "cover-1" ? "1px solid #d1d5db" : "1px solid rgba(255,255,255,0.2)",
+                          resize: "none",
+                          width: "100%",
+                          padding: "6px 10px",
+                          borderRadius: "6px"
+                        }}
                       />
-                      <label style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontWeight: 600, marginTop: 4 }}>Иллюстрация слайда</label>
+                      <label style={{ fontSize: 11, color: selectedTemplate === "cover-1" ? "#6b7280" : "rgba(255,255,255,0.6)", fontWeight: 600, marginTop: 4 }}>Иллюстрация слайда</label>
                       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                         <select
                           value={activeSlides[activeSlide].illustration || "none"}
                           onChange={(e) => handleSlideChange(activeSlide, "illustration", e.target.value)}
-                          style={{ flex: 1, padding: "8px", borderRadius: "6px", background: "rgba(255,255,255,0.12)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", fontSize: "13px" }}
+                          style={{
+                            flex: 1,
+                            padding: "8px",
+                            borderRadius: "6px",
+                            background: selectedTemplate === "cover-1" ? "#f9fafb" : "rgba(255,255,255,0.12)",
+                            color: selectedTemplate === "cover-1" ? "#111827" : "#fff",
+                            border: selectedTemplate === "cover-1" ? "1px solid #d1d5db" : "1px solid rgba(255,255,255,0.2)",
+                            fontSize: "13px"
+                          }}
                         >
                           <option value="none">Без иллюстрации</option>
                           {availableIllustrations.map((ill) => (
@@ -488,7 +557,18 @@ export default function RunDetailPage({ params }: PageProps) {
                         </select>
                         {activeSlides[activeSlide].illustration && activeSlides[activeSlide].illustration !== "none" && (
                           <div
-                            style={{ width: 36, height: 36, background: "rgba(255,255,255,0.1)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", padding: 4 }}
+                            style={{
+                              width: 36,
+                              height: 36,
+                              background: selectedTemplate === "cover-1" ? "#f3f4f6" : "rgba(255,255,255,0.1)",
+                              border: selectedTemplate === "cover-1" ? "1px solid #e5e7eb" : "none",
+                              borderRadius: 6,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              overflow: "hidden",
+                              padding: 4
+                            }}
                             dangerouslySetInnerHTML={{
                               __html: availableIllustrations.find(i => i.name === activeSlides[activeSlide].illustration)?.svgContent || ""
                             }}
@@ -498,12 +578,22 @@ export default function RunDetailPage({ params }: PageProps) {
                     </div>
                   ) : (
                     <>
-                      <h4 style={{ fontSize: 24, marginBottom: 24, color: "#fff", lineHeight: 1.3 }}>
+                      <h4 style={{
+                        fontSize: 24,
+                        marginBottom: 24,
+                        color: selectedTemplate === "cover-1" ? "#111827" : "#fff",
+                        lineHeight: 1.3
+                      }}>
                         {activeSlides[activeSlide].title}
                       </h4>
                       <ul style={{ paddingLeft: 20, margin: 0 }}>
                         {activeSlides[activeSlide].bullets.map((b: string, i: number) => (
-                          <li key={i} style={{ fontSize: 16, color: "#cbd5e1", marginBottom: 12, lineHeight: 1.4 }}>
+                          <li key={i} style={{
+                            fontSize: 16,
+                            color: selectedTemplate === "cover-1" ? "#374151" : "#cbd5e1",
+                            marginBottom: 12,
+                            lineHeight: 1.4
+                          }}>
                             {b}
                           </li>
                         ))}
@@ -523,19 +613,35 @@ export default function RunDetailPage({ params }: PageProps) {
                   )}
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, color: "rgba(255,255,255,0.5)", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 16 }}>
+                <div style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  fontSize: 13,
+                  color: selectedTemplate === "cover-1" ? "#6b7280" : "rgba(255,255,255,0.5)",
+                  borderTop: selectedTemplate === "cover-1" ? "1px solid #e5e7eb" : "1px solid rgba(255,255,255,0.1)",
+                  paddingTop: 16
+                }}>
                   {isAwaitingApproval ? (
                     <input
                       type="text"
                       value={activeSlides[activeSlide].footer}
                       onChange={(e) => handleSlideChange(activeSlide, "footer", e.target.value)}
                       placeholder="Подпись футера"
-                      style={{ fontSize: 12, background: "rgba(255,255,255,0.12)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", padding: "4px 8px", width: "60%" }}
+                      style={{
+                        fontSize: 12,
+                        background: selectedTemplate === "cover-1" ? "#f9fafb" : "rgba(255,255,255,0.12)",
+                        color: selectedTemplate === "cover-1" ? "#111827" : "#fff",
+                        border: selectedTemplate === "cover-1" ? "1px solid #d1d5db" : "1px solid rgba(255,255,255,0.2)",
+                        padding: "4px 8px",
+                        borderRadius: "4px",
+                        width: "60%"
+                      }}
                     />
                   ) : (
                     <span>{activeSlides[activeSlide].footer}</span>
                   )}
-                  <span style={{ fontWeight: 600, color: accentColor }}>
+                  <span style={{ fontWeight: 600, color: selectedTemplate === "cover-1" ? "var(--green)" : accentColor }}>
                     Слайд {activeSlide + 1} из {activeSlides.length}
                   </span>
                 </div>
@@ -632,7 +738,7 @@ export default function RunDetailPage({ params }: PageProps) {
                     : (designResult.zip_cover_2_id || designResult.imageId);
 
                   return (
-                    <div style={{ marginTop: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                    <div style={{ marginTop: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 16, width: "100%" }}>
                       {isReRendering && (
                         <div style={{
                           padding: "6px 12px",
@@ -650,21 +756,55 @@ export default function RunDetailPage({ params }: PageProps) {
                           ⏳ Генерация новых изображений...
                         </div>
                       )}
-                      {currentPreviewId && (
-                        <div style={{ textAlign: "center" }}>
-                          <span style={{ fontSize: 12, color: "var(--text-muted)", display: "block", marginBottom: 8 }}>Предпросмотр обложки:</span>
-                          <img
-                            src={`/api/proxy/images/${currentPreviewId}`}
-                            alt={`Preview ${selectedTemplate}`}
-                            style={{
-                              maxWidth: "260px",
-                              borderRadius: "8px",
-                              border: `2px solid ${selectedTemplate === "cover-1" ? "var(--green)" : "#CC84FF"}`,
-                              boxShadow: "0 10px 20px rgba(0,0,0,0.3)"
-                            }}
-                          />
+
+                      {currentZipId && (
+                        <div style={{ width: "100%" }}>
+                          <span style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 12, fontWeight: 600 }}>
+                            Предпросмотр всех слайдов карусели (прокрутка вбок):
+                          </span>
+                          <div style={{
+                            display: "flex",
+                            gap: 16,
+                            overflowX: "auto",
+                            paddingBottom: 16,
+                            width: "100%",
+                            scrollSnapType: "x mandatory",
+                          }}>
+                            {/* Dynamically display each slide PNG extracted from the zip */}
+                            {Array.from({ length: designResult.card_count || 5 }).map((_, index) => (
+                              <div
+                                key={index}
+                                style={{
+                                  flex: "0 0 200px",
+                                  scrollSnapAlign: "start",
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: 6,
+                                  textAlign: "center"
+                                }}
+                              >
+                                <img
+                                  src={`/api/proxy/images/${currentZipId}?index=${index}`}
+                                  alt={`Slide ${index + 1}`}
+                                  loading="lazy"
+                                  style={{
+                                    width: "100%",
+                                    aspectRatio: "1080/1350",
+                                    borderRadius: "8px",
+                                    border: "1px solid var(--border)",
+                                    boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+                                    objectFit: "cover",
+                                  }}
+                                />
+                                <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 500 }}>
+                                  Слайд {index + 1}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
+
                       {currentZipId && (
                         <div style={{ textAlign: "center", marginTop: 8 }}>
                           <a
@@ -818,6 +958,65 @@ export default function RunDetailPage({ params }: PageProps) {
           </div>
         </div>
       </section>
+
+      {/* Reprocess Dialog Modal */}
+      {isReprocessModalOpen && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.4)",
+          backdropFilter: "blur(4px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 9999,
+        }}>
+          <div className="card" style={{ width: "100%", maxWidth: 500, padding: 24, boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)" }}>
+            <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 18 }}>Отправить пост на перегенерацию</h3>
+            <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>
+              Опишите, что именно нужно исправить (например: "Сделай текст более профессиональным и добавь больше деталей про Docker").
+            </p>
+            <textarea
+              rows={4}
+              value={reprocessNotes}
+              onChange={(e) => setReprocessNotes(e.target.value)}
+              placeholder="Введите ваши пожелания и инструкции для ИИ-агентов..."
+              style={{
+                width: "100%",
+                padding: 12,
+                borderRadius: 8,
+                border: "1px solid var(--border)",
+                fontSize: 14,
+                marginBottom: 20,
+                resize: "none",
+                fontFamily: "inherit",
+              }}
+            />
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsReprocessModalOpen(false);
+                  setReprocessNotes("");
+                }}
+                className="btn btn-secondary"
+                style={{ padding: "8px 16px", borderRadius: 6, fontSize: 13 }}
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleReprocess}
+                disabled={actionLoading || !reprocessNotes.trim()}
+                className="btn btn-primary"
+                style={{ padding: "8px 16px", borderRadius: 6, fontSize: 13 }}
+              >
+                {actionLoading ? "Отправка..." : "Запустить перегенерацию 🚀"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
