@@ -25,13 +25,13 @@ export default function DashboardPage() {
   const [runs, setRuns] = useState<RunListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  
+
   // Form state
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [profileId, setProfileId] = useState("");
   const [profiles, setProfiles] = useState<any[]>([]);
-  
+
   // Filters & Status
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [serviceStatus, setServiceStatus] = useState<Record<string, boolean>>({});
@@ -246,7 +246,7 @@ export default function DashboardPage() {
                 </select>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Тема (Необязательно)</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Тема</label>
                 <input
                   type="text"
                   placeholder="Например: Переход на Node.js 22"
@@ -298,8 +298,8 @@ export default function DashboardPage() {
                           height: 8,
                           borderRadius: "50%",
                           background: online ? "var(--green)" : "var(--red)",
-                          boxShadow: online 
-                            ? "0 0 8px var(--green)" 
+                          boxShadow: online
+                            ? "0 0 8px var(--green)"
                             : "0 0 8px var(--red)"
                         }}
                       />

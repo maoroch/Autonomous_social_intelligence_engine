@@ -23,5 +23,8 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.18"
   }
 }
