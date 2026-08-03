@@ -8,7 +8,10 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "seed-golden": "tsx src/scripts/seed-golden.ts"
+    "seed-golden": "tsx src/scripts/seed-golden.ts",
+    "seed-organizations": "tsx src/scripts/seed-organizations.ts",
+    "seed-users": "tsx src/scripts/seed-users.ts",
+    "seed-fact-chunks": "tsx src/scripts/seed-fact-chunks.ts"
   },
   "dependencies": {
     "@pipeline/shared": "*",
@@ -16,12 +19,14 @@
     "bullmq": "^5.34.0",
     "zod": "^3.24.1",
     "dotenv": "^16.4.7",
-    "nanoid": "^5.0.9"
+    "nanoid": "^5.0.9",
+    "bcryptjs": "^2.4.3"
   },
   "devDependencies": {
     "typescript": "^5.7.3",
     "tsx": "^4.19.2",
     "@types/node": "^22.10.5",
-    "@types/express": "^5.0.0"
+    "@types/express": "^5.0.0",
+    "@types/bcryptjs": "^2.4.6"
   }
 }

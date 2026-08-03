@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Card Style 7 - Matrix Emerald (High Impact)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@700&family=Outfit:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #030712;
+      --matrix-green: #00FF66;
+      --card-bg: #0B132B;
+      --border-glow: rgba(0, 255, 102, 0.5);
+      --text: #FFFFFF;
+      --muted: #94A3B8;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg);
+      font-family: "Outfit", sans-serif;
+    }
+    .stage {
+      min-height: 1350px;
+      display: flex;
+      padding: 0; margin: 0;
+    }
+    .post {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background-color: var(--bg);
+      background-image:
+        radial-gradient(circle at 50% 20%, rgba(0, 255, 102, 0.12) 0%, transparent 60%),
+        linear-gradient(to right, rgba(0, 255, 102, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0, 255, 102, 0.05) 1px, transparent 1px);
+      background-size: 100% 100%, 40px 40px, 40px 40px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 96px;
+    }
+    .matrix-box {
+      flex: 1;
+      background: rgba(11, 19, 43, 0.85);
+      border: 3px solid var(--matrix-green);
+      border-radius: 28px;
+      padding: 64px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 60px rgba(0, 255, 102, 0.2), inset 0 0 30px rgba(0, 255, 102, 0.05);
+      backdrop-filter: blur(16px);
+      position: relative;
+    }
+    .matrix-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: "Fira Code", monospace;
+      font-size: 24px;
+      color: var(--matrix-green);
+      margin-bottom: 32px;
+      letter-spacing: 0.05em;
+    }
+    .pulse-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--matrix-green);
+      box-shadow: 0 0 12px var(--matrix-green);
+    }
+    .headline {
+      margin: 0;
+      font-weight: 900;
+      font-size: 64px;
+      line-height: 1.15;
+      color: var(--text);
+      letter-spacing: -0.01em;
+      text-shadow: 0 0 20px rgba(0, 255, 102, 0.2);
+    }
+    .body-text {
+      margin: 36px 0 0;
+      font-size: 42px;
+      font-weight: 700;
+      line-height: 1.45;
+      color: #CBD5E1;
+    }
+    .illustration-container {
+      margin-top: 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 320px;
+    }
+    .illustration-container svg { height: 100%; width: auto; filter: drop-shadow(0 0 15px rgba(0,255,102,0.4)); }
+    .spacer { flex: 1 1 auto; }
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 2px solid rgba(0, 255, 102, 0.3);
+      padding-top: 28px;
+    }
+    .footer span {
+      font-family: "Fira Code", monospace;
+      font-size: 34px;
+      color: var(--matrix-green);
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="post">
+      <div class="matrix-box">
+        <div class="matrix-header">
+          <div class="pulse-dot"></div>
+          <span>MATRIX_CORE // EXECUTING_CARD</span>
+        </div>
+        <h1 class="headline">{{TITLE}}</h1>
+        <p class="body-text">{{BODY}}</p>
+        <div class="spacer"></div>
+        <div class="illustration-container">{{ILLUSTRATION}}</div>
+        <div class="footer">
+          <span>{{FOOTER_LEFT}}</span>
+          <span>{{PAGE_NUMBER}}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

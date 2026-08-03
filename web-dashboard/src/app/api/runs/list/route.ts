@@ -6,10 +6,14 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
-    const url = status 
-      ? `${OPENCLAW_URL}/approval/runs?status=${status}`
-      : `${OPENCLAW_URL}/approval/runs`;
-      
+    const tenantId = searchParams.get("tenantId");
+
+    const openclawParams = new URLSearchParams();
+    if (status) openclawParams.set("status", status);
+    if (tenantId) openclawParams.set("tenantId", tenantId);
+
+    const url = `${OPENCLAW_URL}/approval/runs${openclawParams.toString() ? `?${openclawParams.toString()}` : ""}`;
+
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) {
       throw new Error(`OpenClaw responded with ${res.status}`);

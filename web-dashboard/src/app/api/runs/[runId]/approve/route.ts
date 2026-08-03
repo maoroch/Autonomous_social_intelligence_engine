@@ -4,7 +4,9 @@ const OPENCLAW_URL = process.env.OPENCLAW_URL ?? "http://localhost:4000";
 
 export async function POST(req: Request, { params }: { params: Promise<{ runId: string }> }) {
   const { runId } = await params;
-  let body = {};
+  const { searchParams } = new URL(req.url);
+  const tenantId = searchParams.get("tenantId");
+  let body: Record<string, unknown> = {};
   try {
     body = await req.json();
   } catch (e) {
@@ -14,7 +16,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ runId: 
   const res = await fetch(`${OPENCLAW_URL}/approval/runs/${runId}/approve`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ ...body, tenantId }),
   });
 
   if (!res.ok) {

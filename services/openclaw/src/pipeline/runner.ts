@@ -46,7 +46,9 @@ export async function startPipelineRun(
   queues: AgentQueues,
   logger: Logger,
   initialTopic: { title: string; summary: string } = { title: "", summary: "" },
-  profileId?: string
+  profileId?: string,
+  tenantId?: string,
+  targetPillarId?: string
 ): Promise<string> {
   const runId = nanoid();
   const now = new Date();
@@ -57,6 +59,8 @@ export async function startPipelineRun(
     currentStage: PipelineStage.TREND,
     topic: initialTopic,
     profileId,
+    tenantId,
+    contentPillarId: targetPillarId,
     retries: {},
     createdAt: now,
     updatedAt: now,
@@ -64,8 +68,8 @@ export async function startPipelineRun(
 
   await getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS).insertOne(run);
 
-  await enqueueStage(queues, runId, PipelineStage.TREND, { profileId });
-  logger.info({ runId }, "pipeline run started");
+  await enqueueStage(queues, runId, PipelineStage.TREND, { profileId, targetPillarId });
+  logger.info({ runId, tenantId, targetPillarId }, "pipeline run started");
 
   return runId;
 }
@@ -82,12 +86,18 @@ export async function enqueueStage(
     throw new Error(`No queue mapped for stage "${stage}"`);
   }
 
+  const runDoc = await getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS).findOne({ runId });
+  const mergedPayload = {
+    ...payload,
+    targetPillarId: runDoc?.contentPillarId || (payload as any)?.targetPillarId,
+  };
+
   const queue = queues[stage as keyof AgentQueues];
   const job: AgentJob = {
     runId,
     stage,
     attempt: 1,
-    payload,
+    payload: mergedPayload,
     extraInstructions,
   };
 

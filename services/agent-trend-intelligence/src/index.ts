@@ -10,10 +10,11 @@ import {
   type PipelineEvent,
   TrendAgentOutputSchema,
 } from "@pipeline/shared/schemas";
-import { AiClient } from "@pipeline/shared/ai";
-import { connectMongo, getCollection, Collections } from "@pipeline/shared/db";
+import { AiClient, filterHallucinatedSources } from "@pipeline/shared/ai";
+import { connectMongo, getCollection, Collections, type IndustryProfileDoc } from "@pipeline/shared/db";
 import { ObjectId } from "mongodb";
 import { aggregateRawTrends, formatTrendsForLLM } from "./aggregator.js";
+import type { IndustryProfile } from "@pipeline/shared/schemas";
 
 const logger = createLogger("agent-trend-intelligence");
 
@@ -124,6 +125,7 @@ async function processTrendJob(job: AgentJob): Promise<unknown> {
 
   // 1. Fetch Author Profile from DB to personalize target trend niche
   let profileTopics: string[] = [];
+  let tenantId = "software-development-default";
   try {
     const runsCol = getCollection<any>(Collections.PIPELINE_RUNS);
     const run = await runsCol.findOne({ runId: job.runId });
@@ -144,12 +146,44 @@ async function processTrendJob(job: AgentJob): Promise<unknown> {
     if (dbProfile && Array.isArray(dbProfile.topics)) {
       profileTopics = dbProfile.topics;
     }
+
+    // Мультиарендность: приоритет tenantId — из PipelineRun, затем из AuthorProfile, иначе дефолт tech-портала.
+    tenantId = run?.tenantId ?? dbProfile?.tenantId ?? tenantId;
   } catch (err) {
     logger.warn({ err, runId: job.runId }, "Failed to load author profile for personalization");
   }
 
-  const rawTrends = await aggregateRawTrends(profileTopics);
-  const rawTrendsText = formatTrendsForLLM(rawTrends);
+  let industryProfile: IndustryProfile | undefined;
+  try {
+    const industryProfilesCol = getCollection<IndustryProfileDoc>(Collections.INDUSTRY_PROFILES);
+    const doc = await industryProfilesCol.findOne({ tenantId });
+    if (doc) {
+      industryProfile = doc;
+    } else {
+      logger.warn({ tenantId }, "No IndustryProfile found for tenant — falling back to default software-development fetchers");
+    }
+  } catch (err) {
+    logger.warn({ err, tenantId }, "Failed to load IndustryProfile — falling back to default software-development fetchers");
+  }
+
+  let rawTrends = await aggregateRawTrends(profileTopics, industryProfile);
+
+  // Фильтрация шума: для нишевых tenant с заданным глоссарием отсеиваем тренды, никак не связанные с отраслью
+  // (TZ_vertical_agnostic_b2b_saas.md, раздел 2.1, п. "Фильтрация шума").
+  if (industryProfile && industryProfile.verticalName !== "software-development" && industryProfile.glossary.length > 0) {
+    const allTerms = industryProfile.glossary.flatMap((g) => [g.term, ...g.synonyms]).map((t) => t.toLowerCase());
+    const beforeCount = rawTrends.length;
+    rawTrends = rawTrends.filter((item) => {
+      const haystack = item.title.toLowerCase();
+      return allTerms.some((term) => haystack.includes(term));
+    });
+    logger.info(
+      { tenantId, beforeCount, afterCount: rawTrends.length },
+      "Applied glossary-based noise filtering to raw trends",
+    );
+  }
+
+  const rawTrendsText = formatTrendsForLLM(rawTrends.slice(0, 15));
 
   // 2. Fetch full text context of top candidates using Jina Reader
   const sortedTrends = [...rawTrends].sort((a, b) => b.score - a.score);
@@ -163,16 +197,21 @@ async function processTrendJob(job: AgentJob): Promise<unknown> {
     }
   });
 
-  const topCandidates = candidates.slice(0, 6);
+  const topCandidates = candidates.slice(0, 3);
   logger.info({ runId: job.runId, urlsCount: topCandidates.length }, "Scraping full content for top candidate trend URLs...");
   
   const contentPromises = topCandidates.map(async (item) => {
-    const content = await fetchJinaReaderContent(item.url);
+    let content = "";
+    try {
+      content = await fetchJinaReaderContent(item.url);
+    } catch (err) {
+      logger.warn({ err, url: item.url }, "Failed to fetch Jina content — skipping article body");
+    }
     return {
       title: item.title,
       url: item.url,
       source: item.sourceName,
-      content,
+      content: content.substring(0, 1000),
     };
   });
   
@@ -220,7 +259,36 @@ ${profileTopics.map((t: string) => `- ${t}`).join("\n")}
 You MUST prioritize and identify trends that are highly relevant to the author's professional areas and target audience. Filter out general tech news that has no relevance to these areas.\n`;
   }
 
-  const systemPrompt = `You are a professional technology trend spotter. You analyze raw developer discussions, trending repositories, and articles to identify the most significant IT/programming/software trends of the day.
+  // Инъекция терминологического словаря ниши в промпт (TZ_vertical_agnostic_b2b_saas.md, раздел 2.1).
+  // Помогает LLM корректно распознавать отраслевые термины и не путать близкие понятия.
+  let glossaryPrompt = "";
+  if (industryProfile && industryProfile.glossary.length > 0) {
+    glossaryPrompt = `\nINDUSTRY GLOSSARY (use these terms precisely, do not confuse them with unrelated concepts):
+${industryProfile.glossary
+  .map((g) => {
+    const parts = [`- "${g.term}"${g.definition ? `: ${g.definition}` : ""}`];
+    if (g.synonyms.length > 0) parts.push(`  synonyms: ${g.synonyms.join(", ")}`);
+    if (g.doNotConfuseWith.length > 0) parts.push(`  DO NOT CONFUSE WITH: ${g.doNotConfuseWith.join(", ")}`);
+    return parts.join("\n");
+  })
+  .join("\n")}\n`;
+  }
+
+  const targetPillarId = (job.payload as any)?.targetPillarId;
+  let rubricFocusPrompt = "";
+  if (targetPillarId === "pet-projects-showcase") {
+    rubricFocusPrompt = `\nRUBRIC TARGET REQUIREMENT: The user specifically selected the rubric "Подборка pet проектов для твоего github" (pet-projects-showcase). You MUST focus trend discovery on impressive pet projects, portfolio ideas, architecture patterns, and open-source GitHub project showcases!\n`;
+  } else if (targetPillarId === "github-trending-repos") {
+    rubricFocusPrompt = `\nRUBRIC TARGET REQUIREMENT: The user specifically selected the rubric "Подборка github репозитории" (github-trending-repos). You MUST focus trend discovery on top trending GitHub repositories, open-source tools, developer utilities, and high-star repos with verified GitHub links!\n`;
+  }
+
+  const isNicheVertical = !!industryProfile && industryProfile.verticalName !== "software-development";
+  const verticalLabel = industryProfile?.verticalName ?? "software-development";
+  const domainDescription = isNicheVertical
+    ? `professional discussions, industry news, and articles to identify the most significant trends in the "${verticalLabel}" industry`
+    : "raw developer discussions, trending repositories, and articles to identify the most significant IT/programming/software trends of the day";
+
+  const systemPrompt = `You are a professional trend spotter for the "${verticalLabel}" industry. You analyze ${domainDescription}.
 Your output must be a single, valid JSON object containing an "items" array of trend objects.
 Each trend object must contain:
 1. "title": Catchy, descriptive title of the trend.
@@ -228,7 +296,7 @@ Each trend object must contain:
 3. "score": An integer from 0 to 100 indicating popularity/urgency.
 4. "keywords": Array of 3-5 tags.
 5. "sources": Array of relevant source URLs from the inputs (use the EXACT URLs provided in the input, do not hallucinate URLs).
-${personalizationPrompt}
+${personalizationPrompt}${glossaryPrompt}${rubricFocusPrompt}
 ${fewShotText}
 Output format:
 {
@@ -245,17 +313,22 @@ Output format:
 
 Return ONLY valid raw JSON. Do NOT include conversational text, comments, or markdown code blocks.`;
 
-  const userPrompt = `Here are the raw trend items collected from Hacker News, GitHub, Dev.to, and Reddit:
+  const userPrompt = `Here are the raw trend items collected from the configured sources for this tenant:
 
 ${rawTrendsText}${scrapedText}
 
 ${job.extraInstructions ? `Additional instructions from Orchestrator: ${job.extraInstructions}\n` : ""}
-Analyze these raw inputs and identify up to ${limit} most important and coherent technology trends. Ensure every trend includes the source URLs that contributed to it.`;
+Analyze these raw inputs and identify up to ${limit} most important and coherent ${isNicheVertical ? `"${verticalLabel}" industry` : "technology"} trends. Ensure every trend includes the source URLs that contributed to it.`;
 
-  const response = await aiClient.complete([
-    { role: "system", content: systemPrompt },
-    { role: "user", content: userPrompt },
-  ]);
+  // Пониженная temperature для этой стадии: извлечение трендов — фактологическая задача,
+  // а не творческая, меньшая вариативность снижает вероятность "додумывания" деталей.
+  const response = await aiClient.complete(
+    [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+    { temperature: 0.3 },
+  );
 
   logger.info({ runId: job.runId, provider: response.provider, model: response.model }, "LLM response received");
 
@@ -271,6 +344,21 @@ Analyze these raw inputs and identify up to ${limit} most important and coherent
 
   // Валидируем финальный результат Zod схемой
   const validated = TrendAgentOutputSchema.parse(sanitized);
+
+  // Детерминированная защита от галлюцинированных источников: модели свойственно иногда
+  // "изобретать" правдоподобные URL. Здесь мы НЕ доверяем модели на слово — проверяем,
+  // что каждый указанный источник реально присутствовал среди сырых данных, отданных на вход.
+  const rawSourceUrls = rawTrends.map((t) => t.url);
+  for (const item of validated.items) {
+    const before = item.sources.length;
+    item.sources = filterHallucinatedSources(item.sources, rawSourceUrls);
+    if (item.sources.length < before) {
+      logger.warn(
+        { runId: job.runId, title: item.title, droppedCount: before - item.sources.length },
+        "Dropped hallucinated source URL(s) not present in raw input data",
+      );
+    }
+  }
 
   logger.info({ runId: job.runId, trendsCount: validated.items.length }, "Trend intelligence job processed successfully");
   return validated;

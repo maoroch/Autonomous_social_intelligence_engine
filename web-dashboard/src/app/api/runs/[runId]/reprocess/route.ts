@@ -8,12 +8,14 @@ export async function POST(
 ) {
   try {
     const { runId } = await params;
+    const { searchParams } = new URL(req.url);
+    const tenantId = searchParams.get("tenantId");
     const body = await req.json();
 
     const res = await fetch(`${OPENCLAW_URL}/approval/runs/${runId}/reprocess`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ ...body, tenantId }),
     });
 
     if (!res.ok) {

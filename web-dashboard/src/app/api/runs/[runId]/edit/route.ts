@@ -8,18 +8,20 @@ export async function PUT(
 ) {
   try {
     const { runId } = await params;
+    const { searchParams } = new URL(req.url);
+    const tenantId = searchParams.get("tenantId");
     const body = await req.json();
-    
+
     const res = await fetch(`${OPENCLAW_URL}/approval/runs/${runId}/edit`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ ...body, tenantId }),
     });
-    
+
     if (!res.ok) {
       throw new Error(`OpenClaw responded with ${res.status}`);
     }
-    
+
     return NextResponse.json({ ok: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

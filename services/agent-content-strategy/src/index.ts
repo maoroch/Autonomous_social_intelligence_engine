@@ -9,9 +9,12 @@ import {
   PipelineEventSchema,
   type PipelineEvent,
   StrategyOutputSchema,
+  type IndustryProfile,
+  type ContentPillar,
 } from "@pipeline/shared/schemas";
 import { AiClient } from "@pipeline/shared/ai";
-import { connectMongo, getCollection, Collections } from "@pipeline/shared/db";
+import { connectMongo, getCollection, Collections, type PipelineRunDoc, type IndustryProfileDoc } from "@pipeline/shared/db";
+import { ObjectId } from "mongodb";
 
 const logger = createLogger("agent-content-strategy");
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
@@ -89,17 +92,48 @@ function sanitizeLlmOutput(rawObj: any): any {
   };
 }
 
+/**
+ * Выбирает рубрику (content pillar) с учётом weight и активных seasonalTrigger.
+ * MVP-реализация: сезонные рубрики получают х2 к весу (упрощение вместо календарной логики
+ * с точными датами — это можно уточнить в будущей фазе, привязав seasonalTrigger к реальным датам).
+ * (см. TZ_v3_instagram_testo_portal.md, раздел 1.8)
+ */
+function pickContentPillar(pillars: ContentPillar[]): ContentPillar | undefined {
+  if (pillars.length === 0) return undefined;
+
+  const weighted = pillars.map((p) => ({ pillar: p, effectiveWeight: p.seasonalTrigger ? p.weight * 2 : p.weight }));
+  const totalWeight = weighted.reduce((sum, w) => sum + w.effectiveWeight, 0);
+  if (totalWeight <= 0) return pillars[0];
+
+  let roll = Math.random() * totalWeight;
+  for (const w of weighted) {
+    roll -= w.effectiveWeight;
+    if (roll <= 0) return w.pillar;
+  }
+  return pillars[pillars.length - 1];
+}
+
 async function processStrategyJob(job: AgentJob): Promise<unknown> {
   logger.info({ runId: job.runId }, "Starting content strategy planning...");
 
   // 1. Получаем выбранную тему из БД
-  const runsCol = getCollection(Collections.PIPELINE_RUNS);
+  const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
   const run = await runsCol.findOne({ runId: job.runId });
   const topic = run?.topic ?? { title: "Rise of AI and Tech", summary: "" };
 
   // 2. Получаем профиль автора из БД
-  const profilesCol = getCollection(Collections.AUTHOR_PROFILES);
-  const dbProfile = await profilesCol.findOne({});
+  const profilesCol = getCollection<any>(Collections.AUTHOR_PROFILES);
+  let dbProfile = null;
+  if (run?.profileId) {
+    try {
+      dbProfile = await profilesCol.findOne({ _id: new ObjectId(run.profileId) });
+    } catch (err) {
+      logger.warn({ runId: job.runId, profileId: run.profileId }, "Failed to find specified profile, falling back to default");
+    }
+  }
+  if (!dbProfile) {
+    dbProfile = await profilesCol.findOne({});
+  }
   const authorProfile = dbProfile 
     ? {
         topics: Array.isArray(dbProfile.topics) ? dbProfile.topics : DEFAULT_PROFILE.topics,
@@ -109,6 +143,29 @@ async function processStrategyJob(job: AgentJob): Promise<unknown> {
         tone: typeof dbProfile.tone === "string" ? dbProfile.tone : DEFAULT_PROFILE.tone,
       }
     : DEFAULT_PROFILE;
+
+  // Мультиарендность: определяем tenantId и подгружаем IndustryProfile.
+  const tenantId: string = run?.tenantId ?? dbProfile?.tenantId ?? "software-development-default";
+  let industryProfile: IndustryProfile | undefined;
+  try {
+    const doc = await getCollection<IndustryProfileDoc>(Collections.INDUSTRY_PROFILES).findOne({ tenantId });
+    if (doc) industryProfile = doc;
+  } catch (err) {
+    logger.warn({ err, tenantId }, "Failed to load IndustryProfile — proceeding without vertical-specific strategy context");
+  }
+
+  const isNicheVertical = !!industryProfile && industryProfile.verticalName !== "software-development";
+  const targetPillarId = (job.payload as any)?.targetPillarId || (job as any)?.targetPillarId;
+
+  let selectedPillar: ContentPillar | undefined;
+  if (targetPillarId && industryProfile?.contentPillars) {
+    selectedPillar = industryProfile.contentPillars.find(p => p.id === targetPillarId);
+  }
+  if (!selectedPillar && industryProfile?.contentPillars?.length) {
+    selectedPillar = pickContentPillar(industryProfile.contentPillars);
+  }
+
+  const platform: string = isNicheVertical ? industryProfile!.platformAdaptation[0]?.platform ?? "instagram" : "linkedin";
 
   let fewShotText = "";
   try {
@@ -134,9 +191,24 @@ ${JSON.stringify(ex.expected_output, null, 2)}
     logger.warn({ err }, "Failed to fetch golden strategy examples");
   }
 
+  const audiencePersonasBlock =
+    isNicheVertical && industryProfile!.audiencePersonas.length > 0
+      ? `\nAvailable Audience Personas for this industry (choose the target_audience from/around one of these, do not invent unrelated personas):
+${industryProfile!.audiencePersonas.map((p) => `- ${p.label}: ${p.description}. Pain points: ${p.painPoints.join(", ") || "n/a"}`).join("\n")}\n`
+      : "";
+
+  const pillarBlock = selectedPillar
+    ? `\nREQUIRED CONTENT PILLAR (this post MUST follow this rubric): "${selectedPillar.label}" — ${selectedPillar.description}. Preferred content format for this pillar: "${selectedPillar.preferredFormat}".\n`
+    : "";
+
+  const verticalLabel = industryProfile?.verticalName ?? "software-development";
+  const strategistDomain = isNicheVertical
+    ? `You are a content strategist specializing in B2B content marketing for the "${verticalLabel}" industry, publishing on ${platform}.`
+    : "You are a content strategist specializing in tech content marketing for LinkedIn.";
+
   // 3. Формируем промпт к LLM
-  const systemPrompt = `You are a content strategist specializing in tech content marketing for LinkedIn.
-Your task is to analyze a topic and design a content strategy for a LinkedIn post.
+  const systemPrompt = `${strategistDomain}
+Your task is to analyze a topic and design a content strategy for a ${platform} post.
 
 You must match the topic with the author's profile and choose:
 1. Target Audience: Define the specific target group (e.g. "Senior React developers looking to learn advanced pattern compositions").
@@ -153,7 +225,7 @@ You must match the topic with the author's profile and choose:
 Author Profile Context:
 - Tone of Voice: ${authorProfile.tone}
 - Main Topics of Expertise: ${JSON.stringify(authorProfile.topics)}
-${fewShotText}
+${audiencePersonasBlock}${pillarBlock}${fewShotText}
 Output must be a single, valid JSON object:
 {
   "format": "lessons_learned",
@@ -190,11 +262,29 @@ Please generate the content strategy in JSON format.`;
   }
 
   const sanitized = sanitizeLlmOutput(parsedJson);
+  if (selectedPillar) {
+    sanitized.content_pillar_id = selectedPillar.id;
+  }
 
   // Валидируем финальный результат Zod схемой
   const validated = StrategyOutputSchema.parse(sanitized);
 
-  logger.info({ runId: job.runId, format: validated.format }, "Content strategy generated successfully");
+  // Прокидываем выбранные платформу/формат/рубрику в PipelineRun для agent-design/agent-publishing.
+  if (selectedPillar || isNicheVertical) {
+    await runsCol.updateOne(
+      { runId: job.runId },
+      {
+        $set: {
+          targetPlatform: platform as any,
+          contentFormat: selectedPillar?.preferredFormat,
+          contentPillarId: selectedPillar?.id,
+          updatedAt: new Date(),
+        },
+      },
+    );
+  }
+
+  logger.info({ runId: job.runId, format: validated.format, pillar: selectedPillar?.id }, "Content strategy generated successfully");
   return validated;
 }
 

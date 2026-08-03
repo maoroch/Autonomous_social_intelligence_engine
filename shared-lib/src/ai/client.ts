@@ -31,7 +31,7 @@ export interface AiProviderConfig {
   groqRateLimit?: number;       // запросов в минуту
 }
 
-const DEFAULT_OPENROUTER_MODEL = "anthropic/claude-3.5-sonnet";
+const DEFAULT_OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct";
 const DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile";
 
 export class AiClient {
@@ -45,12 +45,12 @@ export class AiClient {
 
   async complete(messages: ChatMessage[], options: AiCompletionOptions = {}): Promise<AiCompletionResult> {
     const maxAttempts = 3;
-    let delay = 12000; // 12 seconds
+    let delay = 3000; // 3 seconds
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         return await this.callOpenRouter(messages, options);
       } catch (err) {
-        console.warn(`OpenRouter call failed (attempt ${attempt}/${maxAttempts}). Error:`, err);
+        console.warn(`OpenRouter call failed (attempt ${attempt}/${maxAttempts}). Falling back to Groq... Error:`, err);
         try {
           return await this.callGroq(messages, options);
         } catch (groqErr) {
@@ -62,7 +62,7 @@ export class AiClient {
           if (is429 && attempt < maxAttempts) {
             console.warn(`Rate limit (429) encountered. Retrying in ${delay / 1000}s...`);
             await new Promise(resolve => setTimeout(resolve, delay));
-            delay += 10000;
+            delay += 3000;
             continue;
           }
           
@@ -76,15 +76,15 @@ export class AiClient {
         }
       }
     }
-    throw new Error("Unexpected end of LLM call loop");
+    throw new Error("Failed to complete AI request");
   }
 
   private async checkRateLimit(provider: "openrouter" | "groq"): Promise<boolean> {
     if (!this.redis) return true;
 
     const limit = provider === "openrouter"
-      ? (this.config.openrouterRateLimit ?? 5)
-      : (this.config.groqRateLimit ?? 5);
+      ? (this.config.openrouterRateLimit ?? 30)
+      : (this.config.groqRateLimit ?? 30);
 
     const key = `ratelimit:${provider}`;
     const windowSeconds = 60;
@@ -116,16 +116,13 @@ export class AiClient {
     if (!this.redis) return;
 
     let attempts = 0;
-    while (true) {
+    while (attempts < 10) {
       const allowed = await this.checkRateLimit(provider);
       if (allowed) {
         break;
       }
       attempts++;
-      if (attempts % 5 === 0) {
-        console.warn(`[AiClient] Rate limit hit for ${provider}. Waiting for slot...`);
-      }
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 300));
     }
   }
 

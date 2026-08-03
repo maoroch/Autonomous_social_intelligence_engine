@@ -9,10 +9,12 @@ RUN npm install
 
 FROM deps AS build
 COPY . .
+RUN npm run build -w shared-lib
 RUN npm run build -w web-dashboard
 
 FROM base AS runtime
 ENV NODE_ENV=production
+COPY --from=build /app/shared-lib ./shared-lib
 COPY --from=build /app/web-dashboard/.next ./web-dashboard/.next
 COPY --from=build /app/web-dashboard/public ./web-dashboard/public
 COPY --from=build /app/web-dashboard/package.json ./web-dashboard/package.json
@@ -20,3 +22,4 @@ COPY --from=build /app/node_modules ./node_modules
 WORKDIR /app/web-dashboard
 EXPOSE 3000
 CMD ["npm", "run", "start"]
+

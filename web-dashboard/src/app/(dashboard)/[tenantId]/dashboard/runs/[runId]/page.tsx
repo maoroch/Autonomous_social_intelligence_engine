@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 interface PageProps {
-  params: Promise<{ runId: string }>;
+  params: Promise<{ runId: string; tenantId: string }>;
 }
 
 interface RunDoc {
@@ -14,6 +14,7 @@ interface RunDoc {
   currentStage: string;
   topic: { title: string; summary: string };
   seoImprovementsCount?: number;
+  needsComplianceReview?: boolean;
   updatedAt: string;
 }
 
@@ -23,7 +24,7 @@ interface StageResult {
 }
 
 export default function RunDetailPage({ params }: PageProps) {
-  const { runId } = use(params);
+  const { runId, tenantId } = use(params);
   const router = useRouter();
 
   const [run, setRun] = useState<RunDoc | null>(null);
@@ -38,7 +39,7 @@ export default function RunDetailPage({ params }: PageProps) {
   const [cta, setCta] = useState("");
   const [slideDeck, setSlideDeck] = useState<any[]>([]);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
-  const [selectedTemplate, setSelectedTemplate] = useState<"cover-1" | "cover-2">("cover-2");
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("cover-2");
   const [isReRendering, setIsReRendering] = useState(false);
   const isReRenderingRef = useRef(false);
   const prevPreviewIdRef = useRef<string | null>(null);
@@ -54,7 +55,7 @@ export default function RunDetailPage({ params }: PageProps) {
   const handleReprocess = async () => {
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/runs/${runId}/reprocess`, {
+      const res = await fetch(`/api/runs/${runId}/reprocess?tenantId=${encodeURIComponent(tenantId)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notes: reprocessNotes }),
@@ -82,7 +83,7 @@ export default function RunDetailPage({ params }: PageProps) {
 
   const fetchRunDetails = async () => {
     try {
-      const res = await fetch(`/api/runs/${runId}`);
+      const res = await fetch(`/api/runs/${runId}?tenantId=${encodeURIComponent(tenantId)}`);
       if (res.ok) {
         const data = await res.json();
         setRun(data.run);
@@ -148,7 +149,7 @@ export default function RunDetailPage({ params }: PageProps) {
     try {
       // Auto-save changes first if awaiting approval
       if (run?.status === "awaiting_approval") {
-        await fetch(`/api/runs/${runId}/edit`, {
+        await fetch(`/api/runs/${runId}/edit?tenantId=${encodeURIComponent(tenantId)}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -158,7 +159,7 @@ export default function RunDetailPage({ params }: PageProps) {
         });
       }
 
-      const res = await fetch(`/api/runs/${runId}/approve`, {
+      const res = await fetch(`/api/runs/${runId}/approve?tenantId=${encodeURIComponent(tenantId)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ template_name: selectedTemplate }),
@@ -176,7 +177,7 @@ export default function RunDetailPage({ params }: PageProps) {
   const handleReject = async () => {
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/runs/${runId}/reject`, { method: "POST" });
+      const res = await fetch(`/api/runs/${runId}/reject?tenantId=${encodeURIComponent(tenantId)}`, { method: "POST" });
       if (res.ok) {
         fetchRunDetails();
       }
@@ -195,7 +196,7 @@ export default function RunDetailPage({ params }: PageProps) {
     prevPreviewIdRef.current = designStage?.result?.preview_cover_1_id || designStage?.result?.imageId || null;
 
     try {
-      const res = await fetch(`/api/runs/${runId}/edit`, {
+      const res = await fetch(`/api/runs/${runId}/edit?tenantId=${encodeURIComponent(tenantId)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -238,7 +239,7 @@ export default function RunDetailPage({ params }: PageProps) {
       <main className="container" style={{ textAlign: "center", padding: "100px 0" }}>
         <h2 style={{ color: "var(--red)" }}>Ошибка</h2>
         <p style={{ color: "var(--text-muted)" }}>{error || "Прогон не найден"}</p>
-        <Link href="/" className="btn btn-secondary" style={{ marginTop: 16 }}>
+        <Link href={`/${tenantId}/dashboard`} className="btn btn-secondary" style={{ marginTop: 16 }}>
           ← Вернуться на дашборд
         </Link>
       </main>
@@ -273,7 +274,7 @@ export default function RunDetailPage({ params }: PageProps) {
   return (
     <main className="container">
       <div style={{ marginBottom: 24 }}>
-        <Link href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 500 }}>
+        <Link href={`/${tenantId}/dashboard`} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 500 }}>
           ← Назад к дашборду
         </Link>
       </div>
@@ -330,6 +331,24 @@ export default function RunDetailPage({ params }: PageProps) {
                 >
                   {saveStatus === "saving" ? "Сохранение..." : saveStatus === "success" ? "Сохранено! ✓" : saveStatus === "error" ? "Ошибка" : "Сохранить правки"}
                 </button>
+                {run.needsComplianceReview && (
+                  <div
+                    style={{
+                      width: "100%",
+                      background: "#fef3c7",
+                      border: "1px solid #f59e0b",
+                      borderRadius: 8,
+                      padding: "10px 14px",
+                      fontSize: 13,
+                      color: "#92400e",
+                      marginBottom: 4,
+                    }}
+                  >
+                    ⚠️ В тексте обнаружены числа/характеристики, не найденные в исходной теме — проверьте
+                    формулировки на фактологическую точность перед публикацией (автоматическая эвристика,
+                    возможны ложные срабатывания).
+                  </div>
+                )}
                 <button disabled={actionLoading} onClick={handleApprove} className="btn btn-primary" style={{ padding: "10px 20px" }}>
                   {actionLoading ? "..." : "Одобрить и опубликовать"}
                 </button>
@@ -485,39 +504,42 @@ export default function RunDetailPage({ params }: PageProps) {
               <h3 style={{ marginBottom: 20 }}>Слайды карусели</h3>
 
               {/* Slide block */}
-              <div style={{
-                aspectRatio: "1/1",
-                maxWidth: 460,
-                margin: "0 auto 20px auto",
-                background: selectedTemplate === "cover-1" ? "#ffffff" : "#1e293b",
-                border: selectedTemplate === "cover-1" ? "3px solid var(--green)" : `3px solid ${accentColor}`,
-                borderRadius: 16,
-                padding: 28,
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-                position: "relative",
-              }}>
-                <div>
-                  {isAwaitingApproval ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                      <label style={{ fontSize: 11, color: selectedTemplate === "cover-1" ? "#6b7280" : "rgba(255,255,255,0.6)", fontWeight: 600 }}>Заголовок слайда</label>
-                      <input
-                        type="text"
-                        value={activeSlides[activeSlide].title}
-                        onChange={(e) => handleSlideChange(activeSlide, "title", e.target.value)}
-                        style={{
-                          fontSize: 16,
-                          fontWeight: "bold",
-                          background: selectedTemplate === "cover-1" ? "#f9fafb" : "rgba(255,255,255,0.12)",
-                          color: selectedTemplate === "cover-1" ? "#111827" : "#fff",
-                          border: selectedTemplate === "cover-1" ? "1px solid #d1d5db" : "1px solid rgba(255,255,255,0.2)",
-                          width: "100%",
-                          padding: "6px 10px",
-                          borderRadius: "6px"
-                        }}
-                      />
+              {(() => {
+                const isLightTemplate = ["cover-1", "cover-6"].includes(selectedTemplate);
+                return (
+                  <div style={{
+                    aspectRatio: "1/1",
+                    maxWidth: 460,
+                    margin: "0 auto 20px auto",
+                    background: isLightTemplate ? "#ffffff" : selectedTemplate === "cover-3" || selectedTemplate === "cover-8" ? "#0D1117" : selectedTemplate === "cover-4" || selectedTemplate === "cover-9" ? "#0F172A" : selectedTemplate === "cover-5" ? "#090D16" : selectedTemplate === "cover-7" ? "#030712" : "#1e293b",
+                    border: isLightTemplate ? "3px solid var(--green)" : `3px solid ${accentColor}`,
+                    borderRadius: 16,
+                    padding: 28,
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                    position: "relative",
+                  }}>
+                    <div>
+                      {isAwaitingApproval ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                          <label style={{ fontSize: 11, color: isLightTemplate ? "#6b7280" : "rgba(255,255,255,0.6)", fontWeight: 600 }}>Заголовок слайда</label>
+                          <input
+                            type="text"
+                            value={activeSlides[activeSlide].title}
+                            onChange={(e) => handleSlideChange(activeSlide, "title", e.target.value)}
+                            style={{
+                              fontSize: 16,
+                              fontWeight: "bold",
+                              background: isLightTemplate ? "#f9fafb" : "rgba(255,255,255,0.12)",
+                              color: isLightTemplate ? "#111827" : "#fff",
+                              border: isLightTemplate ? "1px solid #d1d5db" : "1px solid rgba(255,255,255,0.2)",
+                              width: "100%",
+                              padding: "6px 10px",
+                              borderRadius: "6px"
+                            }}
+                          />
                       <label style={{ fontSize: 11, color: selectedTemplate === "cover-1" ? "#6b7280" : "rgba(255,255,255,0.6)", fontWeight: 600, marginTop: 4 }}>Буллиты слайда (по одному на строку)</label>
                       <textarea
                         rows={4}
@@ -641,11 +663,13 @@ export default function RunDetailPage({ params }: PageProps) {
                   ) : (
                     <span>{activeSlides[activeSlide].footer}</span>
                   )}
-                  <span style={{ fontWeight: 600, color: selectedTemplate === "cover-1" ? "var(--green)" : accentColor }}>
+                  <span style={{ fontWeight: 600, color: isLightTemplate ? "var(--green)" : accentColor }}>
                     Слайд {activeSlide + 1} из {activeSlides.length}
                   </span>
                 </div>
               </div>
+              );
+              })()}
 
               {/* Slider Controls */}
               <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 16 }}>
@@ -687,55 +711,54 @@ export default function RunDetailPage({ params }: PageProps) {
               </div>
 
               {/* Template Style Toggle Selector */}
-              <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 24, marginBottom: 12 }}>
-                <button
-                  type="button"
-                  onClick={() => setSelectedTemplate("cover-1")}
-                  className="btn"
-                  style={{
-                    padding: "8px 18px",
-                    borderRadius: 8,
-                    fontSize: 13,
-                    background: selectedTemplate === "cover-1" ? "var(--green)" : "#f3f4f6",
-                    color: selectedTemplate === "cover-1" ? "#fff" : "#374151",
-                    border: selectedTemplate === "cover-1" ? "2px solid var(--green)" : "2px solid #e5e7eb",
-                    cursor: "pointer",
-                    fontWeight: 600,
-                    transition: "all 0.15s ease",
-                  }}
-                >
-                  ☀️ Светлая сетка (Стиль 1)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedTemplate("cover-2")}
-                  className="btn"
-                  style={{
-                    padding: "8px 18px",
-                    borderRadius: 8,
-                    fontSize: 13,
-                    background: selectedTemplate === "cover-2" ? "#8b5cf6" : "#f3f4f6",
-                    color: selectedTemplate === "cover-2" ? "#fff" : "#374151",
-                    border: selectedTemplate === "cover-2" ? "2px solid #8b5cf6" : "2px solid #e5e7eb",
-                    cursor: "pointer",
-                    fontWeight: 600,
-                    transition: "all 0.15s ease",
-                  }}
-                >
-                  🌙 Тёмный (Стиль 2)
-                </button>
+              <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 24, marginBottom: 12, flexWrap: "wrap" }}>
+                {[
+                  { key: "cover-1", label: "☀️ Светлая сетка", color: "#10B981" },
+                  { key: "cover-2", label: "🌙 Тёмный Purple", color: "#8b5cf6" },
+                  { key: "cover-3", label: "💻 Cyberpunk Terminal", color: "#00F5FF" },
+                  { key: "cover-4", label: "📐 Blueprint Spec", color: "#FACC15" },
+                  { key: "cover-5", label: "🔮 Obsidian Glass", color: "#EC4899" },
+                  { key: "cover-6", label: "📰 Warm Editorial", color: "#EA580C" },
+                  { key: "cover-7", label: "🟩 Matrix Emerald", color: "#10B981" },
+                  { key: "cover-8", label: "🐙 GitHub Repos", color: "#58A6FF" },
+                  { key: "cover-9", label: "🛠️ Pet Projects", color: "#38BDF8" },
+                ].map((tmpl) => (
+                  <button
+                    key={tmpl.key}
+                    type="button"
+                    onClick={() => setSelectedTemplate(tmpl.key)}
+                    className="btn"
+                    style={{
+                      padding: "8px 14px",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      background: selectedTemplate === tmpl.key ? tmpl.color : "#f3f4f6",
+                      color: selectedTemplate === tmpl.key ? (["#FACC15", "#00F5FF"].includes(tmpl.color) ? "#0F172A" : "#fff") : "#374151",
+                      border: selectedTemplate === tmpl.key ? `2px solid ${tmpl.color}` : "2px solid #e5e7eb",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {tmpl.label}
+                  </button>
+                ))}
               </div>
 
               {/* Dynamic ZIP Export / PNG Preview */}
               {designResult && (
                 (() => {
-                  const currentPreviewId = selectedTemplate === "cover-1"
-                    ? (designResult.preview_cover_1_id || designResult.imageId)
-                    : (designResult.preview_cover_2_id || designResult.imageId);
+                  const styleData = designResult.rendered_styles?.[selectedTemplate];
 
-                  const currentZipId = selectedTemplate === "cover-1"
-                    ? (designResult.zip_cover_1_id || designResult.imageId)
-                    : (designResult.zip_cover_2_id || designResult.imageId);
+                  const currentPreviewId = styleData?.previewId ||
+                    (selectedTemplate === "cover-1" ? (designResult.preview_cover_1_id || designResult.imageId) :
+                     selectedTemplate === "cover-2" ? (designResult.preview_cover_2_id || designResult.imageId) :
+                     undefined);
+
+                  const currentZipId = styleData?.zipId ||
+                    (selectedTemplate === "cover-1" ? (designResult.zip_cover_1_id || designResult.imageId) :
+                     selectedTemplate === "cover-2" ? (designResult.zip_cover_2_id || designResult.imageId) :
+                     undefined);
 
                   return (
                     <div style={{ marginTop: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 16, width: "100%" }}>
@@ -757,74 +780,90 @@ export default function RunDetailPage({ params }: PageProps) {
                         </div>
                       )}
 
-                      {currentZipId && (
-                        <div style={{ width: "100%" }}>
-                          <span style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 12, fontWeight: 600 }}>
-                            Предпросмотр всех слайдов карусели (прокрутка вбок):
-                          </span>
-                          <div style={{
-                            display: "flex",
-                            gap: 16,
-                            overflowX: "auto",
-                            paddingBottom: 16,
-                            width: "100%",
-                            scrollSnapType: "x mandatory",
-                          }}>
-                            {/* Dynamically display each slide PNG extracted from the zip */}
-                            {Array.from({ length: designResult.card_count || 5 }).map((_, index) => (
-                              <div
-                                key={index}
-                                style={{
-                                  flex: "0 0 200px",
-                                  scrollSnapAlign: "start",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: 6,
-                                  textAlign: "center"
-                                }}
-                              >
-                                <img
-                                  src={`/api/proxy/images/${currentZipId}?index=${index}`}
-                                  alt={`Slide ${index + 1}`}
-                                  loading="lazy"
+                      {currentZipId ? (
+                        <>
+                          <div style={{ width: "100%" }}>
+                            <span style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 12, fontWeight: 600 }}>
+                              Предпросмотр всех слайдов карусели (прокрутка вбок):
+                            </span>
+                            <div style={{
+                              display: "flex",
+                              gap: 16,
+                              overflowX: "auto",
+                              paddingBottom: 16,
+                              width: "100%",
+                              scrollSnapType: "x mandatory",
+                            }}>
+                              {/* Dynamically display each slide PNG extracted from the zip */}
+                              {Array.from({ length: activeSlides.length || designResult.card_count || 5 }).map((_, index) => (
+                                <div
+                                  key={index}
                                   style={{
-                                    width: "100%",
-                                    aspectRatio: "1080/1350",
-                                    borderRadius: "8px",
-                                    border: "1px solid var(--border)",
-                                    boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-                                    objectFit: "cover",
+                                    flex: "0 0 200px",
+                                    scrollSnapAlign: "start",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 6,
+                                    textAlign: "center"
                                   }}
-                                />
-                                <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 500 }}>
-                                  Слайд {index + 1}
-                                </span>
-                              </div>
-                            ))}
+                                >
+                                  <img
+                                    src={`/api/proxy/images/${currentZipId}?index=${index}&t=${encodeURIComponent(run?.updatedAt || "")}`}
+                                    alt={`Slide ${index + 1}`}
+                                    loading="lazy"
+                                    style={{
+                                      width: "100%",
+                                      aspectRatio: "1080/1350",
+                                      borderRadius: "8px",
+                                      border: "1px solid var(--border)",
+                                      boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+                                      objectFit: "cover",
+                                    }}
+                                  />
+                                  <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 500 }}>
+                                    Слайд {index + 1}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      )}
 
-                      {currentZipId && (
-                        <div style={{ textAlign: "center", marginTop: 8 }}>
-                          <a
-                            href={`/api/proxy/images/${currentZipId}`}
-                            download={`carousel_${run?.runId || "run"}_${selectedTemplate}.zip`}
-                            className="btn btn-primary"
-                            style={{
-                              padding: "10px 20px",
-                              textDecoration: "none",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 8,
-                              fontWeight: 600,
-                            }}
-                          >
-                            📦 Скачать ZIP Архив (Слайды PNG)
-                          </a>
-                          <span style={{ display: "block", fontSize: 11, color: "var(--text-muted)", marginTop: 6 }}>
-                            Архив содержит обложку и карточки поста в формате PNG
-                          </span>
+                          <div style={{ textAlign: "center", marginTop: 8 }}>
+                            <a
+                              href={`/api/proxy/images/${currentZipId}`}
+                              download={`carousel_${run?.runId || "run"}_${selectedTemplate}.zip`}
+                              className="btn btn-primary"
+                              style={{
+                                padding: "10px 20px",
+                                textDecoration: "none",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 8,
+                                fontWeight: 600,
+                              }}
+                            >
+                              📦 Скачать ZIP Архив (Слайды PNG)
+                            </a>
+                            <span style={{ display: "block", fontSize: 11, color: "var(--text-muted)", marginTop: 6 }}>
+                              Архив содержит обложку и карточки поста в формате PNG
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{
+                          padding: "16px 20px",
+                          background: "rgba(245, 158, 11, 0.1)",
+                          border: "1px solid #f59e0b",
+                          borderRadius: 8,
+                          textAlign: "center",
+                          fontSize: 13,
+                          color: "#d97706",
+                          marginTop: 12,
+                          width: "100%",
+                        }}>
+                          ⚡ Карточки для шаблона <strong>{selectedTemplate}</strong> еще не отрендерены в этом старом прогоне.
+                          <br />
+                          Нажмите <strong>«Сохранить правки»</strong> выше или запустите <strong>перегенерацию</strong>, чтобы сгенерировать PNG-карточки для всех 7 стилей!
                         </div>
                       )}
                     </div>

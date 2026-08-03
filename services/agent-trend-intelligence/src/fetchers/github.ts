@@ -17,27 +17,30 @@ export async function fetchGithubTrending(): Promise<Array<{ title: string; url:
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    // Использование публичного зеркала API GitHub Trending
-    const response = await fetch("https://gtrend.yapie.me/repositories", {
+    const response = await fetch("https://api.github.com/search/repositories?q=pushed:>2025-01-01+stars:>1000&sort=stars&order=desc&per_page=15", {
+      headers: {
+        "User-Agent": "LinkedIn-AI-Agent-Tool/1.0",
+        "Accept": "application/vnd.github.v3+json",
+      },
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch from gtrend API, status: ${response.status}`);
+    if (response.ok) {
+      const data = (await response.json()) as any;
+      if (data && Array.isArray(data.items) && data.items.length > 0) {
+        return data.items.map((item: any) => ({
+          title: item.full_name,
+          url: item.html_url,
+          score: item.stargazers_count || 100,
+        }));
+      }
     }
-
-    const data = (await response.json()) as GithubTrendingItem[];
-    
-    return data.slice(0, 15).map((item) => ({
-      title: `${item.author}/${item.name}`,
-      url: item.url,
-      score: item.currentPeriodStars || 50,
-    }));
   } catch (err) {
-    logger.warn({ err }, "Failed to fetch GitHub trending from API mirror, trying fallback scrape");
-    return fetchGithubTrendingFallback();
+    logger.warn({ err }, "GitHub Search API fetch failed, trying fallback scrape");
   }
+
+  return fetchGithubTrendingFallback();
 }
 
 /**

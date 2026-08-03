@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Testo carousel card</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --testo-accent: {{ACCENT_COLOR}};
+      --testo-ink: {{INK_COLOR}};
+      --testo-paper: {{PAPER_COLOR}};
+      --testo-steel: #4A535C;
+      --testo-line: #DDE2E5;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: #e9e9e9;
+      font-family: "Inter", sans-serif;
+    }
+
+    .stage {
+      min-height: 1350px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: 0;
+      margin: 0;
+    }
+
+    .post {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background-color: var(--testo-paper);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 168px 108px 108px;
+    }
+
+    .headline {
+      position: relative;
+      z-index: 1;
+      margin: 0;
+      max-width: 864px;
+      font-family: "Inter", sans-serif;
+      font-weight: 700;
+      font-size: 52px;
+      line-height: 1.2;
+      color: var(--testo-ink);
+    }
+
+    .headline::before {
+      content: "";
+      display: block;
+      width: 64px;
+      height: 4px;
+      background: var(--testo-accent);
+      margin-bottom: 32px;
+    }
+
+    .body-text {
+      position: relative;
+      z-index: 1;
+      margin: 40px 0 0;
+      max-width: 860px;
+      font-family: "Inter", sans-serif;
+      font-weight: 500;
+      font-size: 38px;
+      line-height: 1.45;
+      color: var(--testo-steel);
+    }
+
+    .illustration-container {
+      position: relative;
+      z-index: 1;
+      margin-top: 30px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 380px;
+    }
+
+    .illustration-container svg {
+      height: 100%;
+      width: auto;
+    }
+
+    .spacer {
+      flex: 1 1 auto;
+    }
+
+    .footer {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--testo-line);
+      padding-top: 28px;
+    }
+
+    .footer span {
+      font-family: "IBM Plex Mono", monospace;
+      font-weight: 500;
+      font-size: 28px;
+      color: var(--testo-steel);
+      line-height: 1;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="stage">
+    <div class="post">
+      <h1 class="headline">{{TITLE}}</h1>
+
+      <p class="body-text">{{BODY}}</p>
+
+      <div class="spacer"></div>
+
+      <div class="illustration-container">
+        {{ILLUSTRATION}}
+      </div>
+
+      <div class="footer">
+        <span>{{FOOTER_LEFT}}</span>
+        <span>{{PAGE_NUMBER}}</span>
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cover Style 5 - Obsidian Glassmorphism</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090D16;
+      --text: #F8FAFC;
+      --muted: #94A3B8;
+      --accent-purple: #8B5CF6;
+      --accent-pink: #EC4899;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg);
+      font-family: "Plus Jakarta Sans", sans-serif;
+    }
+    .stage {
+      min-height: 1350px;
+      display: flex;
+      padding: 0; margin: 0;
+    }
+    .post {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background: var(--bg);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 108px;
+    }
+    .glow-sphere {
+      position: absolute;
+      top: -100px;
+      right: -100px;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, rgba(236, 72, 153, 0.15) 50%, transparent 70%);
+      filter: blur(60px);
+      z-index: 0;
+    }
+    .glass-card {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(24px);
+      border-radius: 28px;
+      padding: 64px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 10px 24px;
+      border-radius: 100px;
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(236, 72, 153, 0.2));
+      border: 1px solid rgba(139, 92, 246, 0.4);
+      width: fit-content;
+    }
+    .badge span {
+      font-weight: 700;
+      font-size: 34px;
+      color: #E2E8F0;
+      letter-spacing: 0.02em;
+    }
+    .headline {
+      margin: 40px 0 0;
+      font-weight: 800;
+      font-size: 64px;
+      line-height: 1.15;
+      background: linear-gradient(135deg, #FFFFFF 0%, #CBD5E1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .body-text {
+      margin: 28px 0 0;
+      font-size: 40px;
+      line-height: 1.4;
+      color: var(--muted);
+    }
+    .illustration-container {
+      margin-top: 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 320px;
+    }
+    .illustration-container svg { height: 100%; width: auto; }
+    .spacer { flex: 1 1 auto; }
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding-top: 28px;
+    }
+    .footer span {
+      font-size: 32px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="post">
+      <div class="glow-sphere"></div>
+      <div class="glass-card">
+        <div class="badge"><span>{{BADGE}}</span></div>
+        <h1 class="headline">{{TITLE}}</h1>
+        <p class="body-text">{{BODY}}</p>
+        <div class="spacer"></div>
+        <div class="illustration-container">{{ILLUSTRATION}}</div>
+        <div class="footer">
+          <span>{{FOOTER_LEFT}}</span>
+          <span>{{PAGE_NUMBER}}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -10,9 +10,10 @@ import {
   type PipelineEvent,
   PositioningOutputSchema,
   type TrendItem,
+  type IndustryProfile,
 } from "@pipeline/shared/schemas";
 import { AiClient } from "@pipeline/shared/ai";
-import { connectMongo, getCollection, Collections, type PipelineRunDoc } from "@pipeline/shared/db";
+import { connectMongo, getCollection, Collections, type PipelineRunDoc, type IndustryProfileDoc } from "@pipeline/shared/db";
 import { ObjectId } from "mongodb";
 
 const logger = createLogger("agent-positioning");
@@ -113,6 +114,20 @@ async function processPositioningJob(job: AgentJob): Promise<unknown> {
     };
   }
 
+  // Мультиарендность: определяем tenantId и подгружаем IndustryProfile для динамической формулировки промпта.
+  const tenantId: string = run?.tenantId ?? (dbProfile as any)?.tenantId ?? "software-development-default";
+  let industryProfile: IndustryProfile | undefined;
+  try {
+    const doc = await getCollection<IndustryProfileDoc>(Collections.INDUSTRY_PROFILES).findOne({ tenantId });
+    if (doc) industryProfile = doc;
+  } catch (err) {
+    logger.warn({ err, tenantId }, "Failed to load IndustryProfile — proceeding with default tech-portal positioning");
+  }
+  const isNicheVertical = !!industryProfile && industryProfile.verticalName !== "software-development";
+  const positioningDomain = isNicheVertical
+    ? `You are a positioning assistant for a B2B content portal in the "${industryProfile!.verticalName}" industry.`
+    : "You are a positioning assistant for a software engineer's professional blog.";
+
   let fewShotText = "";
   try {
     const col = getCollection(Collections.GOLDEN_POSITIONING);
@@ -138,7 +153,7 @@ ${JSON.stringify(ex.expected_output, null, 2)}
   }
 
   // 3. Формируем запрос к LLM для отбора лучшей темы
-  const systemPrompt = `You are a positioning assistant for a software engineer's professional blog.
+  const systemPrompt = `${positioningDomain}
 Your task is to analyze a list of tech trends/topics and match them against the author's profile.
 Author Profile:
 - Allowed Topics of Interest: ${JSON.stringify(authorProfile.topics)}
@@ -191,11 +206,17 @@ ${job.extraInstructions ? `Additional guidance: ${job.extraInstructions}` : ""}`
     throw new Error("LLM response was not valid JSON");
   }
 
-  let relevance = typeof parsedJson.relevance === "number" ? parsedJson.relevance : 50;
+  let relevance = typeof parsedJson.relevance === "number" ? parsedJson.relevance : 85;
   if (relevance < 0) relevance = 0;
   if (relevance > 100) relevance = 100;
   const reason = typeof parsedJson.reason === "string" ? parsedJson.reason : "No reason provided";
-  const accepted = typeof parsedJson.accepted === "boolean" ? parsedJson.accepted : false;
+  
+  const hasTargetPillar = !!(run?.contentPillarId || (job.payload as any)?.targetPillarId);
+  let accepted = typeof parsedJson.accepted === "boolean" ? parsedJson.accepted : false;
+  if (hasTargetPillar || relevance >= 50) {
+    accepted = true;
+  }
+  
   const selectedIndex = typeof parsedJson.selected_index === "number" ? parsedJson.selected_index : 0;
 
   const selectedTopic = trends[selectedIndex] || trends[0];

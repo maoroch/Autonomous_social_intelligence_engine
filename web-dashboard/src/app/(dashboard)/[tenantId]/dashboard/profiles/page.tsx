@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 
 interface AuthorProfile {
@@ -15,18 +16,20 @@ interface AuthorProfile {
 }
 
 export default function ProfilesPage() {
+  const { tenantId } = useParams<{ tenantId: string }>();
   const [profiles, setProfiles] = useState<AuthorProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingProfile, setEditingProfile] = useState<Partial<AuthorProfile> | null>(null);
 
   useEffect(() => {
     fetchProfiles();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantId]);
 
   const fetchProfiles = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/profiles");
+      const res = await fetch(`/api/profiles?tenantId=${encodeURIComponent(tenantId)}`);
       if (res.ok) {
         const data = await res.json();
         setProfiles(data);
@@ -43,13 +46,16 @@ export default function ProfilesPage() {
     if (!editingProfile) return;
 
     const method = editingProfile._id ? "PUT" : "POST";
-    const url = editingProfile._id ? `/api/profiles/${editingProfile._id}` : "/api/profiles";
+    const url = editingProfile._id
+      ? `/api/profiles/${editingProfile._id}?tenantId=${encodeURIComponent(tenantId)}`
+      : `/api/profiles?tenantId=${encodeURIComponent(tenantId)}`;
 
     try {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editingProfile),
+        // Изоляция данных: профиль всегда привязывается к текущему порталу (tenantId из URL).
+        body: JSON.stringify({ ...editingProfile, tenantId }),
       });
       if (res.ok) {
         setEditingProfile(null);
@@ -63,7 +69,7 @@ export default function ProfilesPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Delete profile?")) return;
     try {
-      const res = await fetch(`/api/profiles/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/profiles/${id}?tenantId=${encodeURIComponent(tenantId)}`, { method: "DELETE" });
       if (res.ok) fetchProfiles();
     } catch (err) {
       console.error(err);

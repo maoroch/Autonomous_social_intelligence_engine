@@ -14,11 +14,30 @@ export function createApprovalRouter(logger: Logger): Router {
   const runs = () => getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
   const stageResults = () => getCollection<StageResultDoc>(Collections.STAGE_RESULTS);
 
+  /**
+   * Проверяет, что запрошенный run принадлежит указанному tenantId (изоляция данных между порталами).
+   * Если у run вообще не задан tenantId (легаси-прогоны tech-портала до внедрения мультиарендности) —
+   * пропускаем без строгой проверки, чтобы не сломать существующие данные.
+   */
+  function assertTenantOwnership(run: PipelineRunDoc, requestedTenantId: string | undefined): boolean {
+    if (!run.tenantId) return true;
+    return run.tenantId === requestedTenantId;
+  }
+
   // Список прогонов, ожидающих подтверждения.
   router.get("/runs", async (req, res) => {
     const status = typeof req.query.status === "string" ? req.query.status : undefined;
-    const filter = status ? { status: status as PipelineRunDoc["status"] } : {};
-    const items = await runs().find(filter).sort({ updatedAt: -1 }).limit(50).toArray();
+    const tenantId = typeof req.query.tenantId === "string" ? req.query.tenantId : undefined;
+    const filter: Record<string, unknown> = {};
+    if (status) filter.status = status;
+    // Изоляция данных между порталами: без tenantId в запросе НИЧЕГО не возвращаем,
+    // чтобы дашборд одного клиента не мог случайно увидеть прогоны другого (см. запрос "отдельные порталы").
+    if (tenantId) {
+      filter.tenantId = tenantId;
+    } else {
+      return res.json({ items: [] });
+    }
+    const items = await runs().find(filter as Partial<PipelineRunDoc>).sort({ updatedAt: -1 }).limit(50).toArray();
     res.json({ items });
   });
 
@@ -27,12 +46,26 @@ export function createApprovalRouter(logger: Logger): Router {
     const run = await runs().findOne({ runId: req.params.runId });
     if (!run) return res.status(404).json({ error: "run not found" });
 
+    const tenantId = typeof req.query.tenantId === "string" ? req.query.tenantId : undefined;
+    if (!assertTenantOwnership(run, tenantId)) {
+      // 404, а не 403 — не подтверждаем даже факт существования чужого run.
+      return res.status(404).json({ error: "run not found" });
+    }
+
     const stages = await stageResults().find({ runId: req.params.runId }).sort({ createdAt: 1 }).toArray();
     res.json({ run, stages });
   });
 
   router.post("/runs/:runId/approve", async (req, res) => {
     const runId = req.params.runId;
+    const requestedTenantId = req.body?.tenantId as string | undefined;
+
+    const existingRun = await runs().findOne({ runId });
+    if (!existingRun) return res.status(404).json({ error: "run not found" });
+    if (!assertTenantOwnership(existingRun, requestedTenantId)) {
+      return res.status(404).json({ error: "run not found" });
+    }
+
     const result = await runs().updateOne(
       { runId, status: PipelineRunStatus.AWAITING_APPROVAL },
       { $set: { status: PipelineRunStatus.APPROVED, currentStage: PipelineStage.PUBLISHING, updatedAt: new Date() } },
@@ -47,10 +80,14 @@ export function createApprovalRouter(logger: Logger): Router {
     const writingStage = stages.find(s => s.stage === PipelineStage.WRITING);
     const designStage = stages.find(s => s.stage === PipelineStage.DESIGN);
 
-    const selectedTemplate = req.body?.template_name || (designStage?.result as any)?.template_name || "cover-2";
-    const imageId = selectedTemplate === "cover-1"
-      ? ((designStage?.result as any)?.zip_cover_1_id || (designStage?.result as any)?.imageId)
-      : ((designStage?.result as any)?.zip_cover_2_id || (designStage?.result as any)?.imageId);
+    const designResult = designStage?.result as any;
+    const selectedTemplate = req.body?.template_name || designResult?.template_name || "cover-2";
+    const imageId =
+      selectedTemplate === "cover-1"
+        ? designResult?.zip_cover_1_id ?? designResult?.imageId
+        : selectedTemplate === "cover-2"
+          ? designResult?.zip_cover_2_id ?? designResult?.imageId
+          : designResult?.imageId; // нишевые вертикали с одним template-set (например Testo)
 
     // Save chosen template selection to database
     await stageResults().updateOne(
@@ -75,8 +112,17 @@ export function createApprovalRouter(logger: Logger): Router {
   });
 
   router.post("/runs/:runId/reject", async (req, res) => {
+    const runId = req.params.runId;
+    const tenantId = typeof req.query.tenantId === "string" ? req.query.tenantId : undefined;
+
+    const existingRun = await runs().findOne({ runId });
+    if (!existingRun) return res.status(404).json({ error: "run not found" });
+    if (!assertTenantOwnership(existingRun, tenantId)) {
+      return res.status(404).json({ error: "run not found" });
+    }
+
     const result = await runs().updateOne(
-      { runId: req.params.runId, status: PipelineRunStatus.AWAITING_APPROVAL },
+      { runId, status: PipelineRunStatus.AWAITING_APPROVAL },
       { $set: { status: PipelineRunStatus.REJECTED, updatedAt: new Date() } },
     );
     if (result.matchedCount === 0) {
@@ -88,7 +134,13 @@ export function createApprovalRouter(logger: Logger): Router {
 
   router.put("/runs/:runId/edit", async (req, res) => {
     const { runId } = req.params;
-    const { postText, slides } = req.body;
+    const { postText, slides, tenantId } = req.body;
+
+    const existingRun = await runs().findOne({ runId });
+    if (!existingRun) return res.status(404).json({ error: "run not found" });
+    if (!assertTenantOwnership(existingRun, tenantId)) {
+      return res.status(404).json({ error: "run not found" });
+    }
 
     logger.info({ runId }, "received inline edits from human");
 
@@ -135,13 +187,16 @@ export function createApprovalRouter(logger: Logger): Router {
 
   router.post("/runs/:runId/reprocess", async (req, res) => {
     const { runId } = req.params;
-    const { notes } = req.body;
+    const { notes, tenantId } = req.body;
 
     logger.info({ runId, notes }, "requested manual reprocess of run");
 
     try {
       const run = await runs().findOne({ runId });
       if (!run) {
+        return res.status(404).json({ error: "run not found" });
+      }
+      if (!assertTenantOwnership(run, tenantId)) {
         return res.status(404).json({ error: "run not found" });
       }
 

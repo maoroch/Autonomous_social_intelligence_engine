@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Card Style 6 - Warm Editorial Tech</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #FBF9F5;
+      --ink: #0F172A;
+      --muted: #475569;
+      --accent: #EA580C;
+      --border: #E2E8F0;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg);
+      font-family: "Plus Jakarta Sans", sans-serif;
+    }
+    .stage {
+      min-height: 1350px;
+      display: flex;
+      padding: 0; margin: 0;
+    }
+    .post {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background-color: var(--bg);
+      border: 12px solid #F1F5F9;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 120px 96px 96px;
+    }
+    .headline {
+      margin: 0;
+      font-family: "Playfair Display", serif;
+      font-weight: 900;
+      font-size: 68px;
+      line-height: 1.15;
+      color: var(--ink);
+      letter-spacing: -0.01em;
+    }
+    .body-text {
+      margin: 36px 0 0;
+      font-size: 42px;
+      font-weight: 600;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+    .illustration-container {
+      margin-top: 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 320px;
+    }
+    .illustration-container svg { height: 100%; width: auto; }
+    .spacer { flex: 1 1 auto; }
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 3px solid var(--ink);
+      padding-top: 32px;
+    }
+    .footer span {
+      font-size: 36px;
+      color: var(--ink);
+      font-weight: 800;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="post">
+      <h1 class="headline">{{TITLE}}</h1>
+      <p class="body-text">{{BODY}}</p>
+      <div class="spacer"></div>
+      <div class="illustration-container">{{ILLUSTRATION}}</div>
+      <div class="footer">
+        <span>{{FOOTER_LEFT}}</span>
+        <span>{{PAGE_NUMBER}}</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

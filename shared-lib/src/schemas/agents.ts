@@ -52,6 +52,8 @@ export const StrategyOutputSchema = z.object({
   format: ContentFormat,
   target_audience: z.string().min(1),
   core_idea: z.string().min(1),
+  // Мультиарендность: ссылка на выбранную рубрику (IndustryProfile.contentPillars[].id), если применимо.
+  content_pillar_id: z.string().optional(),
 });
 export type StrategyOutput = z.infer<typeof StrategyOutputSchema>;
 
@@ -91,11 +93,26 @@ export type SeoOutput = z.infer<typeof SeoOutputSchema>;
 
 // ---------- Author profile (вход для Positioning/Writing) ----------
 
+/**
+ * Подключённый аккаунт соцсети для автора. Платформа выбирается per-tenant
+ * (Organization.publishingTargets), поэтому у автора может не быть LinkedIn вовсе (например Testo).
+ */
+export const ConnectedPlatformSchema = z.object({
+  platform: z.enum(["linkedin", "instagram"]),
+  accountId: z.string().min(1),
+  accessToken: z.string().min(1), // хранить зашифрованным на уровне приложения/БД
+  connectedAt: z.date().default(() => new Date()),
+});
+export type ConnectedPlatform = z.infer<typeof ConnectedPlatformSchema>;
+
 export const AuthorProfileSchema = z.object({
+  // Дефолт обеспечивает обратную совместимость с профилями, созданными до внедрения мультиарендности.
+  tenantId: z.string().min(1).default("software-development-default"),
   topics: z.array(z.string()).min(1),
   forbidden_words: z.array(z.string()).default([]),
   cta_style: z.string().optional(),
   use_emoji: z.boolean().default(false),
   tone: z.string().optional(),
+  connectedPlatforms: z.array(ConnectedPlatformSchema).default([]),
 });
 export type AuthorProfile = z.infer<typeof AuthorProfileSchema>;

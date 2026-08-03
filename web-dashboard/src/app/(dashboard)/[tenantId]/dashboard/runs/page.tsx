@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 
 interface RunListItem {
@@ -12,6 +13,7 @@ interface RunListItem {
 }
 
 export default function RunsHistoryPage() {
+  const { tenantId } = useParams<{ tenantId: string }>();
   const [runs, setRuns] = useState<RunListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -19,7 +21,7 @@ export default function RunsHistoryPage() {
 
   const fetchRuns = async () => {
     try {
-      const res = await fetch("/api/runs/list");
+      const res = await fetch(`/api/runs/list?tenantId=${encodeURIComponent(tenantId)}`);
       if (res.ok) {
         const data = await res.json();
         setRuns(data.items ?? []);
@@ -33,7 +35,8 @@ export default function RunsHistoryPage() {
 
   useEffect(() => {
     fetchRuns();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantId]);
 
   // Filtered lists
   const filteredRuns = runs.filter((run) => {
@@ -47,7 +50,7 @@ export default function RunsHistoryPage() {
   return (
     <main className="container">
       <div style={{ marginBottom: 24 }}>
-        <Link href="/dashboard" style={{ fontSize: 14, fontWeight: 500 }}>
+        <Link href={`/${tenantId}/dashboard`} style={{ fontSize: 14, fontWeight: 500 }}>
           ← Назад к дашборду
         </Link>
       </div>
@@ -124,7 +127,7 @@ export default function RunsHistoryPage() {
                 </div>
                 <div>
                   <Link
-                    href={`/dashboard/runs/${run.runId}`}
+                    href={`/${tenantId}/dashboard/runs/${run.runId}`}
                     className="btn btn-secondary"
                     style={{ padding: "8px 16px", fontSize: 13, borderRadius: 6 }}
                   >

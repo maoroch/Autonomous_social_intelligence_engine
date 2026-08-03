@@ -8,7 +8,12 @@ export async function GET(
 ) {
   try {
     const { runId } = await params;
-    const res = await fetch(`${OPENCLAW_URL}/approval/runs/${runId}`, {
+    const { searchParams } = new URL(req.url);
+    const tenantId = searchParams.get("tenantId");
+    const url = tenantId
+      ? `${OPENCLAW_URL}/approval/runs/${runId}?tenantId=${encodeURIComponent(tenantId)}`
+      : `${OPENCLAW_URL}/approval/runs/${runId}`;
+    const res = await fetch(url, {
       cache: "no-store",
     });
     if (!res.ok) {

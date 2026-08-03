@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 
 interface RunListItem {
@@ -22,6 +23,7 @@ interface Analytics {
 }
 
 export default function DashboardPage() {
+  const { tenantId } = useParams<{ tenantId: string }>();
   const [runs, setRuns] = useState<RunListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -31,6 +33,12 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState("");
   const [profileId, setProfileId] = useState("");
   const [profiles, setProfiles] = useState<any[]>([]);
+  const [targetPillarId, setTargetPillarId] = useState<string>("auto");
+  const [pillars, setPillars] = useState<any[]>([
+    { id: "pet-projects-showcase", label: "🛠️ Подборка pet проектов для твоего github" },
+    { id: "github-trending-repos", label: "🐙 Подборка github репозитории" },
+    { id: "tech-trends-insights", label: "💡 Тренды и архитектура в Software Engineering" },
+  ]);
 
   // Filters & Status
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -39,7 +47,7 @@ export default function DashboardPage() {
 
   const fetchRuns = async () => {
     try {
-      const res = await fetch("/api/runs/list");
+      const res = await fetch(`/api/runs/list?tenantId=${encodeURIComponent(tenantId)}`);
       if (res.ok) {
         const data = await res.json();
         setRuns(data.items ?? []);
@@ -68,24 +76,28 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchRuns();
     fetchHealth();
-    fetch("/api/profiles").then(res => res.json()).then(data => {
+    fetch(`/api/profiles?tenantId=${encodeURIComponent(tenantId)}`).then(res => res.json()).then(data => {
       setProfiles(data);
       if (data.length > 0) setProfileId(data[0]._id);
     });
+    fetch(`/api/tenant-info?tenantId=${encodeURIComponent(tenantId)}`).then(res => res.json()).then(data => {
+      if (data.contentPillars) setPillars(data.contentPillars);
+    }).catch(err => console.error("Failed to fetch tenant pillars:", err));
+
     // Poll runs and health every 8 seconds
     const interval = setInterval(() => {
       fetchRuns();
       fetchHealth();
     }, 8000);
     return () => clearInterval(interval);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantId]);
 
   const handleStartRun = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
     setSubmitting(true);
     try {
-      const res = await fetch("/api/runs", {
+      const res = await fetch(`/api/runs?tenantId=${encodeURIComponent(tenantId)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -94,6 +106,8 @@ export default function DashboardPage() {
             summary,
           },
           profileId,
+          targetPillarId: targetPillarId === "auto" ? undefined : targetPillarId,
+          tenantId,
         }),
       });
       if (res.ok) {
@@ -219,7 +233,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <Link
-                      href={`/dashboard/runs/${run.runId}`}
+                      href={`/${tenantId}/dashboard/runs/${run.runId}`}
                       className="btn btn-secondary"
                       style={{ padding: "8px 16px", fontSize: 13, borderRadius: 6 }}
                     >
@@ -246,7 +260,16 @@ export default function DashboardPage() {
                 </select>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Тема</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Рубрика контента (Стратегия)</label>
+                <select value={targetPillarId} onChange={e => setTargetPillarId(e.target.value)} style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--border)", background: "#ffffff", color: "var(--text-main)", fontWeight: 500 }}>
+                  <option value="auto">🤖 Автоматически (Выбор ИИ на основе трендов)</option>
+                  {pillars.map(p => (
+                    <option key={p.id} value={p.id}>{p.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Тема (опционально)</label>
                 <input
                   type="text"
                   placeholder="Например: Переход на Node.js 22"
