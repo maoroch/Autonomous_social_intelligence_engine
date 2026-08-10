@@ -325,14 +325,24 @@ You must return a single, valid JSON object:
 
 Return ONLY valid raw JSON. Do NOT include markdown code blocks or conversational text.`;
     } else {
+      const isRussianDesignTenant = tenantId === "testo" || (industryProfile?.language?.includes("ru") ?? false);
+      const designLanguageRule = isRussianDesignTenant
+        ? `\n5. CRITICAL B2B PHARMA CONTENT DEPTH REQUIREMENTS:
+   - Target Audience: B2B Pharma Executives, Quality Assurance (QA/QC) Directors, and Compliance Engineers.
+   - Language: Write all slide titles, badges, and bullets STRICTLY IN HIGH-QUALITY RUSSIAN.
+   - Content Depth: Slide bullet points MUST be detailed, technical, and substantive (NOT 2-word generic phrases like "Упрощение процесса"!).
+   - Include specific technical specifications, regulatory standards (21 CFR Part 11, GxP, ERES, ALCOA+), Testo equipment names (Testo Saveris Pharma, Testo 174T, Testo 883), and 3-tier data logging redundancy.
+   - Each slide 2..N MUST contain 2 to 3 detailed, informative bullet points (12 to 22 words per bullet point).`
+        : "";
+
       systemPrompt = `You are a creative designer specializing in visual LinkedIn carousels for tech posts.
 Your task is to design the structure of a multi-card slide deck (carousel) representing the key takeaways of a LinkedIn post.
 
 Design Rules:
 1. Card Count: Select a suitable number of cards/slides (between 3 and 7 cards).
-2. Accent Color: Choose a premium hex color code (e.g., "#0066cc" for professional/tech, "#10b981" for clean/coding, "#8b5cf6" for innovative/AI, etc.).
+2. Accent Color: Choose a premium hex color code (e.g., "#EE8432" for Testo/pharma, "#0066cc" for tech).
 3. Template Type: Output "html".
-4. Template Name: Choose one of: ${styleConfigs.map((s) => `"${s.key}"`).join(", ")}.${styleConfigs === SOFTWARE_DEV_STYLES ? ' "cover-1" is a clean white layout. "cover-2" is a dark theme. "cover-8" and "cover-9" are dedicated dark-mode layouts for GitHub Repos.' : ""}
+4. Template Name: Choose one of: ${styleConfigs.map((s) => `"${s.key}"`).join(", ")}.${styleConfigs === SOFTWARE_DEV_STYLES ? ' "cover-1" is a clean white layout. "cover-2" is a dark theme. "cover-8" and "cover-9" are dedicated dark-mode layouts for GitHub Repos.' : ""}${designLanguageRule}
 5. Render Data: Generate a "render_data" JSON object mapping slide keys ("slide_1", "slide_2", etc.):
    - "badge": Short tag.
    - "title": Slide title.
@@ -478,9 +488,13 @@ Please generate the carousel slide deck design structure in JSON format.`;
 
     // Load author profile to get the custom footer username
     let customUsername = "@maoroch";
+    let isTestoTenant = false;
     try {
       const runsCol = db.collection(Collections.PIPELINE_RUNS);
       const runDoc = await runsCol.findOne({ runId });
+      if (runDoc?.tenantId === "testo") {
+        isTestoTenant = true;
+      }
       const profilesCol = db.collection(Collections.AUTHOR_PROFILES);
       let profileDoc = null;
       if (runDoc?.profileId) {
@@ -664,11 +678,20 @@ Please generate the carousel slide deck design structure in JSON format.`;
 
       const badgeText = escapeHtml(slide.badge || (isCover ? style.defaultCoverBadge : style.defaultCardBadge));
       let titleText = escapeHtml(slide.title || "");
-      let footerLeftVal = slide.footer || customUsername;
-      if (footerLeftVal === "@username" || footerLeftVal === "@maoroch") {
-        footerLeftVal = customUsername;
+      let footerLeft = "";
+      if (isTestoTenant || style.key === "industrial-measurement-equipment") {
+        const isDark = style.brand?.inkColor === "#FFFFFF" || style.brand?.paperColor === "#14171A" || style.key.includes("dark");
+        const logoUrl = isDark
+          ? "https://azia-test.com/wp-content/uploads/2025/02/whitelogo.svg"
+          : "https://azia-test.com/wp-content/uploads/2025/02/logo.svg";
+        footerLeft = `<img src="${logoUrl}" alt="Testo" style="height: 60px; max-height: 60px; width: auto; display: block; object-fit: contain;" />`;
+      } else {
+        let footerLeftVal = slide.footer || customUsername;
+        if (footerLeftVal === "@username" || footerLeftVal === "@maoroch") {
+          footerLeftVal = customUsername;
+        }
+        footerLeft = `<span>${escapeHtml(footerLeftVal)}</span>`;
       }
-      const footerLeft = escapeHtml(footerLeftVal);
       const pageText = `${index + 1}/${slidesList.length}`;
       const rawSlideBulletsText = slide.bullets ? (slide.bullets as string[]).join(" ") : "";
 

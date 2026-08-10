@@ -64,8 +64,8 @@ async function main() {
   const testoProfile = IndustryProfileSchema.parse({
     tenantId: "testo",
     verticalName: "industrial-measurement-equipment",
-    // Плейсхолдер: подтвердить с заказчиком финальный список языков (обсуждали en/de/ru — TZ v2, вопрос 3).
-    language: ["en", "de"],
+    // Язык портала: исключительно русский для Testo.
+    language: ["ru"],
 
     // Плейсхолдер: список требует подтверждения (TZ v2, раздел "Вопросы к заказчику", п.1).
     trendSources: [

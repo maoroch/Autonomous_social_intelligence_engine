@@ -26,7 +26,14 @@ export function validateTerminology(
   // 1. Mandatory Terms Guard
   if (rules.mandatoryTerms) {
     const requiredForPillar = (pillarId && rules.mandatoryTerms[pillarId]) || rules.mandatoryTerms["default"] || [];
-    const missingTerms = requiredForPillar.filter(term => !lowerText.includes(term.toLowerCase()));
+    const missingTerms = requiredForPillar.filter(term => {
+      const termLower = term.toLowerCase();
+      if (lowerText.includes(termLower)) return false;
+      // Handle Russian declensions for "холодовая цепь" -> "холодовой цепи", etc.
+      const words = termLower.split(/\s+/);
+      const stems = words.map(w => w.length > 4 ? w.substring(0, w.length - 2) : w);
+      return !stems.every(stem => lowerText.includes(stem));
+    });
 
     if (missingTerms.length > 0) {
       deductions += Math.min(40, missingTerms.length * 15);
@@ -79,6 +86,25 @@ export function validateTerminology(
         rule: "preferred_terminology_replacements",
         passed: false,
         details: `Рекомендация по терминологии: замечены упрощенные синонимы (${replacedPhrases.join("; ")})`,
+      });
+    }
+  }
+
+  // 4. Testo Official Distributor CTA Guard
+  if (pillarId?.startsWith("pharma") || rules.mandatoryTerms?.["pharma-compliance-explained"]) {
+    const hasDistributorCta = lowerText.includes("дистрибьютор") || lowerText.includes("дистрибьютора");
+    if (!hasDistributorCta) {
+      deductions += 15;
+      driftReport.push({
+        rule: "testo_distributor_cta_check",
+        passed: false,
+        details: "Отклонение: отсутствует призыв приобретать приборы Testo у официального дистрибьютора",
+      });
+    } else {
+      driftReport.push({
+        rule: "testo_distributor_cta_check",
+        passed: true,
+        details: "Соблюдено: призыв покупать оборудование у официального дистрибьютора Testo присутствует",
       });
     }
   }

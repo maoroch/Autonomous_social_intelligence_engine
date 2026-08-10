@@ -292,16 +292,18 @@ ${industryProfile.glossary.map((g) => `- "${g.term}"${g.definition ? `: ${g.defi
   } else if (contentPillarId === "pharma-compliance-explained") {
     rubricWritingInstruction = `\nSPECIFIC RUBRIC INSTRUCTION ("GxP на пальцах / 21 CFR Part 11"):
 - Structure this post as an educational breakdown explaining complex regulatory GxP & 21 CFR Part 11 requirements in plain, accessible terms.
-- Focus on key audit points: Data Integrity, Electronic Signatures, Audit Trail, and Continuous Monitoring.
-- Include a soft call to action encouraging readers to save the post for upcoming inspections.`;
+- Focus on key audit points: Data Integrity, Electronic Signatures, Audit Trail, and Continuous Monitoring with Testo equipment.
+- Use relevant pharmaceutical hashtags ONLY (e.g., #pharma #gxp #21cfrpart11 #testo #фармацевтика). Do NOT use tech/GitHub hashtags.`;
   } else if (contentPillarId === "pharma-cold-chain-story") {
     rubricWritingInstruction = `\nSPECIFIC RUBRIC INSTRUCTION ("Холодовая цепь без слепых зон"):
 - Structure this post as a risk-analysis journey showing where temperature control breaks during pharmaceutical transport (GDP logistics).
-- Emphasize the impact of temperature excursions on drug batch degradation and the necessity of 3-tier data logging redundancy.`;
+- Emphasize the impact of temperature excursions on drug batch degradation and the necessity of 3-tier data logging redundancy with Testo Saveris.
+- Use relevant cold chain hashtags ONLY (e.g., #coldchain #pharma #logistics #testo #холодоваяцепь). Do NOT use tech/GitHub hashtags.`;
   } else if (contentPillarId === "pharma-audit-ready") {
     rubricWritingInstruction = `\nSPECIFIC RUBRIC INSTRUCTION ("Готовы к инспекции? / Audit Preparedness"):
 - Structure this post as a checklist debunking common myths about FDA/EMA audit readiness.
-- Contrast naive logging ("we record data") with true GxP compliance (Traceability, ERES compliance, immutable logs).`;
+- Contrast naive logging ("we record data") with true GxP compliance (Traceability, ERES compliance, immutable logs with Testo).
+- Use relevant audit hashtags ONLY (e.g., #audit #gxp #pharma #testo #инспекция). Do NOT use tech/GitHub hashtags.`;
   } else if (contentPillarId === "product-in-action" || contentPillarId === "before-after" || contentPillarId === "myths") {
     rubricWritingInstruction = `\nSPECIFIC RUBRIC INSTRUCTION ("Industrial Measurement & HVAC Calibration"):
 - Structure this post around real-world industrial measurement scenarios (HVAC/R, thermal imaging, calibration certificates).
@@ -322,10 +324,14 @@ ${industryProfile.glossary.map((g) => `- "${g.term}"${g.definition ? `: ${g.defi
     return "";
   };
 
+  const rawTargetPillar = (job.payload as any)?.targetPillarId || (run as any)?.targetPillarId || (strategy as any)?.content_pillar_id || run?.contentPillarId || "";
+  const topicTitle = (topic?.title as string) || (run?.topic?.title as string) || "";
+  const isGithubShowcase = rawTargetPillar === "github-trending-repos" || rawTargetPillar === "pet-projects-showcase" || /github/i.test(topicTitle);
+
   const trendItemsList: { title: string; summary: string; url: string }[] = [];
   const seenUrls = new Set<string>();
 
-  if (Array.isArray(trendItems)) {
+  if (isGithubShowcase && Array.isArray(trendItems)) {
     for (const item of trendItems) {
       let foundUrl = extractGithubUrl(item.url);
       if (!foundUrl && Array.isArray(item.sources)) {
@@ -354,19 +360,20 @@ ${industryProfile.glossary.map((g) => `- "${g.term}"${g.definition ? `: ${g.defi
     }
   }
 
-  const verifiedGithubUrls = Array.from(new Set(trendItemsList.map(t => t.url).filter(u => u.length > 0)));
-
   let verifiedSourcesBlock = "";
-  if (trendItemsList.length > 0) {
+  if (isGithubShowcase && trendItemsList.length > 0) {
     verifiedSourcesBlock = `\nCRITICAL GITHUB REPOSITORY MATCHING REQUIREMENT:
 You MUST feature 3-4 DIFFERENT repositories using the titles and exact URLs below:
 ${trendItemsList.map((t, idx) => `- Repo #${idx + 1}: "${t.title}" -> ${t.url}`).join("\n")}
 DO NOT REPEAT THE SAME REPOSITORY OR THE SAME URL MULTIPLE TIMES. EVERY REPOSITORY MUST HAVE A UNIQUE URL.\n`;
   }
 
-  const rawTargetPillar = (job.payload as any)?.targetPillarId || (run as any)?.targetPillarId || (strategy as any)?.content_pillar_id || run?.contentPillarId || "";
-  const topicTitle = (topic?.title as string) || (run?.topic?.title as string) || "";
-  const isGithubShowcase = rawTargetPillar === "github-trending-repos" || rawTargetPillar === "pet-projects-showcase" || /github/i.test(topicTitle);
+  const isRussianTenant = tenantId === "testo" || (industryProfile?.language?.includes("ru") ?? false);
+  const languageInstruction = isRussianTenant
+    ? `\nCRITICAL LANGUAGE & TESTO BRAND REQUIREMENTS:
+1. Language: The target audience for this portal (${tenantId}) is EXCLUSIVELY RUSSIAN-SPEAKING. You MUST write ALL fields ("text", "hook", "cta", and "ru_post") STRICTLY IN HIGH-QUALITY RUSSIAN. Do NOT write any English text.
+2. Product Value Proposition: In every post, you MUST explicitly demonstrate how Testo measurement equipment (Testo Saveris Pharma, thermal imagers, data loggers, smart probes) solves pharmaceutical compliance challenges (automating 21 CFR Part 11, preventing batch loss in cold chain, audit readiness).`
+    : `\nLanguage: Write "text" in English for LinkedIn, and provide "ru_post" in Russian.`;
 
   let systemPrompt = "";
   if (isGithubShowcase) {
@@ -385,7 +392,7 @@ STRICT FORMAT & LENGTH RULES:
    - Description: MUST be a rich, detailed 2 to 3 sentence paragraph (MUST BE 45 to 60 words, ~260-320 characters, EXACTLY 4 TO 5 VISUAL LINES). Explain: 1) What the project is, 2) Core capabilities & architecture, 3) Real developer productivity impact.
    - Do NOT use bullet arrows (→). Do NOT write multi-paragraph text blocks.
 3. Tone & Words: Tone: ${authorProfile.tone}. Forbidden words: ${authorProfile.forbidden_words.join(", ")}.
-${styleRulesBlock}${platformBlock}${verifiedSourcesBlock}
+${styleRulesBlock}${platformBlock}${verifiedSourcesBlock}${languageInstruction}
 You must return a single, valid JSON object containing:
 - "text": The complete text of the post.
 - "hook": The first line (Hook) of the post.
@@ -410,15 +417,15 @@ Style Guidelines:
 4. Emojis: ${emojiInstruction}
 5. Call to Action: ${ctaInstruction}
 6. Forbidden Words: Never use these words: ${authorProfile.forbidden_words.join(", ")}
-${styleRulesBlock}${complianceBlock}${glossaryBlock}${platformBlock}${rubricWritingInstruction}${verifiedSourcesBlock}${fewShotText}
+${styleRulesBlock}${complianceBlock}${glossaryBlock}${platformBlock}${rubricWritingInstruction}${verifiedSourcesBlock}${fewShotText}${languageInstruction}
 You must return a single, valid JSON object containing:
-- "text": The complete English text of the post for LinkedIn.
-- "hook": The first line (Hook) of the LinkedIn post.
+- "text": The complete text of the post (strictly in Russian for Testo portal).
+- "hook": The first line (Hook) of the post.
 - "cta": The final Call to Action string.
 - "ru_post": An object containing the high-quality Russian post adaptation for Telegram & Threads:
   - "hook": Russian header starting with a single emoji (e.g. "⚡ 5 инструментов...")
   - "text": Full Russian post body, formatted into scanable paragraphs, ending with hashtags.
-  - "hashtags": Array of relevant hashtags (e.g. ["#nodejs", "#performance"])
+  - "hashtags": Array of relevant hashtags (e.g. ["#фармацевтика", "#GxP"])
 
 Output format:
 {
@@ -475,7 +482,32 @@ Please write the post and return the JSON.`;
 
   const sanitized = sanitizeLlmOutput(parsedJson);
 
-  if (verifiedGithubUrls.length > 0) {
+  // Детерминированные (жестко прописанные) призывы к действию (CTA) по тенантам и рубрикам для экономии токенов
+  const PRESET_CTAS: Record<string, Record<string, string>> = {
+    testo: {
+      "pharma-compliance-explained": "Заказывайте оригинальное оборудование Testo у официального дистрибьютора для полной гарантии, Госреестра СИ и калибровки.",
+      "pharma-cold-chain-story": "Обращайтесь к официальному дистрибьютору Testo за решениями непрерывного температурного мониторинга холодовой цепи.",
+      "pharma-audit-ready": "Подготовьтесь к аудиту GxP с цифровыми системами Testo от официального дистрибьютора.",
+      default: "Заказывайте оригинальное оборудование Testo у официального дистрибьютора для полной гарантии и калибровки.",
+    },
+    "software-development-default": {
+      "github-trending-repos": "Сохраните подборку в закладки и поделитесь с коллегами-разработчиками!",
+      "pet-projects-showcase": "Сохраните идеи для своего портфолио на GitHub!",
+      default: "Поделитесь вашим мнением в комментариях!",
+    },
+  };
+
+  const presetCta = PRESET_CTAS[tenantId]?.[contentPillarId] || PRESET_CTAS[tenantId]?.["default"];
+  if (presetCta) {
+    sanitized.cta = presetCta;
+    if (!sanitized.text.includes(presetCta)) {
+      sanitized.text = `${sanitized.text.trim()}\n\n${presetCta}`;
+    }
+  }
+
+  const verifiedGithubUrls = isGithubShowcase ? Array.from(new Set(trendItemsList.map(t => t.url).filter(u => u.length > 0))) : [];
+
+  if (isGithubShowcase && verifiedGithubUrls.length > 0) {
     let urlIdx = 0;
     const usedUrls = new Set<string>();
     const githubUrlRegex = /https:\/\/github\.com\/[a-zA-Z0-9_.-]+(?:\/[a-zA-Z0-9_.-]+)?/g;
@@ -486,7 +518,7 @@ Please write the post and return the JSON.`;
       }
       let substitute: string = verifiedGithubUrls[urlIdx % verifiedGithubUrls.length] || verifiedGithubUrls[0] || "https://github.com/trending";
       if (usedUrls.has(substitute) && verifiedGithubUrls.length > usedUrls.size) {
-        const unused = verifiedGithubUrls.find(u => !usedUrls.has(u));
+        const unused = verifiedGithubUrls.find((u: string) => !usedUrls.has(u));
         if (unused) substitute = unused;
       }
       usedUrls.add(substitute);

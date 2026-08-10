@@ -3,16 +3,6 @@
 FROM node:20-alpine AS base
 WORKDIR /app
 
-# Install native dependencies needed for node-canvas
-RUN apk add --no-cache \
-    build-base \
-    cairo-dev \
-    pango-dev \
-    jpeg-dev \
-    giflib-dev \
-    librsvg-dev \
-    pixman-dev
-
 FROM base AS deps
 COPY package.json package-lock.json* ./
 COPY shared-lib/package.json ./shared-lib/package.json
@@ -23,6 +13,8 @@ COPY services/agent-content-strategy/package.json ./services/agent-content-strat
 COPY services/agent-writing/package.json ./services/agent-writing/package.json
 COPY services/agent-design/package.json ./services/agent-design/package.json
 COPY services/agent-seo/package.json ./services/agent-seo/package.json
+COPY services/agent-publishing/package.json ./services/agent-publishing/package.json
+COPY services/agent-evaluator/package.json ./services/agent-evaluator/package.json
 RUN npm install
 
 FROM deps AS build
@@ -40,6 +32,7 @@ RUN if [ "$SERVICE_DIR" = "services/agent-design" ]; then \
     fi
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/shared-lib ./shared-lib
+COPY --from=build /app/golden_datasets /app/golden_datasets
 COPY --from=build /app/${SERVICE_DIR} ./service
 WORKDIR /app/service
 CMD ["node", "dist/index.js"]

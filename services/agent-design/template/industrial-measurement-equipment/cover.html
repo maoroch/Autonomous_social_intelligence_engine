@@ -141,6 +141,20 @@
       color: var(--testo-steel);
       line-height: 1;
     }
+
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      height: 60px;
+    }
+
+    .footer-brand img {
+      height: 60px;
+      max-height: 60px;
+      width: auto;
+      display: block;
+      object-fit: contain;
+    }
   </style>
 </head>
 
@@ -161,7 +175,7 @@
       </div>
 
       <div class="footer">
-        <span>{{FOOTER_LEFT}}</span>
+        <div class="footer-brand">{{FOOTER_LEFT}}</div>
         <span>{{PAGE_NUMBER}}</span>
       </div>
     </div>

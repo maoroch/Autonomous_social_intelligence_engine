@@ -61,29 +61,41 @@ async function processPositioningJob(job: AgentJob): Promise<unknown> {
   const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
   const run = await runsCol.findOne({ runId: job.runId });
 
-  // 1. Получаем профиль автора из БД
+  // 1. Получаем профиль автора из БД по tenantId или profileId
+  const targetTenantId = run?.tenantId || (job.payload as any)?.tenantId || "software-development-default";
   const profilesCol = getCollection(Collections.AUTHOR_PROFILES);
+  const indProfilesCol = getCollection<IndustryProfileDoc>(Collections.INDUSTRY_PROFILES);
+
   let dbProfile = null;
   if (run?.profileId) {
     try {
       dbProfile = await profilesCol.findOne({ _id: new ObjectId(run.profileId) });
     } catch(err) {
-      logger.warn({ runId: job.runId, profileId: run.profileId }, "Failed to find specified profile, falling back to default");
+      logger.warn({ runId: job.runId, profileId: run.profileId }, "Failed to find specified profile");
     }
+  }
+  if (!dbProfile) {
+    dbProfile = await profilesCol.findOne({ tenantId: targetTenantId });
   }
   if (!dbProfile) {
     dbProfile = await profilesCol.findOne({});
   }
-  
+
+  const indProfile = await indProfilesCol.findOne({ tenantId: targetTenantId });
+  const indTopics = indProfile?.contentPillars?.map(p => p.label || p.id) ?? [];
+
   const authorProfile = dbProfile 
     ? {
-        topics: Array.isArray(dbProfile.topics) ? dbProfile.topics : DEFAULT_PROFILE.topics,
+        topics: Array.isArray(dbProfile.topics) && dbProfile.topics.length > 0 ? dbProfile.topics : (indTopics.length > 0 ? indTopics : DEFAULT_PROFILE.topics),
         forbidden_words: Array.isArray(dbProfile.forbidden_words) ? dbProfile.forbidden_words : DEFAULT_PROFILE.forbidden_words,
         cta_style: typeof dbProfile.cta_style === "string" ? dbProfile.cta_style : undefined,
         use_emoji: typeof dbProfile.use_emoji === "boolean" ? dbProfile.use_emoji : DEFAULT_PROFILE.use_emoji,
         tone: typeof dbProfile.tone === "string" ? dbProfile.tone : DEFAULT_PROFILE.tone,
       }
-    : DEFAULT_PROFILE;
+    : {
+        ...DEFAULT_PROFILE,
+        topics: indTopics.length > 0 ? indTopics : DEFAULT_PROFILE.topics,
+      };
 
   // 2. Получаем темы для анализа
   let trends: TrendItem[] = [];

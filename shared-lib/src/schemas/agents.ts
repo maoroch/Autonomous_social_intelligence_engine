@@ -45,6 +45,9 @@ export const ContentFormat = z.enum([
   "mistakes",
   "thread",
   "personal_experience",
+  "carousel",
+  "reel-script",
+  "single-image",
 ]);
 export type ContentFormat = z.infer<typeof ContentFormat>;
 

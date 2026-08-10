@@ -257,7 +257,7 @@ Please generate the content strategy in JSON format.`;
   const response = await aiClient.complete([
     { role: "system", content: systemPrompt },
     { role: "user", content: userPrompt },
-  ]);
+  ], { preferredProvider: "gemini" });
 
   logger.info({ runId: job.runId, provider: response.provider, model: response.model }, "Content Strategy LLM planning complete");
 

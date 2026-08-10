@@ -50,41 +50,33 @@ export class AiClient {
 
   async complete(messages: ChatMessage[], options: AiCompletionOptions = {}): Promise<AiCompletionResult> {
     const maxAttempts = 3;
-    let delay = 3000; // 3 seconds
+    let delay = 3000;
 
-    const preferred = options.preferredProvider ?? (this.config.geminiApiKey ? "gemini" : "openrouter");
+    const preferred = options.preferredProvider ?? (this.config.geminiApiKey ? "gemini" : this.config.groqApiKey ? "groq" : "openrouter");
+
+    const providers: Array<{ name: "gemini" | "openrouter" | "groq"; key?: string; call: () => Promise<AiCompletionResult> }> = [
+      { name: "gemini", key: this.config.geminiApiKey, call: () => this.callGemini(messages, options) },
+      { name: "groq", key: this.config.groqApiKey, call: () => this.callGroq(messages, options) },
+      { name: "openrouter", key: this.config.openrouterApiKey, call: () => this.callOpenRouter(messages, options) },
+    ];
+
+    const orderedProviders = [
+      ...providers.filter(p => p.name === preferred),
+      ...providers.filter(p => p.name !== preferred),
+    ];
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      // 1. Primary Attempt (Preferred Provider)
-      try {
-        if (preferred === "gemini" && this.config.geminiApiKey) {
-          return await this.callGemini(messages, options);
-        } else if (preferred === "openrouter" && this.config.openrouterApiKey) {
-          return await this.callOpenRouter(messages, options);
-        } else if (preferred === "groq" && this.config.groqApiKey) {
-          return await this.callGroq(messages, options);
+      for (const p of orderedProviders) {
+        if (!p.key) continue;
+        try {
+          return await p.call();
+        } catch (err) {
+          console.warn(`Provider (${p.name}) failed (attempt ${attempt}/${maxAttempts}). Error:`, err);
         }
-      } catch (primaryErr) {
-        console.warn(`Primary provider (${preferred}) failed (attempt ${attempt}/${maxAttempts}). Error:`, primaryErr);
-      }
-
-      // 2. Fallback Chain
-      try {
-        if (this.config.geminiApiKey && preferred !== "gemini") {
-          return await this.callGemini(messages, options);
-        }
-        if (this.config.openrouterApiKey && preferred !== "openrouter") {
-          return await this.callOpenRouter(messages, options);
-        }
-        if (this.config.groqApiKey && preferred !== "groq") {
-          return await this.callGroq(messages, options);
-        }
-      } catch (fallbackErr) {
-        console.warn(`Fallback provider failed (attempt ${attempt}/${maxAttempts}). Error:`, fallbackErr);
       }
 
       if (attempt < maxAttempts) {
-        console.warn(`All providers rate-limited or failed. Retrying in ${delay / 1000}s...`);
+        console.warn(`All available providers failed. Retrying in ${delay / 1000}s...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
         delay += 3000;
       }
