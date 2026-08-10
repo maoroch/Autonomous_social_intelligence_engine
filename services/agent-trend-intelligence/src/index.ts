@@ -49,7 +49,38 @@ function parseCleanJson(text: string): any {
   if (cleaned.endsWith("```")) {
     cleaned = cleaned.substring(0, cleaned.length - 3);
   }
-  return JSON.parse(cleaned.trim());
+  cleaned = cleaned.trim();
+
+  let inString = false;
+  let result = "";
+  for (let i = 0; i < cleaned.length; i++) {
+    const char = cleaned[i];
+    const prevChar = i > 0 ? cleaned[i - 1] : "";
+    if (char === '"' && prevChar !== '\\') {
+      inString = !inString;
+      result += char;
+    } else if (char === '\n' && inString) {
+      result += '\\n';
+    } else if (char === '\r' && inString) {
+      result += '\\r';
+    } else if (char === '\t' && inString) {
+      result += '\\t';
+    } else {
+      result += char;
+    }
+  }
+
+  try {
+    return JSON.parse(result);
+  } catch (err) {
+    const firstBrace = result.indexOf("{");
+    const lastBrace = result.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      const extracted = result.substring(firstBrace, lastBrace + 1);
+      return JSON.parse(extracted);
+    }
+    throw err;
+  }
 }
 
 function sanitizeLlmOutput(rawObj: any): any {
@@ -229,10 +260,17 @@ async function processTrendJob(job: AgentJob): Promise<unknown> {
 
   logger.info({ runId: job.runId, limit, rawCount: rawTrends.length }, "Sending raw trends to LLM...");
 
+  const targetPillarId = (job.payload as any)?.targetPillarId;
   let fewShotText = "";
   try {
     const col = getCollection(Collections.GOLDEN_TREND);
-    const examples = await col.find({}).limit(2).toArray();
+    const filter = targetPillarId
+      ? { $or: [{ pillarId: targetPillarId }, { pillarId: "all" }, { pillarId: { $exists: false } }] }
+      : {};
+    let examples = await col.find(filter).limit(2).toArray();
+    if (examples.length === 0) {
+      examples = await col.find({}).limit(2).toArray();
+    }
     if (examples.length > 0) {
       fewShotText = `\nSTYLE EXAMPLES (FEW-SHOT EXAMPLES):
 Here are examples of how to group multiple raw signals into high-quality technology trends:
@@ -274,7 +312,6 @@ ${industryProfile.glossary
   .join("\n")}\n`;
   }
 
-  const targetPillarId = (job.payload as any)?.targetPillarId;
   let rubricFocusPrompt = "";
   if (targetPillarId === "pet-projects-showcase") {
     rubricFocusPrompt = `\nRUBRIC TARGET REQUIREMENT: The user specifically selected the rubric "Подборка pet проектов для твоего github" (pet-projects-showcase). You MUST focus trend discovery on impressive pet projects, portfolio ideas, architecture patterns, and open-source GitHub project showcases!\n`;

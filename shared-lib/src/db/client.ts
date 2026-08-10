@@ -50,4 +50,9 @@ export const Collections = {
   INDUSTRY_PROFILES: "industry_profiles",
   USERS: "users",
   FACT_CHUNKS: "fact_chunks",
+  DESIGN_TEMPLATES: "design_templates",
+  GOLDEN_RU_TELEGRAM: "golden_ru_telegram",
+  GOLDEN_RU_THREADS: "golden_ru_threads",
+  GOLDEN_EVALUATIONS: "golden_evaluations",
+  GOLDEN_TESTO_PHARMA: "golden_testo_pharma",
 } as const;

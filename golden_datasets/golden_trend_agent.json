@@ -1,0 +1,109 @@
+[
+  {
+    "pillarId": "github-trending-repos",
+    "input_sources": [
+      "Telegram @github: Coachlight.Avalonia — open-source NuGet package for interactive UI tours in Avalonia.",
+      "GitHub Search: sqlfluff - modular SQL linter and auto-formatter across dialects."
+    ],
+    "expected_output": {
+      "items": [
+        {
+          "title": "5 GitHub Repos That Will Save You 10+ Hours This Week",
+          "summary": "Curated productivity developer tools including Avalonia UI tour engine and SQL auto-formatting linters.",
+          "score": 95,
+          "keywords": ["github", "devtools", "open-source", "productivity"],
+          "sources": ["https://github.com/c3n9/Coachlight.Avalonia", "https://github.com/sqlfluff/sqlfluff"]
+        }
+      ]
+    }
+  },
+  {
+    "pillarId": "tech-battle-vs",
+    "input_sources": [
+      "HackerNews: PostgreSQL 17 JSON features vs MongoDB document querying performance.",
+      "Dev.to: REST vs gRPC vs GraphQL — when to use which in 2026."
+    ],
+    "expected_output": {
+      "items": [
+        {
+          "title": "PostgreSQL vs MongoDB: Which Database Belongs in Your 2026 Stack?",
+          "summary": "Detailed head-to-head comparison of relational JSON vs native document storage across ACID compliance, indexing, and scale.",
+          "score": 92,
+          "keywords": ["database", "postgresql", "mongodb", "architecture"],
+          "sources": ["https://news.ycombinator.com/item?id=10001"]
+        }
+      ]
+    }
+  },
+  {
+    "pillarId": "system-design-breakdown",
+    "input_sources": [
+      "ByteByteGo: How Netflix streams video to 200M+ global users using Open Connect CDN.",
+      "HighScalability: Figma C++ and WebAssembly real-time collaboration engine."
+    ],
+    "expected_output": {
+      "items": [
+        {
+          "title": "How Figma Built a Multi-User Real-Time Canvas with C++ and WebAssembly",
+          "summary": "System design deep dive into Figma browser rendering, operational transformation, and WebAssembly memory limits.",
+          "score": 96,
+          "keywords": ["system-design", "architecture", "webassembly", "figma"],
+          "sources": ["https://dev.to/figma-engine"]
+        }
+      ]
+    }
+  },
+  {
+    "pillarId": "clean-code-cheatsheets",
+    "input_sources": [
+      "Dev.to: 5 Anti-Patterns in TypeScript That Drain Memory & How to Fix Them.",
+      "GitHub: Docker Multi-Stage Build Cheatsheet for Production Containers."
+    ],
+    "expected_output": {
+      "items": [
+        {
+          "title": "TypeScript Clean Code Rules: 5 Bad Habits Senior Devs Avoid",
+          "summary": "Practical side-by-side bad vs good code examples for memory safety, type narrowing, and async exception handling.",
+          "score": 90,
+          "keywords": ["clean-code", "typescript", "cheatsheet", "best-practices"],
+          "sources": ["https://dev.to/typescript-clean-code"]
+        }
+      ]
+    }
+  },
+  {
+    "pillarId": "ai-tooling-agents",
+    "input_sources": [
+      "Telegram @github: Nocturne Memory — rollbackable visual memory server for MCP Agents.",
+      "GitHub Topic: Model Context Protocol (MCP) servers list."
+    ],
+    "expected_output": {
+      "items": [
+        {
+          "title": "5 Game-Changing MCP Servers for AI Agents in 2026",
+          "summary": "Supercharge Cursor and Claude Code with persistent graph memory, SQL context engines, and browser automation MCP servers.",
+          "score": 98,
+          "keywords": ["ai-agents", "mcp-server", "claude-code", "cursor"],
+          "sources": ["https://github.com/Dataojitori/nocturne_memory"]
+        }
+      ]
+    }
+  },
+  {
+    "pillarId": "weekly-tech-digest",
+    "input_sources": [
+      "Tech News: React 19 production features, DeepSeek V3 release, Python 3.13 GIL removal update."
+    ],
+    "expected_output": {
+      "items": [
+        {
+          "title": "This Week in Tech: DeepSeek V3, React 19 & Python No-GIL Benchmarks",
+          "summary": "Weekly roundup of top developer news, framework releases, and breakthrough AI open-source models.",
+          "score": 94,
+          "keywords": ["weekly-digest", "tech-news", "react19", "deepseek"],
+          "sources": ["https://news.ycombinator.com"]
+        }
+      ]
+    }
+  }
+]

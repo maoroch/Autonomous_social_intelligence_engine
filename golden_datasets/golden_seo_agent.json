@@ -1,0 +1,47 @@
+[
+  {
+    "pillarId": "github-trending-repos",
+    "input": { "topic": "5 GitHub Repos That Will Save You 10+ Hours This Week" },
+    "expected_output": {
+      "hashtags": ["#GitHub", "#DevTools", "#OpenSource", "#Programming", "#SoftwareEngineering"],
+      "seo_keywords": ["github repos", "developer tools", "open source projects", "programming productivity"],
+      "optimized_caption": "Discover 5 open-source GitHub repos that save developers 10+ hours a week."
+    }
+  },
+  {
+    "pillarId": "tech-battle-vs",
+    "input": { "topic": "PostgreSQL vs MongoDB: Which Database Belongs in Your 2026 Stack?" },
+    "expected_output": {
+      "hashtags": ["#Database", "#PostgreSQL", "#MongoDB", "#SystemArchitecture", "#Backend"],
+      "seo_keywords": ["postgresql vs mongodb", "database architecture", "sql vs nosql", "backend scaling"],
+      "optimized_caption": "PostgreSQL vs MongoDB: Full architectural trade-off breakdown for 2026 tech stacks."
+    }
+  },
+  {
+    "pillarId": "system-design-breakdown",
+    "input": { "topic": "How Figma Built a Multi-User Real-Time Canvas with C++ and WebAssembly" },
+    "expected_output": {
+      "hashtags": ["#SystemDesign", "#WebAssembly", "#SoftwareArchitecture", "#Figma", "#Engineering"],
+      "seo_keywords": ["system design", "figma architecture", "webassembly cpp", "realtime canvas"],
+      "optimized_caption": "System design deep dive into Figma browser rendering, C++ WebAssembly engines, and operational transformation."
+    }
+  },
+  {
+    "pillarId": "clean-code-cheatsheets",
+    "input": { "topic": "TypeScript Clean Code Rules: 5 Bad Habits Senior Devs Avoid" },
+    "expected_output": {
+      "hashtags": ["#TypeScript", "#CleanCode", "#CodeReview", "#WebDev", "#SoftwareEngineering"],
+      "seo_keywords": ["typescript clean code", "code review best practices", "typescript anti patterns", "type safety"],
+      "optimized_caption": "5 TypeScript clean code rules and bad habits to eliminate in code reviews."
+    }
+  },
+  {
+    "pillarId": "ai-tooling-agents",
+    "input": { "topic": "5 Game-Changing MCP Servers for AI Agents in 2026" },
+    "expected_output": {
+      "hashtags": ["#AIAgents", "#ModelContextProtocol", "#ClaudeCode", "#CursorAI", "#DevTools"],
+      "seo_keywords": ["mcp servers", "ai coding agents", "model context protocol", "cursor ai tools"],
+      "optimized_caption": "Top 5 Model Context Protocol (MCP) servers to supercharge Claude Code and Cursor AI agents."
+    }
+  }
+]

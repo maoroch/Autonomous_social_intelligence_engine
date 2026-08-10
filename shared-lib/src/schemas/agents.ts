@@ -63,6 +63,11 @@ export const WritingOutputSchema = z.object({
   text: z.string().min(1),
   hook: z.string().min(1),
   cta: z.string().min(1),
+  ru_post: z.object({
+    hook: z.string().optional(),
+    text: z.string().optional(),
+    hashtags: z.array(z.string()).optional(),
+  }).optional(),
 });
 export type WritingOutput = z.infer<typeof WritingOutputSchema>;
 

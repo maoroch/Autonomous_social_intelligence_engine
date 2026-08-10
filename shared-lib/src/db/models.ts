@@ -29,6 +29,32 @@ export interface PipelineRunDoc {
   failedReason?: string;
   seoImprovementsCount?: number;
   needsComplianceReview?: boolean;
+  adaptations?: {
+    telegram?: PlatformAdaptation;
+    threads?: PlatformAdaptation;
+  };
+}
+
+export interface PlatformAdaptation {
+  text: string;
+  hook?: string;
+  hashtags?: string[];
+  length: "short" | "long";
+  alignmentScore?: number;
+  evaluatedAt?: Date;
+}
+
+export interface GoldenEvaluationDoc {
+  _id?: ObjectId;
+  runId: string;
+  platform: "linkedin" | "telegram" | "threads";
+  alignmentScore: number; // 0..100
+  driftReport: {
+    rule: string;
+    passed: boolean;
+    details: string;
+  }[];
+  evaluatedAt: Date;
 }
 
 /** Результат каждой стадии хранится отдельным документом — удобно для аудита и Learning Agent в будущем. */
@@ -76,4 +102,17 @@ export interface FactChunkDoc {
   sourceLabel: string; // человекочитаемый источник, например "Официальный datasheet testo 400, стр. 2"
   content: string; // сам текст факта, короткий и самодостаточный
   createdAt: Date;
+}
+
+export interface DesignTemplateDoc {
+  _id?: ObjectId;
+  tenantId: string;
+  name: string;
+  type: "cover" | "card";
+  pillarId: string; // e.g. "github-trending-repos" | "pet-projects-showcase" | "tech-trends-insights" | "all"
+  htmlTemplate: string;
+  cssContent?: string;
+  isDefault?: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }

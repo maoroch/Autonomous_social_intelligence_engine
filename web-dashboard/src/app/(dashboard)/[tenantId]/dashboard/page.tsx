@@ -35,9 +35,14 @@ export default function DashboardPage() {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [targetPillarId, setTargetPillarId] = useState<string>("auto");
   const [pillars, setPillars] = useState<any[]>([
-    { id: "pet-projects-showcase", label: "🛠️ Подборка pet проектов для твоего github" },
-    { id: "github-trending-repos", label: "🐙 Подборка github репозитории" },
-    { id: "tech-trends-insights", label: "💡 Тренды и архитектура в Software Engineering" },
+    { id: "github-trending-repos", label: "🐙 Подборка GitHub репозиториев" },
+    { id: "pet-projects-showcase", label: "🛠️ Подборка Pet-проектов для GitHub" },
+    { id: "tech-trends-insights", label: "💡 Тренды и Архитектура" },
+    { id: "tech-battle-vs", label: "⚡ Сравнение технологий Vs" },
+    { id: "system-design-breakdown", label: "🏗️ Разбор архитектуры сервисов" },
+    { id: "clean-code-cheatsheets", label: "💡 Шпаргалки и Бест-практики" },
+    { id: "ai-tooling-agents", label: "🤖 AI Инструменты и Агенты" },
+    { id: "weekly-tech-digest", label: "📰 Еженедельный дайджест" },
   ]);
 
   // Filters & Status

@@ -74,6 +74,7 @@ export default async function TenantPortalLayout({
             <a href={base}>Дашборд</a>
             <a href={`${base}/runs`}>История прогонов</a>
             <a href={`${base}/profiles`}>Профили авторов</a>
+            <a href={`/${tenant.tenantId}/templates`}>🎨 Шаблоны Дизайна</a>
             <a href={`${base}/illustrations`}>Иллюстрации</a>
             <a href={`${base}/facts`}>База фактов</a>
             <LogoutButton tenantId={tenant.tenantId} />

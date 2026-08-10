@@ -1,0 +1,52 @@
+[
+  {
+    "pillarId": "github-trending-repos",
+    "input": { "topic": "5 GitHub Repos That Will Save You 10+ Hours This Week" },
+    "expected_output": {
+      "content_pillar_id": "github-trending-repos",
+      "format": "carousel",
+      "core_idea": "Showcase top 4 open-source repositories with clean dark-mode Puppeteer screenshots.",
+      "call_to_action": "Which tool are you installing first? Comment below 🚀"
+    }
+  },
+  {
+    "pillarId": "tech-battle-vs",
+    "input": { "topic": "PostgreSQL vs MongoDB: Which Database Belongs in Your 2026 Stack?" },
+    "expected_output": {
+      "content_pillar_id": "tech-battle-vs",
+      "format": "carousel",
+      "core_idea": "Side-by-side comparative table evaluating Performance, DX, ACID, and Schema Flexibility.",
+      "call_to_action": "What is your default database in 2026? Drop your vote ⬇️"
+    }
+  },
+  {
+    "pillarId": "system-design-breakdown",
+    "input": { "topic": "How Figma Built a Multi-User Real-Time Canvas with C++ and WebAssembly" },
+    "expected_output": {
+      "content_pillar_id": "system-design-breakdown",
+      "format": "carousel",
+      "core_idea": "Step-by-step breakdown of browser memory limits, C++ compilation to WebAssembly, and CRDT synchronization.",
+      "call_to_action": "Save this for your next System Design interview 📌"
+    }
+  },
+  {
+    "pillarId": "clean-code-cheatsheets",
+    "input": { "topic": "TypeScript Clean Code Rules: 5 Bad Habits Senior Devs Avoid" },
+    "expected_output": {
+      "content_pillar_id": "clean-code-cheatsheets",
+      "format": "carousel",
+      "core_idea": "Side-by-side ❌ Bad Code vs ✅ Good Code cards for clean TypeScript.",
+      "call_to_action": "Share this with your team before the next PR review 🔁"
+    }
+  },
+  {
+    "pillarId": "ai-tooling-agents",
+    "input": { "topic": "5 Game-Changing MCP Servers for AI Agents in 2026" },
+    "expected_output": {
+      "content_pillar_id": "ai-tooling-agents",
+      "format": "carousel",
+      "core_idea": "Highlight top Model Context Protocol servers with setup instructions for Cursor and Claude Code.",
+      "call_to_action": "Have you built a custom MCP server yet? Let me know!"
+    }
+  }
+]

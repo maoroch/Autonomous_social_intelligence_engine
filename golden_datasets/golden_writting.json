@@ -1,0 +1,47 @@
+[
+  {
+    "pillarId": "github-trending-repos",
+    "input": { "topic": "5 GitHub Repos That Will Save You 10+ Hours This Week" },
+    "expected_output": {
+      "hook": "Stop reinventing the wheel. These 4 open-source GitHub repositories will boost your workflow immediately.",
+      "text": "1. sqlfluff (https://github.com/sqlfluff/sqlfluff)\nModular SQL linter and auto-formatter that enforces clean syntax rules across multiple dialects to catch errors early in CI/CD pipelines.\n\n2. Coachlight.Avalonia (https://github.com/c3n9/Coachlight.Avalonia)\nOpen-source NuGet package for interactive UI tours in Avalonia applications.\n\n3. LimitsChecker (https://github.com/lapurryt/LimitsChecker)\nSystem tray indicator for tracking usage limits across developer tools.\n\n4. public-apis (https://github.com/public-apis/public-apis)\nComprehensive collection of free public APIs for development and testing.",
+      "cta": "Which repository are you trying first? Bookmark this post for later 📌"
+    }
+  },
+  {
+    "pillarId": "tech-battle-vs",
+    "input": { "topic": "PostgreSQL vs MongoDB: Which Database Belongs in Your 2026 Stack?" },
+    "expected_output": {
+      "hook": "PostgreSQL or MongoDB? Choosing the wrong database early can cost months of refactoring.",
+      "text": "Here is the architectural comparison between PostgreSQL and MongoDB for 2026 applications:\n\n1. Schema Flexibility\nPostgreSQL: Strict relational schema with JSONB support for hybrid queries.\nMongoDB: Dynamic BSON documents for rapidly evolving schemas.\n\n2. Performance & Scaling\nPostgreSQL: Exceptional ACID transactions, complex JOINs, and indexing.\nMongoDB: Native horizontal sharding and high write throughput.\n\n3. Verdict\nUse PostgreSQL for structured relational domain logic; use MongoDB for unstructured logs, analytics, and event streams.",
+      "cta": "What is your primary database choice in 2026? Vote in the comments ⬇️"
+    }
+  },
+  {
+    "pillarId": "system-design-breakdown",
+    "input": { "topic": "How Figma Built a Multi-User Real-Time Canvas with C++ and WebAssembly" },
+    "expected_output": {
+      "hook": "How does Figma handle 60 FPS real-time collaboration inside a web browser?",
+      "text": "Building a browser-based graphic editor requires desktop-class performance. Here is Figma's engineering breakdown:\n\n1. C++ Compiled to WebAssembly\nFigma wrote their core rendering engine in C++ and compiled it to Wasm for direct 2D WebGL execution.\n\n2. Operational Transformation (OT)\nCustom data structures sync canvas changes between clients without lock contention.\n\n3. Memory Optimization\nCustom C++ memory allocators bypass JavaScript Garbage Collection pauses.",
+      "cta": "Save this System Design breakdown for your next architectural review 📌"
+    }
+  },
+  {
+    "pillarId": "clean-code-cheatsheets",
+    "input": { "topic": "TypeScript Clean Code Rules: 5 Bad Habits Senior Devs Avoid" },
+    "expected_output": {
+      "hook": "Writing TypeScript is easy, but writing clean, type-safe TypeScript requires strict discipline.",
+      "text": "Rule 1: Never use 'as any'\n❌ const data = res.json() as any;\n✅ const data = UnknownSchema.parse(await res.json());\n\nRule 2: Prefer Discriminated Unions over optional properties\n❌ type State = { loading?: boolean; error?: string; data?: User };\n✅ type State = { status: 'loading' } | { status: 'success'; data: User } | { status: 'error'; error: string };\n\nRule 3: Always handle Promise rejections explicitly.",
+      "cta": "Which rule do you enforce most strictly in Code Reviews? 💬"
+    }
+  },
+  {
+    "pillarId": "ai-tooling-agents",
+    "input": { "topic": "5 Game-Changing MCP Servers for AI Agents in 2026" },
+    "expected_output": {
+      "hook": "AI coding assistants are only as good as the context you feed them. Enter Model Context Protocol (MCP).",
+      "text": "1. Nocturne Memory MCP\nRollbackable visual memory server for LLM agents, keeping long-term graph memory across sessions.\n\n2. Postgres MCP\nEnables AI agents to safely inspect database schemas and generate validated SQL queries.\n\n3. Puppeteer Browser MCP\nAllows Claude Code and Cursor agents to navigate, test, and extract live web UI state.",
+      "cta": "Are you using MCP servers in your daily coding workflow? Share below ⬇️"
+    }
+  }
+]

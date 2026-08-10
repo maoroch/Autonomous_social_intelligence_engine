@@ -23,9 +23,11 @@ const MONGO_URI = process.env.MONGO_URI ?? "mongodb://localhost:27017";
 const MONGO_DB_NAME = process.env.MONGO_DB_NAME ?? "linkedin_pipeline";
 
 const openrouterApiKey = process.env.OPENROUTER_API_KEY ?? "";
+const geminiApiKey = process.env.GEMINI_API_KEY ?? "";
 const groqApiKey = process.env.GROQ_API_KEY ?? "";
 
 const aiClient = new AiClient({
+  geminiApiKey,
   openrouterApiKey,
   groqApiKey,
   redisUrl: REDIS_URL,
@@ -130,8 +132,15 @@ async function processPositioningJob(job: AgentJob): Promise<unknown> {
 
   let fewShotText = "";
   try {
+    const targetPillarId = (job.payload as any)?.targetPillarId || (run as any)?.targetPillarId || "";
     const col = getCollection(Collections.GOLDEN_POSITIONING);
-    const examples = await col.find({}).limit(2).toArray();
+    const filter = targetPillarId
+      ? { $or: [{ pillarId: targetPillarId }, { pillarId: "all" }, { pillarId: { $exists: false } }] }
+      : {};
+    let examples = await col.find(filter).limit(2).toArray();
+    if (examples.length === 0) {
+      examples = await col.find({}).limit(2).toArray();
+    }
     if (examples.length > 0) {
       fewShotText = `\nSTYLE EXAMPLES (FEW-SHOT EXAMPLES):
 Here are examples of how to evaluate topic positioning against an author profile:

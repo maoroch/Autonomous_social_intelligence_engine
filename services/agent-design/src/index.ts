@@ -12,7 +12,7 @@ import {
   type IndustryProfile,
 } from "@pipeline/shared/schemas";
 import { AiClient } from "@pipeline/shared/ai";
-import { connectMongo, getCollection, Collections, getDb, type IndustryProfileDoc, type PipelineRunDoc } from "@pipeline/shared/db";
+import { connectMongo, getCollection, Collections, getDb, type IndustryProfileDoc, type PipelineRunDoc, type DesignTemplateDoc } from "@pipeline/shared/db";
 import { GridFSBucket } from "mongodb";
 import puppeteer from "puppeteer-core";
 import * as fs from "fs";
@@ -94,6 +94,48 @@ function resolveStyleConfigs(industryProfile: IndustryProfile | undefined): Styl
   ];
 }
 
+const GITHUB_OCTOCAT_SVG = `<svg viewBox="0 0 24 24" width="220" height="220" fill="#ffffff" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 12px 32px rgba(255,255,255,0.18));"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>`;
+
+const repoScreenshotCache = new Map<string, string>();
+
+async function captureGithubRepoScreenshot(githubUrl: string, browser: any): Promise<string> {
+  if (!githubUrl || githubUrl === "github.com/trending") return "";
+  if (repoScreenshotCache.has(githubUrl)) {
+    return repoScreenshotCache.get(githubUrl)!;
+  }
+  const fullUrl = githubUrl.startsWith("http") ? githubUrl : `https://${githubUrl}`;
+  let page;
+  try {
+    page = await browser.newPage();
+    await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "dark" }]);
+    await page.setViewport({ width: 1200, height: 750, deviceScaleFactor: 1.5 });
+    await page.goto(fullUrl, { waitUntil: "domcontentloaded", timeout: 8000 });
+    
+    await page.evaluate(`(() => {
+      window.scrollTo(0, 0);
+      const header = document.querySelector("header");
+      if (header) header.style.display = "none";
+      const notice = document.querySelector(".js-notice");
+      if (notice) notice.style.display = "none";
+      const banner = document.querySelector(".AppHeader");
+      if (banner) banner.style.display = "none";
+    })()`);
+
+    const buf = await page.screenshot({
+      type: "png",
+      clip: { x: 0, y: 0, width: 1200, height: 600 },
+    });
+    await page.close();
+    const dataUrl = `data:image/png;base64,${buf.toString("base64")}`;
+    repoScreenshotCache.set(githubUrl, dataUrl);
+    return dataUrl;
+  } catch (err) {
+    if (page) await page.close().catch(() => {});
+    logger.warn({ err, url: fullUrl }, "Failed to capture GitHub repo screenshot");
+    return "";
+  }
+}
+
 function parseCleanJson(text: string): any {
   let cleaned = text.trim();
   if (cleaned.startsWith("```json")) {
@@ -126,7 +168,17 @@ function parseCleanJson(text: string): any {
     }
   }
 
-  return JSON.parse(result);
+  try {
+    return JSON.parse(result);
+  } catch (err) {
+    const firstBrace = result.indexOf("{");
+    const lastBrace = result.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      const extracted = result.substring(firstBrace, lastBrace + 1);
+      return JSON.parse(extracted);
+    }
+    throw err;
+  }
 }
 
 function sanitizeLlmOutput(rawObj: any): any {
@@ -182,6 +234,10 @@ async function processDesignJob(job: AgentJob): Promise<unknown> {
   const strategyResultDoc = await stageResultsCol.findOne({ runId: job.runId, stage: "strategy" });
   const strategy = (strategyResultDoc?.result as Record<string, unknown>) ?? {};
 
+  const targetPillar = (job.payload as any)?.targetPillarId || (run as any)?.targetPillarId || (strategy as any)?.content_pillar_id || run?.contentPillarId || "";
+  const topicTitle = (topic?.title as string) || (run?.topic?.title as string) || "";
+  const isGithubShowcase = targetPillar === "github-trending-repos" || targetPillar === "pet-projects-showcase" || /github/i.test(topicTitle);
+
   // 3. Получаем текст поста из payload (от writing) или из БД
   const hook = typeof job.payload?.hook === "string" ? job.payload.hook : "";
   const text = typeof job.payload?.text === "string" ? job.payload.text : "";
@@ -197,7 +253,28 @@ async function processDesignJob(job: AgentJob): Promise<unknown> {
     }
   }
 
-  // 4. Проверяем, есть ли уже в БД результаты стадии design (например, после ручного редактирования)
+  // Загружаем тренды из БД для динамического сопоставления ссылок репозиториев
+  const trendResultDoc = await stageResultsCol.findOne({ runId: job.runId, stage: "trend" });
+  const trendItems = (trendResultDoc?.result as any)?.items || [];
+  const trendRepoUrls: string[] = [];
+  for (const item of trendItems) {
+    if (Array.isArray(item.sources)) {
+      for (const s of item.sources) {
+        const m = typeof s === "string" ? s.match(/(?:https?:\/\/)?github\.com\/([a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+)/i) : null;
+        if (m && m[1] && !m[1].endsWith("/trending")) {
+          trendRepoUrls.push(`github.com/${m[1].replace(/\/$/, "")}`);
+        }
+      }
+    }
+  }
+
+  // Загружаем кастомные шаблоны дизайна из БД для текущего арендатора
+  const tenantId = run?.tenantId || (job.payload as any)?.tenantId || "software-development-default";
+  const customTemplatesCol = getCollection<DesignTemplateDoc>(Collections.DESIGN_TEMPLATES);
+  const customTemplates = await customTemplatesCol.find({ tenantId }).toArray();
+
+  const customCover = customTemplates.find(t => t.type === "cover" && (t.pillarId === targetPillar || t.pillarId === "all"));
+  const customCard = customTemplates.find(t => t.type === "card" && (t.pillarId === targetPillar || t.pillarId === "all"));
   const existingDesignDoc = await stageResultsCol.findOne({ runId: job.runId, stage: "design" });
   let validated: any;
 
@@ -206,19 +283,61 @@ async function processDesignJob(job: AgentJob): Promise<unknown> {
     validated = existingDesignDoc.result;
   } else {
     // 4. Формируем промпт к LLM
-    const systemPrompt = `You are a creative designer specializing in visual LinkedIn carousels for tech posts.
+    let systemPrompt = "";
+    if (isGithubShowcase) {
+      systemPrompt = `You are a creative designer specializing in GitHub Repo Collection carousels for tech posts.
+Your task is to design a multi-card slide deck for a GitHub Repos post.
+
+STRICT DESIGN RULES FOR GITHUB REPOS:
+1. Template Name: MUST be "cover-8" or "cover-9".
+2. Card Count: 4 to 6 slides.
+3. Slide 1 (Cover):
+   - "badge": "GitHub Trending"
+   - "title": MUST be a high-converting headline (e.g., "5 GitHub Repos That Will Save You 10+ Hours This Week", "7 Production-Ready Repos Senior Engineers Keep Quiet About", or "5 Underrated GitHub Repos You'll Wish You Found Sooner").
+   - "bullets": ["Stop reinventing the wheel. Bookmark these today 📌"] (STRICTLY MAXIMUM 3 VISUAL LINES / under 90 characters).
+4. Slides 2..N (Repo Cards):
+   - "badge": Short category tag (e.g., "Linter", "AI Tool", "Database").
+   - "title": MUST be strictly the Repository Name ONLY (e.g. "sqlfluff", "airllm", "bonsai").
+   - "bullets": MUST be a rich 2-3 sentence paragraph (45-60 words, ~260-320 characters, EXACTLY 4 TO 5 VISUAL LINES). Describe: What it is + Core features & architecture + Real developer productivity value.
+   - Do NOT write multi-paragraph text blocks or generic bullet lists.
+
+You must return a single, valid JSON object:
+{
+  "template_type": "html",
+  "template_name": "cover-8",
+  "card_count": 5,
+  "accent_color": "#58a6ff",
+  "render_data": {
+    "slide_1": {
+      "badge": "GitHub Trending",
+      "title": "5 GitHub Repos That Will Save You 10+ Hours This Week",
+      "bullets": ["Stop reinventing the wheel. Bookmark these today 📌"],
+      "footer": "@username"
+    },
+    "slide_2": {
+      "badge": "SQL Linter",
+      "title": "sqlfluff",
+      "bullets": ["SQLFluff is a modular SQL linter and auto-formatter that enforces clean syntax rules across multiple dialects to catch errors early in CI/CD."],
+      "footer": "@username"
+    }
+  }
+}
+
+Return ONLY valid raw JSON. Do NOT include markdown code blocks or conversational text.`;
+    } else {
+      systemPrompt = `You are a creative designer specializing in visual LinkedIn carousels for tech posts.
 Your task is to design the structure of a multi-card slide deck (carousel) representing the key takeaways of a LinkedIn post.
 
 Design Rules:
 1. Card Count: Select a suitable number of cards/slides (between 3 and 7 cards).
 2. Accent Color: Choose a premium hex color code (e.g., "#0066cc" for professional/tech, "#10b981" for clean/coding, "#8b5cf6" for innovative/AI, etc.).
 3. Template Type: Output "html".
-4. Template Name: Choose one of: ${styleConfigs.map((s) => `"${s.key}"`).join(", ")}.${styleConfigs === SOFTWARE_DEV_STYLES ? ' "cover-1" is a clean white layout with grid lines and a green light badge (great for checklist, comparisons, or structured tutorials). "cover-2" is a premium dark theme with a purple pill/accent (great for opinionated, mistake-focused, or story posts).' : ""}
-5. Render Data: Generate a "render_data" JSON object. It must map slide keys (e.g., "slide_1", "slide_2", etc.) to their respective slide details:
-   - "badge": A short 1-2 word tag for the slide header (e.g. "The fix", "Mistake", "Setup", etc.).
-   - "title": A short, punchy slide title.
-   - "bullets": An array of 1 to 3 concise bullet points or short sentences for the slide body.
-   - "footer": A slide footer text (e.g. "@username").
+4. Template Name: Choose one of: ${styleConfigs.map((s) => `"${s.key}"`).join(", ")}.${styleConfigs === SOFTWARE_DEV_STYLES ? ' "cover-1" is a clean white layout. "cover-2" is a dark theme. "cover-8" and "cover-9" are dedicated dark-mode layouts for GitHub Repos.' : ""}
+5. Render Data: Generate a "render_data" JSON object mapping slide keys ("slide_1", "slide_2", etc.):
+   - "badge": Short tag.
+   - "title": Slide title.
+   - "bullets": Array of concise text points.
+   - "footer": Slide footer text ("@username").
 
 You must return a single, valid JSON object:
 {
@@ -243,6 +362,7 @@ You must return a single, valid JSON object:
 }
 
 Return ONLY valid raw JSON. Do NOT include markdown code blocks or conversational text.`;
+    }
 
     const userPrompt = `Here is the LinkedIn post details to design a carousel for:
 
@@ -278,10 +398,12 @@ Please generate the carousel slide deck design structure in JSON format.`;
 
     const sanitized = sanitizeLlmOutput(parsedJson);
 
-    if (run?.contentPillarId === "github-trending-repos") {
-      sanitized.template_name = "cover-8";
-    } else if (run?.contentPillarId === "pet-projects-showcase") {
-      sanitized.template_name = "cover-9";
+    if (isGithubShowcase) {
+      if (targetPillar === "pet-projects-showcase") {
+        sanitized.template_name = "cover-9";
+      } else {
+        sanitized.template_name = "cover-8";
+      }
     }
 
     // Валидируем финальный результат Zod схемой
@@ -289,6 +411,8 @@ Please generate the carousel slide deck design structure in JSON format.`;
   }
 
   const slides = Object.values(validated.render_data as Record<string, any>);
+
+  let sharedBrowser: any = null;
 
   // Helper to find Chrome path
   function getChromePath(): string {
@@ -305,6 +429,27 @@ Please generate the carousel slide deck design structure in JSON format.`;
       }
     }
     return "";
+  }
+
+  async function getSharedBrowser(): Promise<any> {
+    if (sharedBrowser && sharedBrowser.isConnected()) {
+      return sharedBrowser;
+    }
+    const chromePath = getChromePath();
+    if (!chromePath) {
+      throw new Error("Could not find Google Chrome or Chromium executable. Please verify installation.");
+    }
+    logger.info({ chromePath }, "Launching reusable Puppeteer Browser instance...");
+    sharedBrowser = await puppeteer.launch({
+      executablePath: chromePath,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--headless",
+      ],
+    });
+    return sharedBrowser;
   }
 
   // Helper to escape HTML strings
@@ -490,20 +635,35 @@ Please generate the carousel slide deck design structure in JSON format.`;
       return "none";
     }
 
+    const seenDeckRepos = new Set<string>();
+
     for (let index = 0; index < slidesList.length; index++) {
       const slide = slidesList[index];
       const isCover = index === 0;
 
-      // Cover uses coverTemplate, other slides use cardTemplate
-      const templateName = isCover ? style.coverTemplate : style.cardTemplate;
-      const templatePath = path.resolve(__dirname, `../template/${templateName}.html`);
-      if (!fs.existsSync(templatePath)) {
-        throw new Error(`Template not found: ${templatePath}`);
+      let html = "";
+      if (isCover && customCover) {
+        html = customCover.htmlTemplate;
+      } else if (!isCover && customCard) {
+        html = customCard.htmlTemplate;
+      } else {
+        let templateName = isCover ? style.coverTemplate : style.cardTemplate;
+        if (targetPillar) {
+          const pillarTemplateName = isCover ? `cover-${targetPillar}` : `card-${targetPillar}`;
+          const pillarTemplatePath = path.resolve(__dirname, `../template/${pillarTemplateName}.html`);
+          if (fs.existsSync(pillarTemplatePath)) {
+            templateName = pillarTemplateName;
+          }
+        }
+        const templatePath = path.resolve(__dirname, `../template/${templateName}.html`);
+        if (!fs.existsSync(templatePath)) {
+          throw new Error(`Template not found: ${templatePath}`);
+        }
+        html = fs.readFileSync(templatePath, "utf8");
       }
-      let html = fs.readFileSync(templatePath, "utf8");
 
       const badgeText = escapeHtml(slide.badge || (isCover ? style.defaultCoverBadge : style.defaultCardBadge));
-      const titleText = escapeHtml(slide.title || "");
+      let titleText = escapeHtml(slide.title || "");
       let footerLeftVal = slide.footer || customUsername;
       if (footerLeftVal === "@username" || footerLeftVal === "@maoroch") {
         footerLeftVal = customUsername;
@@ -513,16 +673,21 @@ Please generate the carousel slide deck design structure in JSON format.`;
       const rawSlideBulletsText = slide.bullets ? (slide.bullets as string[]).join(" ") : "";
 
       let bodyHtml = "";
-      if (slide.bullets && slide.bullets.length > 0) {
-        const cleanBullets = (slide.bullets as string[]).filter(b => {
-          const trimmed = b.trim();
-          if (/^(?:github|url|link|repo|repository):\s*https?:\/\//i.test(trimmed)) return false;
-          if (/^https?:\/\/github\.com/i.test(trimmed)) return false;
-          return true;
-        });
-        bodyHtml = cleanBullets
-          .map(b => `→ ${escapeHtml(b)}`)
-          .join("<br/>");
+      if (slide.bullets && Array.isArray(slide.bullets)) {
+        const cleanBullets = slide.bullets.filter((b: string) => typeof b === "string" && b.trim().length > 0);
+        
+        const filterRegex = /^(?:github|url|link|repo|repository):\s*https?:\/\//i;
+        const filterGithub = /^https?:\/\/github\.com/i;
+        
+        const filtered = cleanBullets.filter((b: string) => !filterRegex.test(b.trim()) && !filterGithub.test(b.trim()));
+
+        if (style.key === "cover-8" || style.key === "cover-9") {
+          bodyHtml = filtered.map((b: string) => escapeHtml(b)).join("<br/><br/>");
+        } else {
+          bodyHtml = filtered
+            .map((b: string) => `→ ${escapeHtml(b)}`)
+            .join("<br/>");
+        }
       }
 
       const allRepoUrls = Array.from(postTextCombined.matchAll(/(?:https?:\/\/)?github\.com\/([a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+)/gi))
@@ -535,12 +700,31 @@ Please generate the carousel slide deck design structure in JSON format.`;
       let githubUrl = "";
       if (!isCover) {
         const cardRepoIdx = index - 1;
-        if (slideRepoMatch && slideRepoMatch[1]) {
+        const rawTitleSlug = (slide.title || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+
+        if (slideRepoMatch && slideRepoMatch[1] && slideRepoMatch[1] !== "trending") {
           githubUrl = `github.com/${slideRepoMatch[1].replace(/\/$/, "")}`;
-        } else if (allRepoUrls[cardRepoIdx]) {
-          githubUrl = allRepoUrls[cardRepoIdx] || "";
-        } else if (allRepoUrls[0]) {
-          githubUrl = allRepoUrls[0] || "";
+        } else {
+          const matchInText = allRepoUrls.find(u => u.toLowerCase().includes(rawTitleSlug) && !u.endsWith("/trending")) ||
+                              trendRepoUrls.find(u => u.toLowerCase().includes(rawTitleSlug) && !u.endsWith("/trending"));
+          if (matchInText && !seenDeckRepos.has(matchInText)) {
+            githubUrl = matchInText;
+          } else if (trendRepoUrls[cardRepoIdx] && !seenDeckRepos.has(trendRepoUrls[cardRepoIdx])) {
+            githubUrl = trendRepoUrls[cardRepoIdx];
+          } else if (allRepoUrls[cardRepoIdx] && !allRepoUrls[cardRepoIdx].endsWith("/trending") && !seenDeckRepos.has(allRepoUrls[cardRepoIdx])) {
+            githubUrl = allRepoUrls[cardRepoIdx];
+          } else if (allRepoUrls[0]) {
+            githubUrl = allRepoUrls[0];
+          } else if (rawTitleSlug && rawTitleSlug.length > 2) {
+            githubUrl = `github.com/${rawTitleSlug}/${rawTitleSlug}`;
+          }
+        }
+      }
+
+      if (!isCover && githubUrl && (style.key === "cover-8" || style.key === "cover-9")) {
+        const repoSlug = githubUrl.split("/").pop() || "";
+        if (repoSlug) {
+          titleText = escapeHtml(repoSlug);
         }
       }
 
@@ -555,22 +739,37 @@ Please generate the carousel slide deck design structure in JSON format.`;
         }
       }
 
-      // Dynamic illustration match — раздельная логика для tech (SVG) и нишевых вертикалей (PNG)
+      // Dynamic illustration match — Octocat SVG for cover, Puppeteer Repo Screenshots for github cards, standard SVG/PNG for rest
       let svgContent = "";
-      if (isNicheStyle) {
-        const illName = getPngIllustrationName(slide, usedIllustrations);
-        slide.illustration = illName;
-        if (illName && illName !== "none") {
-          const base64Content = pngIllustrationsMap.get(illName);
-          if (base64Content) {
-            svgContent = `<img src="data:image/png;base64,${base64Content}" alt="${escapeHtml(illName)}" style="height:100%;width:auto;object-fit:contain;" />`;
-          }
+      if (isCover && (style.key === "cover-8" || style.key === "cover-9")) {
+        svgContent = GITHUB_OCTOCAT_SVG;
+      } else if (!isCover && (style.key === "cover-8" || style.key === "cover-9")) {
+        const cardRepoIdx = index - 1;
+        const urlToCapture = githubUrl || allRepoUrls[cardRepoIdx] || allRepoUrls[0] || "github.com/trending";
+        const shotUrl = await captureGithubRepoScreenshot(urlToCapture, browser);
+        if (shotUrl) {
+          svgContent = `<div class="browser-frame"><div class="browser-header"><div class="browser-dots"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div><div class="browser-url-text">${escapeHtml(urlToCapture)}</div></div><div class="browser-body"><img src="${shotUrl}" alt="${escapeHtml(urlToCapture)}" /></div></div>`;
+        } else {
+          svgContent = `<div class="browser-frame"><div class="browser-header"><div class="browser-dots"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div><div class="browser-url-text">${escapeHtml(urlToCapture)}</div></div><div class="browser-body"><div style="background:#0d1117;color:#8b949e;padding:24px;font-family:sans-serif;font-size:20px;height:100%;display:flex;align-items:center;justify-content:center;">GitHub Repository (${escapeHtml(titleText)})</div></div></div>`;
         }
-      } else {
-        const illName = getIllustrationName(slide, usedIllustrations);
-        slide.illustration = illName; // Save matched illustration name back to the slide metadata
-        if (illName && illName !== "none") {
-          svgContent = illustrationsMap.get(illName) || "";
+      }
+
+      if (!svgContent) {
+        if (isNicheStyle) {
+          const illName = getPngIllustrationName(slide, usedIllustrations);
+          slide.illustration = illName;
+          if (illName && illName !== "none") {
+            const base64Content = pngIllustrationsMap.get(illName);
+            if (base64Content) {
+              svgContent = `<img src="data:image/png;base64,${base64Content}" alt="${escapeHtml(illName)}" style="height:100%;width:auto;object-fit:contain;" />`;
+            }
+          }
+        } else {
+          const illName = getIllustrationName(slide, usedIllustrations);
+          slide.illustration = illName; // Save matched illustration name back to the slide metadata
+          if (illName && illName !== "none") {
+            svgContent = illustrationsMap.get(illName) || "";
+          }
         }
       }
 
@@ -699,58 +898,50 @@ Please generate the carousel slide deck design structure in JSON format.`;
     return { previewId, zipId };
   }
 
-  // Launch Puppeteer instance
-  const chromePath = getChromePath();
-  if (!chromePath) {
-    throw new Error("Could not find Google Chrome or Chromium executable. Please verify installation.");
-  }
-
-  logger.info({ chromePath }, "Launching Puppeteer instance for dual layout rendering...");
-  const browser = await puppeteer.launch({
-    executablePath: chromePath,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--headless",
-    ],
-  });
-
+  // Get shared reusable Puppeteer instance
+  const browser = await getSharedBrowser();
   const db = getDb();
   let result: any;
 
-  try {
-    // Рендерим все сконфигурированные для этого tenant стили (1 для нишевых вертикалей, 2 для software-development).
-    const renderedStyles: Array<{ key: string; previewId: string; zipId: string }> = [];
-    for (const style of styleConfigs) {
-      const rendered = await renderStyle(browser, style, slides, job.runId, db);
-      renderedStyles.push({ key: style.key, ...rendered });
+  let activeStyleConfigs = styleConfigs;
+  if (isGithubShowcase) {
+    activeStyleConfigs = styleConfigs.filter(s => s.key === "cover-8" || s.key === "cover-9");
+    if (activeStyleConfigs.length === 0) {
+      activeStyleConfigs = [
+        { key: "cover-8", coverTemplate: "cover-8", cardTemplate: "card-8", defaultCoverBadge: "GitHub Trending", defaultCardBadge: "Open Source" },
+        { key: "cover-9", coverTemplate: "cover-9", cardTemplate: "card-9", defaultCoverBadge: "Pet Project", defaultCardBadge: "Portfolio" },
+      ];
     }
-
-    const requestedKey = typeof validated.template_name === "string" ? validated.template_name : undefined;
-    const defaultStyle = renderedStyles.find((s) => s.key === requestedKey) ?? renderedStyles[0];
-    if (!defaultStyle) {
-      throw new Error("No carousel styles were rendered — styleConfigs was empty");
-    }
-
-    const rendered_styles: Record<string, { previewId: string; zipId: string }> = {};
-    for (const s of renderedStyles) {
-      rendered_styles[s.key] = { previewId: s.previewId, zipId: s.zipId };
-    }
-
-    result = {
-      ...validated,
-      template_name: defaultStyle.key,
-      rendered_styles,
-      preview_cover_1_id: renderedStyles[0]?.previewId,
-      preview_cover_2_id: renderedStyles[1]?.previewId,
-      zip_cover_1_id: renderedStyles[0]?.zipId,
-      zip_cover_2_id: renderedStyles[1]?.zipId,
-      imageId: defaultStyle.zipId, // Default ZIP ID
-    };
-  } finally {
-    await browser.close();
   }
+
+  // Рендерим все сконфигурированные для этого tenant стили (1 для нишевых вертикалей, 2 для software-development).
+  const renderedStyles: Array<{ key: string; previewId: string; zipId: string }> = [];
+  for (const style of activeStyleConfigs) {
+    const rendered = await renderStyle(browser, style, slides, job.runId, db);
+    renderedStyles.push({ key: style.key, ...rendered });
+  }
+
+  const requestedKey = typeof validated.template_name === "string" ? validated.template_name : undefined;
+  const defaultStyle = renderedStyles.find((s) => s.key === requestedKey) ?? renderedStyles[0];
+  if (!defaultStyle) {
+    throw new Error("No carousel styles were rendered — styleConfigs was empty");
+  }
+
+  const rendered_styles: Record<string, { previewId: string; zipId: string }> = {};
+  for (const s of renderedStyles) {
+    rendered_styles[s.key] = { previewId: s.previewId, zipId: s.zipId };
+  }
+
+  result = {
+    ...validated,
+    template_name: defaultStyle.key,
+    rendered_styles,
+    preview_cover_1_id: renderedStyles[0]?.previewId,
+    preview_cover_2_id: renderedStyles[1]?.previewId,
+    zip_cover_1_id: renderedStyles[0]?.zipId,
+    zip_cover_2_id: renderedStyles[1]?.zipId,
+    imageId: defaultStyle.zipId, // Default ZIP ID
+  };
 
   logger.info({ runId: job.runId, cardCount: validated.card_count, imageId: result.imageId }, "Carousel ZIP packages and Cover previews generated successfully");
   return result;
@@ -762,6 +953,51 @@ const worker = createWorker<AgentJob>(
     const parsed = AgentJobSchema.parse(job.data);
     try {
       const result = await processDesignJob(parsed);
+      const designResult = result as { hook?: string; cta?: string; imageId?: string; preview_cover_1_id?: string };
+
+      // ─── Golden Dataset Validation (agent-evaluator) ───────────────────
+      const EVALUATOR_URL = process.env.EVALUATOR_URL ?? "http://agent-evaluator:4008";
+      try {
+        // Evaluate the carousel hook/title text generated by design agent
+        const evalText = [designResult.hook, designResult.cta].filter(Boolean).join("\n\n");
+        if (evalText.trim().length > 0) {
+          const evalRes = await fetch(`${EVALUATOR_URL}/evaluate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              runId: parsed.runId,
+              platform: "linkedin",
+              text: evalText,
+            }),
+          });
+          if (evalRes.ok) {
+            const evalData = await evalRes.json() as {
+              alignmentScore: number;
+              driftReport: { rule: string; passed: boolean; details: string }[];
+              isGoldenMatch: boolean;
+            };
+            await getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS).updateOne(
+              { runId: parsed.runId },
+              {
+                $set: {
+                  "evaluation.design": {
+                    alignmentScore: evalData.alignmentScore,
+                    driftReport: evalData.driftReport,
+                    isGoldenMatch: evalData.isGoldenMatch,
+                    evaluatedAt: new Date(),
+                  },
+                  updatedAt: new Date(),
+                },
+              },
+            );
+            logger.info({ runId: parsed.runId, alignmentScore: evalData.alignmentScore }, "Design evaluation complete");
+          }
+        }
+      } catch (evalErr) {
+        logger.warn({ evalErr, runId: parsed.runId }, "Evaluator call failed (non-blocking)");
+      }
+      // ───────────────────────────────────────────────────────────────────
+
       await eventsQueue.add(
         "event",
         PipelineEventSchema.parse({

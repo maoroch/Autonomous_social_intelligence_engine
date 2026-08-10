@@ -1,0 +1,47 @@
+[
+  {
+    "pillarId": "github-trending-repos",
+    "input": { "topic": "5 GitHub Repos That Will Save You 10+ Hours This Week" },
+    "expected_output": {
+      "hook": "📌 4 полезных open-source инструмента для разработчиков",
+      "text": "📌 4 полезных open-source инструмента для разработчиков:\n\n- sqlfluff: автоматическое форматирование и линтинг SQL кода в CI/CD.\n- Coachlight.Avalonia: создание интерактивных онбордингов в UI.\n- LimitsChecker: контроль лимитов внешних API в системном трее.\n- public-apis: каталогизация бесплатных публичных API.\n\nКакими инструментами вы уже пользуетесь в своих проектах?\n\n#github #devtools #programming",
+      "hashtags": ["#github", "#devtools", "#programming"]
+    }
+  },
+  {
+    "pillarId": "tech-battle-vs",
+    "input": { "topic": "PostgreSQL vs MongoDB: Which Database Belongs in Your 2026 Stack?" },
+    "expected_output": {
+      "hook": "⚡ PostgreSQL против MongoDB: выбираем базу данных для проекта 2026 года",
+      "text": "⚡ PostgreSQL против MongoDB: выбираем базу данных для проекта 2026 года.\n\nPostgreSQL идеален для реляционных связей и транзакционной надежности ACID, включая богатый синтаксис JSONB.\nMongoDB выигрывает в сценариях с динамическими схемами документов и высоким потоком параллельной записи.\n\nКакую СУБД вы выбираете по умолчанию для новых микросервисов?\n\n#database #backend #architecture",
+      "hashtags": ["#database", "#backend", "#architecture"]
+    }
+  },
+  {
+    "pillarId": "system-design-breakdown",
+    "input": { "topic": "How Figma Built a Multi-User Real-Time Canvas with C++ and WebAssembly" },
+    "expected_output": {
+      "hook": "🏗️ Как Figma добилась производительности 60 FPS в браузере",
+      "text": "🏗️ Как Figma добилась производительности 60 FPS в браузере.\n\nКлючевые инженерные решения:\n1. Ядро рендеринга написано на C++ и скомпилировано в WebAssembly.\n2. Операционные преобразования для мгновенной синхронизации нескольких пользователей.\n3. Собственные аллокаторы памяти для устранения пауз Garbage Collector.\n\n#systemdesign #webassembly #cpp",
+      "hashtags": ["#systemdesign", "#webassembly", "#cpp"]
+    }
+  },
+  {
+    "pillarId": "clean-code-cheatsheets",
+    "input": { "topic": "TypeScript Clean Code Rules: 5 Bad Habits Senior Devs Avoid" },
+    "expected_output": {
+      "hook": "💡 Три базовых правила чистой типизации в TypeScript",
+      "text": "💡 Три базовых правила чистой типизации в TypeScript:\n\n1. Отказ от any в пользу валидаторов схем (Zod/Valibot).\n2. Использование размеченных объединений (Discriminated Unions) вместо необязательных флагов.\n3. Явная обработка ошибок в асинхронных вызовах.\n\nКакое правило из этого списка чаще всего нарушается на проведении CR?\n\n#typescript #cleancode #webdev",
+      "hashtags": ["#typescript", "#cleancode", "#webdev"]
+    }
+  },
+  {
+    "pillarId": "ai-tooling-agents",
+    "input": { "topic": "5 Game-Changing MCP Servers for AI Agents in 2026" },
+    "expected_output": {
+      "hook": "🤖 Топ MCP серверов для автономных ИИ-агентов",
+      "text": "🤖 Топ MCP серверов для автономных ИИ-агентов:\n\n- Nocturne Memory: ведение графа памяти ИИ-агента.\n- Postgres MCP: инспекция схемы БД и генерация валидного SQL.\n- Puppeteer MCP: автоматизация веб-тестирования интерфейсов.\n\nИспользуете ли вы протокол MCP в Cursor или Claude Code?\n\n#aiagents #mcp #devtools",
+      "hashtags": ["#aiagents", "#mcp", "#devtools"]
+    }
+  }
+]

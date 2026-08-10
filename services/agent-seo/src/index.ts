@@ -80,8 +80,15 @@ async function processSeoJob(job: AgentJob): Promise<unknown> {
 
   let fewShotText = "";
   try {
+    const targetPillarId = (job.payload as any)?.targetPillarId || (job.payload as any)?.contentPillarId || "";
     const col = getCollection(Collections.GOLDEN_SEO);
-    const examples = await col.find({}).limit(2).toArray();
+    const filter = targetPillarId
+      ? { $or: [{ pillarId: targetPillarId }, { pillarId: "all" }, { pillarId: { $exists: false } }] }
+      : {};
+    let examples = await col.find(filter).limit(2).toArray();
+    if (examples.length === 0) {
+      examples = await col.find({}).limit(2).toArray();
+    }
     if (examples.length > 0) {
       fewShotText = `\nSTYLE EXAMPLES (FEW-SHOT EXAMPLES):
 Here are examples of how to audit a post and suggest specific, actionable recommendations:

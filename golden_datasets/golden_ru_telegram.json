@@ -1,0 +1,47 @@
+[
+  {
+    "pillarId": "github-trending-repos",
+    "input": { "topic": "5 GitHub Repos That Will Save You 10+ Hours This Week" },
+    "expected_output": {
+      "hook": "📌 Подборка полезных репозиториев GitHub для оптимизации рабочей среды разработчика",
+      "text": "📌 Подборка полезных репозиториев GitHub для оптимизации рабочей среды разработчика\n\n1. sqlfluff (https://github.com/sqlfluff/sqlfluff)\nМодульный линтер и автоформаттер SQL с поддержкой различных диалектов. Позволяет автоматически соблюдать единый стиль кода в CI/CD пайплайнах.\n\n2. Coachlight.Avalonia (https://github.com/c3n9/Coachlight.Avalonia)\nБиблиотека для создания интерактивных пошаговых руководств в пользовательском интерфейсе приложений на базе Avalonia.\n\n3. LimitsChecker (https://github.com/lapurryt/LimitsChecker)\nИнструмент мониторинга лимитов использования API и внешних сервисов разработчика в системном трее.\n\n4. public-apis (https://github.com/public-apis/public-apis)\nСводный каталог свободных API для тестирования и разработки программного обеспечения.\n\n#github #devtools #opensource #programming #backend",
+      "hashtags": ["#github", "#devtools", "#opensource", "#programming", "#backend"]
+    }
+  },
+  {
+    "pillarId": "tech-battle-vs",
+    "input": { "topic": "PostgreSQL vs MongoDB: Which Database Belongs in Your 2026 Stack?" },
+    "expected_output": {
+      "hook": "⚡ Сравнение архитектурных подходов PostgreSQL и MongoDB в 2026 году",
+      "text": "⚡ Сравнение архитектурных подходов PostgreSQL и MongoDB в 2026 году\n\nВыбор системы управления базами данных оказывает определяющее влияние на масштабируемость и стоимость обслуживания архитектуры.\n\n1. Гибкость схемы данных\nPostgreSQL обеспечивает строгое соблюдение реляционных связей с возможностью выполнения полуструктурированных запросов к полям JSONB.\nMongoDB использует гибкий формат BSON документов, оптимальный для быстро меняющихся структур данных.\n\n2. Производительность и масштабирование\nPostgreSQL демонстрирует высокую надежность транзакций ACID и эффективность выполнения сложных JOIN запросов.\nMongoDB поддерживает нативное горизонтальное шардирование для высоконагруженной записи.\n\n3. Заключение\nPostgreSQL рекомендуется для доменных моделей со строгими транзакционными требованиями. MongoDB подходит для обработки неструктурированных логов и событийных потоков.\n\n#database #postgresql #mongodb #backend #architecture",
+      "hashtags": ["#database", "#postgresql", "#mongodb", "#backend", "#architecture"]
+    }
+  },
+  {
+    "pillarId": "system-design-breakdown",
+    "input": { "topic": "How Figma Built a Multi-User Real-Time Canvas with C++ and WebAssembly" },
+    "expected_output": {
+      "hook": "🏗️ Архитектурный разбор движка реального времени Figma на C++ и WebAssembly",
+      "text": "🏗️ Архитектурный разбор движка реального времени Figma на C++ и WebAssembly\n\nОбеспечение частоты кадров 60 FPS при одновременном редактировании векторной графики множеством пользователей требует нестандартных инженерных решений в браузере.\n\n1. Компиляция C++ в WebAssembly\nОсновной векторный движок рендеринга написан на C++ и скомпилирован в Wasm для прямого выполнения инструкций через WebGL.\n\n2. Алгоритмы операционных преобразований (OT)\nСпециализированные структуры данных синхронизируют изменения холста между клиентами без блокировок потоков.\n\n3. Управление памятью\nИспользование собственных аллокаторов памяти C++ исключает паузы сборщика мусора JavaScript.\n\n#systemdesign #architecture #webassembly #cpp #softwareengineering",
+      "hashtags": ["#systemdesign", "#architecture", "#webassembly", "#cpp", "#softwareengineering"]
+    }
+  },
+  {
+    "pillarId": "clean-code-cheatsheets",
+    "input": { "topic": "TypeScript Clean Code Rules: 5 Bad Habits Senior Devs Avoid" },
+    "expected_output": {
+      "hook": "💡 Стандарты наименования и антипаттерны строгой типизации в TypeScript",
+      "text": "💡 Стандарты наименования и антипаттерны строгой типизации в TypeScript\n\nПравило 1. Избегайте явного приведения к типу any\nПлохая практика: const data = res.json() as any;\nХорошая практика: const data = Schema.parse(await res.json());\n\nПравило 2. Используйте размеченные объединения (Discriminated Unions)\nПлохая практика: type State = { loading?: boolean; data?: User; error?: string };\nХорошая практика: type State = { status: 'loading' } | { status: 'success'; data: User } | { status: 'error'; error: string };\n\nПравило 3. Явная обработка отклоненных промисов в асинхронных функциях.\n\n#clean-code #typescript #javascript #codereview #bestpractices",
+      "hashtags": ["#clean-code", "#typescript", "#javascript", "#codereview", "#bestpractices"]
+    }
+  },
+  {
+    "pillarId": "ai-tooling-agents",
+    "input": { "topic": "5 Game-Changing MCP Servers for AI Agents in 2026" },
+    "expected_output": {
+      "hook": "🤖 Серверы протокола MCP для расширения контекста автономных ИИ-агентов",
+      "text": "🤖 Серверы протокола MCP для расширения контекста автономных ИИ-агентов\n\n1. Nocturne Memory MCP\nСервер отслеживания графа долгосрочной памяти ИИ-агентов с возможностью отката состояний контекста.\n\n2. Postgres MCP\nОбеспечивает безопасное инспектирование схем баз данных и генерацию валидированных SQL запросов.\n\n3. Puppeteer Browser MCP\nПредоставляет агентам возможность автоматизированной навигации и тестирования веб-интерфейсов.\n\n#aiagents #mcp #claudecode #cursor #devtools",
+      "hashtags": ["#aiagents", "#mcp", "#claudecode", "#cursor", "#devtools"]
+    }
+  }
+]

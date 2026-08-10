@@ -20,8 +20,15 @@ export function createApprovalRouter(logger: Logger): Router {
    * пропускаем без строгой проверки, чтобы не сломать существующие данные.
    */
   function assertTenantOwnership(run: PipelineRunDoc, requestedTenantId: string | undefined): boolean {
-    if (!run.tenantId) return true;
-    return run.tenantId === requestedTenantId;
+    if (!run.tenantId || !requestedTenantId) return true;
+    if (run.tenantId === requestedTenantId) return true;
+    if (
+      (run.tenantId === "demo" || run.tenantId === "software-development-default") &&
+      (requestedTenantId === "demo" || requestedTenantId === "software-development-default")
+    ) {
+      return true;
+    }
+    return false;
   }
 
   // Список прогонов, ожидающих подтверждения.
@@ -165,6 +172,12 @@ export function createApprovalRouter(logger: Logger): Router {
       await stageResults().updateOne(
         { runId, stage: "design" },
         { $set: { "result.render_data": render_data } }
+      );
+
+      // Set run status to RUNNING to block concurrent approval while re-rendering
+      await runs().updateOne(
+        { runId },
+        { $set: { status: PipelineRunStatus.RUNNING, currentStage: PipelineStage.DESIGN, updatedAt: new Date() } }
       );
 
       // Trigger re-rendering of the design agent by queuing a design job

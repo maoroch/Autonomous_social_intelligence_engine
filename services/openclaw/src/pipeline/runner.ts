@@ -123,9 +123,10 @@ export async function handleAgentCompleted(
     return;
   }
 
+  const stageResultsCol = getCollection<StageResultDoc>(Collections.STAGE_RESULTS);
+
   if (run.status === PipelineRunStatus.AWAITING_APPROVAL) {
     logger.info({ runId, stage }, "received completed event for manual edit re-rendering. Updating stage result.");
-    const stageResultsCol = getCollection<StageResultDoc>(Collections.STAGE_RESULTS);
     await stageResultsCol.updateOne(
       { runId, stage },
       { $set: { result, updatedAt: new Date() } }
@@ -133,7 +134,22 @@ export async function handleAgentCompleted(
     return;
   }
 
-  await getCollection<StageResultDoc>(Collections.STAGE_RESULTS).insertOne({
+  // Check if this is a design re-rendering pass triggered by inline manual edit after SEO completion
+  const seoStageDoc = await stageResultsCol.findOne({ runId, stage: PipelineStage.SEO });
+  if (stage === PipelineStage.DESIGN && seoStageDoc) {
+    logger.info({ runId, stage }, "received design re-rendering completed event. Restoring AWAITING_APPROVAL status.");
+    await stageResultsCol.updateOne(
+      { runId, stage: PipelineStage.DESIGN },
+      { $set: { result, updatedAt: new Date() } }
+    );
+    await runs.updateOne(
+      { runId },
+      { $set: { status: PipelineRunStatus.AWAITING_APPROVAL, currentStage: PipelineStage.HUMAN_APPROVAL, updatedAt: new Date() } }
+    );
+    return;
+  }
+
+  await stageResultsCol.insertOne({
     runId,
     stage,
     attempt: run.retries[stage] ?? 1,
@@ -274,6 +290,7 @@ export async function handleAgentFailed(
     payload: {},
     extraInstructions: `Предыдущая попытка завершилась ошибкой: ${errorMessage}. Попробуй ещё раз с учётом этого.`,
   };
-  await queue.add(stage, job);
-  logger.warn({ runId, stage, attempts }, "retrying stage after failure");
+  const backoffDelay = Math.pow(2, attempts - 1) * 2000 + Math.floor(Math.random() * 1000);
+  await queue.add(stage, job, { delay: backoffDelay });
+  logger.warn({ runId, stage, attempts, backoffDelay }, "retrying stage after failure with exponential backoff");
 }

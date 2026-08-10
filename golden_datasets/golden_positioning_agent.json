@@ -1,0 +1,47 @@
+[
+  {
+    "pillarId": "github-trending-repos",
+    "input": { "topic": "5 GitHub Repos That Will Save You 10+ Hours This Week" },
+    "expected_output": {
+      "target_audience": "Software Engineers, Tech Leads, DevOps Practitioners",
+      "angle": "Practical productivity & Developer Experience (DX) shortcut",
+      "key_takeaway": "Bookmark open-source repositories to stop reinventing existing tools."
+    }
+  },
+  {
+    "pillarId": "tech-battle-vs",
+    "input": { "topic": "PostgreSQL vs MongoDB: Which Database Belongs in Your 2026 Stack?" },
+    "expected_output": {
+      "target_audience": "Backend Engineers, Database Architects, CTOs",
+      "angle": "Objective architectural tradeoff analysis without dogmatism",
+      "key_takeaway": "Choose PostgreSQL for structured ACID & JSON queries; MongoDB for dynamic schemas."
+    }
+  },
+  {
+    "pillarId": "system-design-breakdown",
+    "input": { "topic": "How Figma Built a Multi-User Real-Time Canvas with C++ and WebAssembly" },
+    "expected_output": {
+      "target_audience": "Senior Software Engineers, System Architects",
+      "angle": "Deep technical engineering breakdown of high-scale systems",
+      "key_takeaway": "WebAssembly + C++ enables desktop-class 60FPS performance inside browser canvas."
+    }
+  },
+  {
+    "pillarId": "clean-code-cheatsheets",
+    "input": { "topic": "TypeScript Clean Code Rules: 5 Bad Habits Senior Devs Avoid" },
+    "expected_output": {
+      "target_audience": "TypeScript & Fullstack Engineers",
+      "angle": "Actionable Code Review guidelines and side-by-side refactoring",
+      "key_takeaway": "Avoid type assertion 'as any' and unhandled promise rejections."
+    }
+  },
+  {
+    "pillarId": "ai-tooling-agents",
+    "input": { "topic": "5 Game-Changing MCP Servers for AI Agents in 2026" },
+    "expected_output": {
+      "target_audience": "AI Engineers, Fullstack Developers using Cursor / Claude Code",
+      "angle": "Cutting-edge AI Agent developer workflow optimization",
+      "key_takeaway": "Model Context Protocol connects LLMs directly to local databases & tools."
+    }
+  }
+]

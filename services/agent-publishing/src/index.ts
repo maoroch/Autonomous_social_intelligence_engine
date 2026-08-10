@@ -96,6 +96,18 @@ async function main() {
       const { runId, payload } = job.data;
       const { text, imageId } = payload as { text: string; imageId: string };
 
+      const existingRun = await getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS).findOne({ runId });
+      if (existingRun?.status === PipelineRunStatus.PUBLISHED) {
+        logger.warn({ runId }, "Run is already published. Skipping duplicate publication for idempotency.");
+        await eventsQueue.add("event", {
+          runId,
+          stage: PipelineStage.PUBLISHING,
+          status: "completed",
+          result: { url: `already-published`, platform: existingRun.targetPlatform ?? "linkedin" },
+        });
+        return;
+      }
+
       try {
         if (!imageId) {
           throw new Error("No imageId (ZIP file) provided for publishing");

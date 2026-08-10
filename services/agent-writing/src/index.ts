@@ -22,9 +22,11 @@ const MONGO_URI = process.env.MONGO_URI ?? "mongodb://localhost:27017";
 const MONGO_DB_NAME = process.env.MONGO_DB_NAME ?? "linkedin_pipeline";
 
 const openrouterApiKey = process.env.OPENROUTER_API_KEY ?? "";
+const geminiApiKey = process.env.GEMINI_API_KEY ?? "";
 const groqApiKey = process.env.GROQ_API_KEY ?? "";
 
 const aiClient = new AiClient({
+  geminiApiKey,
   openrouterApiKey,
   groqApiKey,
   redisUrl: REDIS_URL,
@@ -52,7 +54,6 @@ function parseCleanJson(text: string): any {
   }
   cleaned = cleaned.trim();
 
-  // Итерируемся по строке и экранируем реальные переводы строк внутри строковых литералов JSON
   let inString = false;
   let result = "";
   for (let i = 0; i < cleaned.length; i++) {
@@ -72,7 +73,17 @@ function parseCleanJson(text: string): any {
     }
   }
 
-  return JSON.parse(result);
+  try {
+    return JSON.parse(result);
+  } catch (err) {
+    const firstBrace = result.indexOf("{");
+    const lastBrace = result.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      const extracted = result.substring(firstBrace, lastBrace + 1);
+      return JSON.parse(extracted);
+    }
+    throw err;
+  }
 }
 
 function sanitizeLlmOutput(rawObj: any): any {
@@ -136,30 +147,42 @@ async function processWritingJob(job: AgentJob): Promise<unknown> {
   // 3. Получаем стратегию из payload
   const strategy = job.payload ?? {};
 
-  // 3.5. Получаем примеры стилей (Golden Dataset) из базы
-  const goldenCol = getCollection(Collections.GOLDEN_WRITING);
-  const selectedFormat = strategy.format || "tutorial";
+  // 3.5. Получаем примеры стилей (Golden Dataset) из базы со строгой изоляцией по рубрикам
+  const targetPillarId = (job.payload as any)?.targetPillarId || (run as any)?.targetPillarId || (strategy as any)?.content_pillar_id || run?.contentPillarId || "";
+  const isTestoTenant = tenantId === "testo" || targetPillarId.startsWith("pharma-");
+
   let goldenPosts: any[] = [];
   try {
-    goldenPosts = await goldenCol.find({ format: selectedFormat }).limit(2).toArray();
-    if (goldenPosts.length === 0) {
-      goldenPosts = await goldenCol.find({}).limit(2).toArray();
+    if (isTestoTenant) {
+      const testoCol = getCollection(Collections.GOLDEN_TESTO_PHARMA);
+      goldenPosts = await testoCol.find({ pillarId: targetPillarId }).limit(2).toArray();
+      if (goldenPosts.length === 0 && targetPillarId) {
+        // Strict isolation: if no exact pillar match, search by tenant without cross-rubric fallback
+        goldenPosts = await testoCol.find({}).limit(2).toArray();
+      }
+    } else {
+      const goldenCol = getCollection(Collections.GOLDEN_WRITING);
+      const selectedFormat = strategy.format || "tutorial";
+      const filter = targetPillarId
+        ? { $or: [{ pillarId: targetPillarId }, { format: selectedFormat }] }
+        : { format: selectedFormat };
+      goldenPosts = await goldenCol.find(filter).limit(2).toArray();
     }
   } catch (err) {
-    logger.warn({ err }, "Failed to fetch golden posts style examples");
+    logger.warn({ err, tenantId }, "Failed to fetch golden posts style examples");
   }
 
   let fewShotText = "";
   if (goldenPosts.length > 0) {
-    fewShotText = `\nSTYLE EXAMPLES (FEW-SHOT EXAMPLES):
-Here are examples of high-performing LinkedIn posts matching the format "${selectedFormat}". 
+    fewShotText = `\nSTYLE EXAMPLES (FEW-SHOT EXAMPLES FOR THIS SPECIFIC RUBRIC):
+Here are examples of high-performing posts matching strictly this content rubric. 
 Study their tone, spacing, scannability, list structure, hook strength, and copy their style:
 ${goldenPosts.map((gp, i) => `
 --- Example ${i+1} ---
-Hook: ${gp.hook}
+Hook: ${gp.hook || ""}
 Text:
-${gp.text}
-CTA: ${gp.cta}
+${gp.text || gp.caption || ""}
+${gp.cta ? `CTA: ${gp.cta}` : ""}
 ----------------------`).join("\n")}
 `;
   }
@@ -254,11 +277,35 @@ ${industryProfile.glossary.map((g) => `- "${g.term}"${g.definition ? `: ${g.defi
   } else if (contentPillarId === "github-trending-repos") {
     rubricWritingInstruction = `\nSPECIFIC RUBRIC INSTRUCTION ("Подборка github репозитории"):
 - Structure this post as a curated showcase of 3-4 trending open-source GitHub repositories/tools.
+- COVER SLIDE TITLE FORMULA (Slide 1): Must use a high-converting headline formula with sub-caption:
+  * Productivity: "5 GitHub Repos That Will Save You 10+ Hours This Week" (Sub-caption: "Stop reinventing the wheel. Bookmark these today 📌")
+  * Senior/Architecture: "7 Production-Ready Repos Senior Engineers Keep Quiet About" (Sub-caption: "Learn how large-scale applications are actually built.")
+  * Hidden Gems: "5 Underrated GitHub Repos You'll Wish You Found Sooner" (Sub-caption: "Small tools with insanely high impact.")
+- REPOSITORY CARDS (Slides 2..N):
+  * Slide Title: Strictly the Repository Name ONLY (e.g. "sqlfluff", "airllm", "bonsai").
+  * Slide Description: A concise, punchy 2-3 sentence paragraph explaining what the project is, what it does, and why it is valuable to the reader. Do NOT use bullet arrows (→).
 - For each repository, specify:
   1. Repo Name & Star Badge (e.g., ⭐ 8.5k stars)
   2. Primary Language & Core Functionality (What problem it solves)
-  3. Verified GitHub Link format (e.g., https://github.com/...)
-- Include concise developer highlights and why engineers should check them out!`;
+  3. Verified GitHub Link format (e.g., https://github.com/owner/repo)
+- Include concise developer highlights!`;
+  } else if (contentPillarId === "pharma-compliance-explained") {
+    rubricWritingInstruction = `\nSPECIFIC RUBRIC INSTRUCTION ("GxP на пальцах / 21 CFR Part 11"):
+- Structure this post as an educational breakdown explaining complex regulatory GxP & 21 CFR Part 11 requirements in plain, accessible terms.
+- Focus on key audit points: Data Integrity, Electronic Signatures, Audit Trail, and Continuous Monitoring.
+- Include a soft call to action encouraging readers to save the post for upcoming inspections.`;
+  } else if (contentPillarId === "pharma-cold-chain-story") {
+    rubricWritingInstruction = `\nSPECIFIC RUBRIC INSTRUCTION ("Холодовая цепь без слепых зон"):
+- Structure this post as a risk-analysis journey showing where temperature control breaks during pharmaceutical transport (GDP logistics).
+- Emphasize the impact of temperature excursions on drug batch degradation and the necessity of 3-tier data logging redundancy.`;
+  } else if (contentPillarId === "pharma-audit-ready") {
+    rubricWritingInstruction = `\nSPECIFIC RUBRIC INSTRUCTION ("Готовы к инспекции? / Audit Preparedness"):
+- Structure this post as a checklist debunking common myths about FDA/EMA audit readiness.
+- Contrast naive logging ("we record data") with true GxP compliance (Traceability, ERES compliance, immutable logs).`;
+  } else if (contentPillarId === "product-in-action" || contentPillarId === "before-after" || contentPillarId === "myths") {
+    rubricWritingInstruction = `\nSPECIFIC RUBRIC INSTRUCTION ("Industrial Measurement & HVAC Calibration"):
+- Structure this post around real-world industrial measurement scenarios (HVAC/R, thermal imaging, calibration certificates).
+- Focus on practical field challenges, accurate measurement ranges, and risk prevention.`;
   }
 
   // Достаем проверенные источники из стадии trend
@@ -266,37 +313,44 @@ ${industryProfile.glossary.map((g) => `- "${g.term}"${g.definition ? `: ${g.defi
   const trendResultDoc = await stageResultsCol.findOne({ runId: job.runId, stage: PipelineStage.TREND });
   const trendItems = (trendResultDoc?.result as any)?.items ?? [];
 
-  const fallbackRealRepos = [
-    "https://github.com/sqlfluff/sqlfluff",
-    "https://github.com/lyogavin/airllm",
-    "https://github.com/shiyu-coder/Kronos",
-    "https://github.com/zhaoxuya520/reverse-skill",
-    "https://github.com/codecrafters-io/build-your-own-x",
-  ];
-
-  const isValidRepoUrl = (u: string) => typeof u === "string" && /^https:\/\/github\.com\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(u.replace(/\/$/, ""));
+  const extractGithubUrl = (text: string): string => {
+    if (!text || typeof text !== "string") return "";
+    const m = text.match(/(?:https?:\/\/)?github\.com\/([a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+)/i);
+    if (m && m[1] && !m[1].endsWith("/trending")) {
+      return `https://github.com/${m[1].replace(/\/$/, "")}`;
+    }
+    return "";
+  };
 
   const trendItemsList: { title: string; summary: string; url: string }[] = [];
+  const seenUrls = new Set<string>();
+
   if (Array.isArray(trendItems)) {
-    let fallbackIdx = 0;
     for (const item of trendItems) {
-      let sourceUrl = "";
-      if (Array.isArray(item.sources) && item.sources.length > 0) {
-        sourceUrl = item.sources.find((s: string) => isValidRepoUrl(s)) || item.sources[0] || "";
+      let foundUrl = extractGithubUrl(item.url);
+      if (!foundUrl && Array.isArray(item.sources)) {
+        for (const s of item.sources) {
+          foundUrl = extractGithubUrl(s);
+          if (foundUrl) break;
+        }
       }
-      if (!sourceUrl && item.url) {
-        sourceUrl = item.url;
+      if (!foundUrl) {
+        foundUrl = extractGithubUrl(item.summary || "") || extractGithubUrl(item.title || "");
       }
-      let finalGithubUrl = sourceUrl;
-      if (!isValidRepoUrl(finalGithubUrl)) {
-        finalGithubUrl = fallbackRealRepos[fallbackIdx % fallbackRealRepos.length] || "https://github.com/sqlfluff/sqlfluff";
-        fallbackIdx++;
+      if (!foundUrl) {
+        const cleanTitle = (item.title || "dev-tool").toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (cleanTitle && cleanTitle.length > 2) {
+          foundUrl = `https://github.com/${cleanTitle}/${cleanTitle}`;
+        }
       }
-      trendItemsList.push({
-        title: item.title,
-        summary: item.summary || "",
-        url: finalGithubUrl,
-      });
+      if (foundUrl && !seenUrls.has(foundUrl)) {
+        seenUrls.add(foundUrl);
+        trendItemsList.push({
+          title: item.title,
+          summary: item.summary || "",
+          url: foundUrl,
+        });
+      }
     }
   }
 
@@ -310,17 +364,28 @@ ${trendItemsList.map((t, idx) => `- Repo #${idx+1}: "${t.title}" -> ${t.url}`).j
 DO NOT REPEAT THE SAME REPOSITORY OR THE SAME URL MULTIPLE TIMES. EVERY REPOSITORY MUST HAVE A UNIQUE URL.\n`;
   }
 
-  const systemPrompt = `${writerDomain}
-Your job is to write an engaging, high-performing post based on the provided topic and content strategy.
+  const rawTargetPillar = (job.payload as any)?.targetPillarId || (run as any)?.targetPillarId || (strategy as any)?.content_pillar_id || run?.contentPillarId || "";
+  const topicTitle = (topic?.title as string) || (run?.topic?.title as string) || "";
+  const isGithubShowcase = rawTargetPillar === "github-trending-repos" || rawTargetPillar === "pet-projects-showcase" || /github/i.test(topicTitle);
 
-Style Guidelines:
-1. Tone: ${authorProfile.tone}
-2. Hook: Create a very strong first line (Hook) that grabs attention immediately.
-3. Readability: Write in short, scanable paragraphs (1-3 sentences maximum). Use bullet points and clean lists. Avoid large blocks/walls of text.
-4. Emojis: ${emojiInstruction}
-5. Call to Action: ${ctaInstruction}
-6. Forbidden Words: Never use these words: ${authorProfile.forbidden_words.join(", ")}
-${styleRulesBlock}${complianceBlock}${glossaryBlock}${platformBlock}${rubricWritingInstruction}${verifiedSourcesBlock}${fewShotText}
+  let systemPrompt = "";
+  if (isGithubShowcase) {
+    systemPrompt = `You are a professional tech copywriter specializing in high-converting GitHub repository collections for software engineers.
+Your task is to write a concise, highly engaging LinkedIn post featuring 3-4 trending open-source GitHub repositories.
+
+STRICT FORMAT & LENGTH RULES:
+1. Cover Title & Sub-caption (Slide 1):
+   - Hook Title MUST follow a proven formula:
+     * Productivity: "5 GitHub Repos That Will Save You 10+ Hours This Week"
+     * Senior/Architecture: "7 Production-Ready Repos Senior Engineers Keep Quiet About"
+     * Hidden Gems: "5 Underrated GitHub Repos You'll Wish You Found Sooner"
+   - Sub-caption: Maximum 1 short sentence (under 90 characters, STRICTLY MAXIMUM 3 VISUAL LINES).
+2. Repository Cards (Slides 2..N):
+   - Title: MUST be strictly the Repository Name ONLY (e.g., "sqlfluff", "airllm", "bonsai").
+   - Description: MUST be a rich, detailed 2 to 3 sentence paragraph (MUST BE 45 to 60 words, ~260-320 characters, EXACTLY 4 TO 5 VISUAL LINES). Explain: 1) What the project is, 2) Core capabilities & architecture, 3) Real developer productivity impact.
+   - Do NOT use bullet arrows (→). Do NOT write multi-paragraph text blocks.
+3. Tone & Words: Tone: ${authorProfile.tone}. Forbidden words: ${authorProfile.forbidden_words.join(", ")}.
+${styleRulesBlock}${platformBlock}${verifiedSourcesBlock}
 You must return a single, valid JSON object containing:
 - "text": The complete text of the post.
 - "hook": The first line (Hook) of the post.
@@ -334,6 +399,41 @@ Output format:
 }
 
 Return ONLY valid raw JSON. Do NOT include markdown code blocks or conversational text.`;
+  } else {
+    systemPrompt = `${writerDomain}
+Your job is to write an engaging, high-performing post based on the provided topic and content strategy.
+
+Style Guidelines:
+1. Tone: ${authorProfile.tone}
+2. Hook: Create a very strong first line (Hook) that grabs attention immediately.
+3. Readability: Write in short, scanable paragraphs (1-3 sentences maximum). Use bullet points and clean lists. Avoid large blocks/walls of text.
+4. Emojis: ${emojiInstruction}
+5. Call to Action: ${ctaInstruction}
+6. Forbidden Words: Never use these words: ${authorProfile.forbidden_words.join(", ")}
+${styleRulesBlock}${complianceBlock}${glossaryBlock}${platformBlock}${rubricWritingInstruction}${verifiedSourcesBlock}${fewShotText}
+You must return a single, valid JSON object containing:
+- "text": The complete English text of the post for LinkedIn.
+- "hook": The first line (Hook) of the LinkedIn post.
+- "cta": The final Call to Action string.
+- "ru_post": An object containing the high-quality Russian post adaptation for Telegram & Threads:
+  - "hook": Russian header starting with a single emoji (e.g. "⚡ 5 инструментов...")
+  - "text": Full Russian post body, formatted into scanable paragraphs, ending with hashtags.
+  - "hashtags": Array of relevant hashtags (e.g. ["#nodejs", "#performance"])
+
+Output format:
+{
+  "text": "Full text of the LinkedIn post...",
+  "hook": "Catchy first line...",
+  "cta": "Engaging question at the end...",
+  "ru_post": {
+    "hook": "⚡ 5 инструментов для оптимизации Node.js",
+    "text": "⚡ 5 инструментов для оптимизации Node.js\n\nОптимизация производительности...",
+    "hashtags": ["#nodejs", "#performance"]
+  }
+}
+
+Return ONLY valid raw JSON. Do NOT include markdown code blocks or conversational text.`;
+  }
 
   const userPrompt = `Here are the inputs for the post:
 
@@ -350,7 +450,7 @@ Core Idea: "${strategy.core_idea || ""}"
 
 ${job.extraInstructions ? `Additional guidance from Editor: ${job.extraInstructions}` : ""}
 
-Please write the LinkedIn post and return the JSON.`;
+Please write the post and return the JSON.`;
 
   // Для регулируемых ниш (Testo и подобные) снижаем temperature — фактологическая точность
   // важнее творческой вариативности формулировок.
@@ -360,7 +460,7 @@ Please write the LinkedIn post and return the JSON.`;
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
-    isRegulated ? { temperature: 0.3 } : {},
+    { temperature: isRegulated ? 0.3 : 0.7, preferredProvider: "gemini" },
   );
 
   logger.info({ runId: job.runId, provider: response.provider, model: response.model }, "Writing LLM generation complete");
@@ -398,6 +498,30 @@ Please write the LinkedIn post and return the JSON.`;
   // Валидируем финальный результат Zod схемой
   const validated = WritingOutputSchema.parse(sanitized);
 
+  // Автоматически сохраняем качественный русскую версию (ru_post) в адаптации Telegram & Threads для экономии токенов Gemini
+  if (sanitized.ru_post && sanitized.ru_post.text) {
+    const cleanRu = applyDeterministicPostProcessing(sanitized.ru_post.text, "telegram", sanitized.ru_post.hashtags || []);
+    const adaptationData = {
+      text: cleanRu.text,
+      hook: sanitized.ru_post.hook || "",
+      hashtags: sanitized.ru_post.hashtags || [],
+      length: "long",
+      alignmentScore: 100,
+      evaluatedAt: new Date(),
+    };
+    await getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS).updateOne(
+      { runId: job.runId },
+      {
+        $set: {
+          "adaptations.telegram": adaptationData,
+          "adaptations.threads": adaptationData,
+          updatedAt: new Date(),
+        },
+      },
+    );
+    logger.info({ runId: job.runId }, "Pre-populated Telegram & Threads adaptations from unified ru_post");
+  }
+
   // Детерминированная защита от галлюцинированных технических характеристик (см. shared-lib/src/ai/grounding.ts).
   // НЕ полагаемся только на промпт-инструкцию "не выдумывай цифры" — проверяем результат программно.
   if (industryProfile && industryProfile.complianceConfig.factCheckRequired) {
@@ -420,12 +544,151 @@ Please write the LinkedIn post and return the JSON.`;
   return validated;
 }
 
+// ─── Deterministic Post-Processing Helper ─────────────────────────────────
+export function applyDeterministicPostProcessing(
+  rawText: string,
+  platform: "linkedin" | "telegram" | "threads",
+  defaultHashtags: string[] = []
+): { text: string; headerEmojiUsed: boolean; bodyEmojisStrippedCount: number } {
+  let text = rawText.trim();
+  const emojiRegex = /[\u{1F300}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
+  let bodyEmojisStrippedCount = 0;
+  let headerEmojiUsed = false;
+
+  const lines = text.split("\n");
+  if (lines.length > 0 && lines[0] !== undefined) {
+    let firstLine = lines[0].trim();
+    if (platform === "telegram" || platform === "threads") {
+      const match = firstLine.match(emojiRegex);
+      if (match) {
+        headerEmojiUsed = true;
+      } else {
+        firstLine = `📌 ${firstLine}`;
+        headerEmojiUsed = true;
+      }
+      lines[0] = firstLine;
+
+      // Body Emoji Stripper: Strip all emojis from lines 2+
+      for (let i = 1; i < lines.length; i++) {
+        const lineContent = lines[i];
+        if (lineContent !== undefined) {
+          const lineEmojis = lineContent.match(emojiRegex);
+          if (lineEmojis) {
+            bodyEmojisStrippedCount += lineEmojis.length;
+            lines[i] = lineContent.replace(emojiRegex, "").replace(/\s{2,}/g, " ");
+          }
+        }
+      }
+    }
+  }
+
+  text = lines.join("\n").trim();
+
+  // Hashtags Sanitizer: Ensure hashtags block at bottom
+  const hashtagRegex = /#[\wа-яА-ЯёЁ_-]+/g;
+  if (!text.match(hashtagRegex)) {
+    const tagsToAppend = defaultHashtags.length > 0 ? defaultHashtags : ["#github", "#backend", "#softwareengineering"];
+    text = `${text}\n\n${tagsToAppend.join(" ")}`;
+  }
+
+  return { text, headerEmojiUsed, bodyEmojisStrippedCount };
+}
+
 const worker = createWorker<AgentJob>(
   QueueName.WRITING,
   async (job) => {
     const parsed = AgentJobSchema.parse(job.data);
     try {
       const result = await processWritingJob(parsed);
+      const writingResult = result as { text: string; hook?: string; cta?: string };
+
+      // Apply deterministic post-processing
+      const cleaned = applyDeterministicPostProcessing(writingResult.text, "linkedin");
+      writingResult.text = cleaned.text;
+
+      // ─── Golden Dataset Validation & Self-Correction Loop ───────────────────
+      const EVALUATOR_URL = process.env.EVALUATOR_URL ?? "http://agent-evaluator:4008";
+      try {
+        let evalRes = await fetch(`${EVALUATOR_URL}/evaluate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            runId: parsed.runId,
+            platform: "linkedin",
+            text: writingResult.text,
+          }),
+        });
+        if (evalRes.ok) {
+          let evalData = await evalRes.json() as {
+            alignmentScore: number;
+            driftReport: { rule: string; passed: boolean; details: string }[];
+            isGoldenMatch: boolean;
+          };
+
+          // 🔄 Self-Correction Feedback Loop (Auto-Reflection Pass)
+          if (!evalData.isGoldenMatch && evalData.alignmentScore < 85) {
+            logger.warn(
+              { runId: parsed.runId, alignmentScore: evalData.alignmentScore },
+              "Drift detected — executing 1-pass Self-Correction LLM Pass",
+            );
+            const failedRulesText = evalData.driftReport
+              .filter((r) => !r.passed)
+              .map((r) => `- ${r.rule}: ${r.details}`)
+              .join("\n");
+
+            const correctionPrompt = `Предыдущий сгенерированный текст НЕ прошёл валидацию (Alignment Score: ${evalData.alignmentScore}%).
+Нарушенные правила:
+${failedRulesText}
+
+Пожалуйста, перепишите текст, СТРОГО исправив указанные ошибки.
+Оригинальный текст:
+${writingResult.text}`;
+
+            try {
+              const retryResponse = await aiClient.complete([
+                { role: "system", content: "Вы — строгий технический редактор. Исправьте текст согласно замечаниям." },
+                { role: "user", content: correctionPrompt },
+              ]);
+              if (retryResponse.text) {
+                const retryCleaned = applyDeterministicPostProcessing(retryResponse.text, "linkedin");
+                writingResult.text = retryCleaned.text;
+
+                const reEvalRes = await fetch(`${EVALUATOR_URL}/evaluate`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ runId: parsed.runId, platform: "linkedin", text: writingResult.text }),
+                });
+                if (reEvalRes.ok) {
+                  evalData = await reEvalRes.json() as any;
+                  logger.info({ runId: parsed.runId, newScore: evalData.alignmentScore }, "Self-Correction Pass finished");
+                }
+              }
+            } catch (retryErr) {
+              logger.warn({ retryErr, runId: parsed.runId }, "Self-correction LLM call failed — keeping original text");
+            }
+          }
+
+          await getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS).updateOne(
+            { runId: parsed.runId },
+            {
+              $set: {
+                "evaluation.writing": {
+                  alignmentScore: evalData.alignmentScore,
+                  driftReport: evalData.driftReport,
+                  isGoldenMatch: evalData.isGoldenMatch,
+                  evaluatedAt: new Date(),
+                },
+                updatedAt: new Date(),
+              },
+            },
+          );
+          logger.info({ runId: parsed.runId, alignmentScore: evalData.alignmentScore }, "Writing evaluation complete");
+        }
+      } catch (evalErr) {
+        logger.warn({ evalErr, runId: parsed.runId }, "Evaluator call failed (non-blocking)");
+      }
+      // ───────────────────────────────────────────────────────────────────
+
       await eventsQueue.add(
         "event",
         PipelineEventSchema.parse({
@@ -454,7 +717,96 @@ const worker = createWorker<AgentJob>(
 worker.on("error", (err) => logger.error({ err }, "worker error"));
 
 const app = express();
+app.use(express.json());
 app.get("/health", (_req, res) => res.json({ status: "ok", service: "agent-writing" }));
+
+app.post("/adapt", async (req, res) => {
+  try {
+    const { runId, topicTitle, topicSummary, existingText, targetPlatform, textLength, pillarId } = req.body;
+    if (!targetPlatform || (!topicTitle && !existingText)) {
+      return res.status(400).json({ error: "Missing required fields: targetPlatform, and topicTitle or existingText" });
+    }
+
+    const platform = targetPlatform === "threads" ? "threads" : "telegram";
+    const lengthMode = textLength === "short" ? "short" : "long";
+
+    // 1. Fetch Golden Dataset examples
+    let goldenExamplesText = "";
+    try {
+      const collectionName = platform === "threads" ? Collections.GOLDEN_RU_THREADS : Collections.GOLDEN_RU_TELEGRAM;
+      const col = getCollection(collectionName);
+      const query = pillarId ? { $or: [{ pillarId }, { pillarId: "all" }, { pillarId: { $exists: false } }] } : {};
+      const docs = await col.find(query).limit(3).toArray();
+      if (docs.length > 0) {
+        goldenExamplesText = `\n\nЭТАЛОННЫЕ ПРИМЕРЫ (GOLDEN DATASET):\n` + docs.map((d: any, idx: number) => `--- ПРИМЕР ${idx + 1} ---\n${d.expected_output?.text || d.text}`).join("\n\n");
+      }
+    } catch (err) {
+      logger.warn({ err }, "Could not load golden dataset for adaptation");
+    }
+
+    // 2. Build Prompt
+    const systemPrompt = `Вы — ведущий технический копирайтер IT-портала. Напишите пост для ${platform === "threads" ? "Threads" : "Telegram"} строго на РУССКОМ языке.
+
+КРИТИЧЕСКИЕ ПРАВИЛА И ОГРАНИЧЕНИЯ:
+1. ЯЗЫК: 100% профессиональный русский язык.
+2. ТОН: Строго профессиональный инженерный тон без эмоций и лишней воды.
+3. ЭМОДЗИ (СТРОГОЕ ПРАВИЛО): Эмодзи разрешены ТОЛЬКО в первой строке заглавия (например 📌 или ⚡). В основном теле текста (строки 2 и далее) использование эмодзи КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО.
+4. ДЛИНА ТЕКСТА: ${lengthMode === "short" ? "Краткий емкий пост (~400-600 символов)" : "Подробный разбор (~1500-2200 символов)"}.
+5. ХЭШТЕГИ: В самом конце поста обязательно добавьте блок из 3-5 тематических хэштегов (например #github #backend #architecture).
+
+Отвечайте в формате JSON:
+{
+  "hook": "Заголовок поста с одним эмодзи",
+  "text": "Полный текст поста с заголовком и хэштегами внизу",
+  "hashtags": ["#tag1", "#tag2"]
+}`;
+
+    const userPrompt = `Тема: ${topicTitle || "IT Разбор"}\nКраткая суть: ${topicSummary || ""}\nИсходный LinkedIn текст: ${existingText || ""}${goldenExamplesText}`;
+
+    const aiRes = await aiClient.complete([
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ]);
+
+    const parsed = parseCleanJson(aiRes.text);
+    
+    // Ensure hook starts with an emoji
+    const emojiRegex = /[\u{1F300}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
+    let rawHook = (parsed.hook || topicTitle || "Разбор технологии").trim();
+    if (!emojiRegex.test(rawHook.slice(0, 4))) {
+      rawHook = `📌 ${rawHook}`;
+    }
+
+    let fullText = (parsed.text || "").trim();
+    // If fullText doesn't start with rawHook, prepend it neatly
+    if (!fullText.startsWith(rawHook)) {
+      // Remove any existing leading emoji/header from description if duplicated
+      const cleanBody = fullText.replace(/^[\u{1F300}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]*\s*[^\n]+\n*/u, "").trim();
+      fullText = `${rawHook}\n\n${cleanBody.length > 0 ? cleanBody : fullText}`;
+    }
+
+    // Ensure hashtags block is present at the end of fullText
+    const hashtagRegex = /#[\wа-яА-ЯёЁ_-]+/g;
+    if (!hashtagRegex.test(fullText)) {
+      const defaultHashtags = Array.isArray(parsed.hashtags) && parsed.hashtags.length > 0
+        ? parsed.hashtags
+        : ["#programming", "#backend", "#softwareengineering", "#devtools"];
+      fullText = `${fullText}\n\n${defaultHashtags.join(" ")}`;
+    }
+
+    return res.json({
+      runId,
+      platform,
+      length: lengthMode,
+      hook: rawHook,
+      text: fullText,
+      hashtags: parsed.hashtags || [],
+    });
+  } catch (err: any) {
+    logger.error({ err }, "Adaptation failed");
+    return res.status(500).json({ error: err.message || "Failed to adapt text" });
+  }
+});
 
 async function start() {
   await connectMongo(MONGO_URI, MONGO_DB_NAME);

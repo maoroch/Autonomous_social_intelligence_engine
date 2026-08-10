@@ -15,6 +15,15 @@ interface RunDoc {
   topic: { title: string; summary: string };
   seoImprovementsCount?: number;
   needsComplianceReview?: boolean;
+  contentPillarId?: string;
+  adaptations?: {
+    telegram?: { text: string; hook?: string; hashtags?: string[]; length: "short" | "long"; alignmentScore?: number };
+    threads?: { text: string; hook?: string; hashtags?: string[]; length: "short" | "long"; alignmentScore?: number };
+  };
+  evaluation?: {
+    writing?: { alignmentScore: number; driftReport: { rule: string; passed: boolean; details: string }[]; isGoldenMatch: boolean; evaluatedAt: string };
+    design?: { alignmentScore: number; driftReport: { rule: string; passed: boolean; details: string }[]; isGoldenMatch: boolean; evaluatedAt: string };
+  };
   updatedAt: string;
 }
 
@@ -44,6 +53,15 @@ export default function RunDetailPage({ params }: PageProps) {
   const isReRenderingRef = useRef(false);
   const prevPreviewIdRef = useRef<string | null>(null);
 
+  // Main Tab Navigation State
+  const [activeMainTab, setActiveMainTab] = useState<"editor" | "carousel" | "analytics">("editor");
+
+  // Multi-Platform Adaptation State
+  const [activePlatformTab, setActivePlatformTab] = useState<"linkedin" | "telegram" | "threads">("linkedin");
+  const [adaptLength, setAdaptLength] = useState<"short" | "long">("long");
+  const [isAdapting, setIsAdapting] = useState(false);
+  const [copySuccess, setCopySuccess] = useState<string | null>(null);
+
   // States for reprocessing
   const [isReprocessModalOpen, setIsReprocessModalOpen] = useState(false);
   const [reprocessNotes, setReprocessNotes] = useState("");
@@ -51,6 +69,34 @@ export default function RunDetailPage({ params }: PageProps) {
   // Carousel slider state
   const [activeSlide, setActiveSlide] = useState(0);
   const [availableIllustrations, setAvailableIllustrations] = useState<any[]>([]);
+
+  const handleAdapt = async () => {
+    setIsAdapting(true);
+    try {
+      const res = await fetch(`/api/runs/${runId}/adapt`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ textLength: adaptLength }),
+      });
+      if (res.ok) {
+        await fetchRunDetails();
+        setActivePlatformTab("telegram");
+      } else {
+        alert("Не удалось сгенерировать посты для Telegram и Threads.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Ошибка при вызове адаптации постов");
+    } finally {
+      setIsAdapting(false);
+    }
+  };
+
+  const handleCopyText = (textToCopy: string, label: string) => {
+    navigator.clipboard.writeText(textToCopy);
+    setCopySuccess(label);
+    setTimeout(() => setCopySuccess(null), 2500);
+  };
 
   const handleReprocess = async () => {
     setActionLoading(true);
@@ -361,7 +407,7 @@ export default function RunDetailPage({ params }: PageProps) {
         </div>
 
         {/* Progress Tracker */}
-        <div style={{ display: "flex", justifyContent: "space-between", position: "relative", marginTop: 40, padding: "0 10px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", position: "relative", marginTop: 28, padding: "0 10px" }}>
           <div style={{
             position: "absolute",
             top: 15,
@@ -373,15 +419,14 @@ export default function RunDetailPage({ params }: PageProps) {
           }} />
 
           {["trend", "positioning", "strategy", "writing", "design", "seo", "human_approval"].map((stage, idx) => {
-            const stagesOrder = ["trend", "positioning", "strategy", "writing", "design", "seo", "human_approval"];
             const isCompleted = stages.some((s) => s.stage === stage) || (run.status === "awaiting_approval" && stage !== "human_approval");
             const isActive = run.currentStage === stage;
 
             return (
               <div key={stage} style={{ display: "flex", flexDirection: "column", alignItems: "center", zIndex: 2, flex: 1 }}>
                 <div style={{
-                  width: 32,
-                  height: 32,
+                  width: 30,
+                  height: 30,
                   borderRadius: "50%",
                   background: isCompleted ? "var(--green)" : isActive ? "var(--secondary)" : "#f3f4f6",
                   border: `2px solid ${isCompleted ? "var(--green)" : isActive ? "var(--secondary)" : "#d1d5db"}`,
@@ -399,7 +444,7 @@ export default function RunDetailPage({ params }: PageProps) {
                 <span style={{
                   fontSize: 11,
                   fontWeight: 600,
-                  marginTop: 8,
+                  marginTop: 6,
                   color: isActive ? "var(--secondary)" : isCompleted ? "var(--green)" : "var(--text-muted)",
                   textTransform: "uppercase",
                   letterSpacing: "0.02em",
@@ -413,590 +458,751 @@ export default function RunDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Main Grid: Post, Slides vs Audits */}
-      <section className="grid-main">
-        {/* Left Side: Post and Slides */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 32, minWidth: 0, width: "100%" }}>
-          {/* Post Preview (Editable or Read-only) */}
-          {writingResult ? (
-            <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-              <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: "50%",
-                    background: "linear-gradient(135deg, #0a66c2, #8b5cf6)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontWeight: "bold",
-                    color: "white"
-                  }}>ME</div>
-                  <div>
-                    <strong style={{ display: "block", fontSize: 15 }}>Автор публикации</strong>
-                    <span style={{ fontSize: 12, color: "var(--text-muted)" }}>LinkedIn Post Editor</span>
-                  </div>
-                </div>
-                {isAwaitingApproval && (
-                  <span style={{ fontSize: 12, color: "var(--secondary)", fontWeight: 600 }}>Режим правки ✍</span>
-                )}
-              </div>
-              <div style={{ padding: 24 }}>
-                {isAwaitingApproval ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Hook (Заголовок поста)</label>
-                      <input
-                        type="text"
-                        value={hook}
-                        onChange={(e) => setHook(e.target.value)}
-                        style={{ fontSize: 15, fontWeight: "bold" }}
-                      />
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Тело публикации</label>
-                      <textarea
-                        rows={8}
-                        value={bodyText}
-                        onChange={(e) => setBodyText(e.target.value)}
-                        style={{ fontSize: 15, fontFamily: "inherit", resize: "vertical" }}
-                      />
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>CTA (Призыв к действию)</label>
-                      <input
-                        type="text"
-                        value={cta}
-                        onChange={(e) => setCta(e.target.value)}
-                        style={{ fontSize: 15, color: "var(--primary)", fontWeight: 600 }}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{
-                    whiteSpace: "pre-wrap",
-                    fontFamily: "-apple-system, system-ui, BlinkMacSystemFont, sans-serif",
-                    fontSize: 15,
-                    lineHeight: "1.6",
-                    color: "var(--text-main)"
-                  }}>
-                    <strong style={{ fontSize: 16, display: "block", marginBottom: 12, color: "var(--text-main)" }}>
-                      {writingResult.hook}
-                    </strong>
-                    {writingResult.text}
-                    <div style={{ marginTop: 16, color: "var(--primary)", fontWeight: 600 }}>
-                      {writingResult.cta}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="card" style={{ textAlign: "center", color: "var(--text-muted)" }}>
-              Текст поста еще генерируется...
-            </div>
+      {/* Segmented Control Main Tabs Navigation */}
+      <div style={{
+        display: "flex",
+        gap: 8,
+        marginBottom: 24,
+        background: "#ffffff",
+        padding: 6,
+        borderRadius: 14,
+        border: "1px solid #e2e8f0",
+        boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
+        width: "fit-content"
+      }}>
+        <button
+          onClick={() => setActiveMainTab("editor")}
+          style={{
+            padding: "10px 20px",
+            borderRadius: 10,
+            border: "none",
+            background: activeMainTab === "editor" ? "#0f172a" : "transparent",
+            color: activeMainTab === "editor" ? "#ffffff" : "#64748b",
+            fontWeight: activeMainTab === "editor" ? 700 : 600,
+            cursor: "pointer",
+            fontSize: 14,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            transition: "all 0.2s"
+          }}
+        >
+          ✍️ Контент & Мультипостинг
+        </button>
+
+        <button
+          onClick={() => setActiveMainTab("carousel")}
+          style={{
+            padding: "10px 20px",
+            borderRadius: 10,
+            border: "none",
+            background: activeMainTab === "carousel" ? "#0f172a" : "transparent",
+            color: activeMainTab === "carousel" ? "#ffffff" : "#64748b",
+            fontWeight: activeMainTab === "carousel" ? 700 : 600,
+            cursor: "pointer",
+            fontSize: 14,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            transition: "all 0.2s"
+          }}
+        >
+          🎨 Карусель & Слайды
+        </button>
+
+        <button
+          onClick={() => setActiveMainTab("analytics")}
+          style={{
+            padding: "10px 20px",
+            borderRadius: 10,
+            border: "none",
+            background: activeMainTab === "analytics" ? "#0f172a" : "transparent",
+            color: activeMainTab === "analytics" ? "#ffffff" : "#64748b",
+            fontWeight: activeMainTab === "analytics" ? 700 : 600,
+            cursor: "pointer",
+            fontSize: 14,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            transition: "all 0.2s"
+          }}
+        >
+          🛡️ Валидация & SEO (Аналитика)
+          {run.evaluation?.writing && (
+            <span style={{
+              fontSize: 11,
+              padding: "2px 8px",
+              borderRadius: 12,
+              background: run.evaluation.writing.isGoldenMatch ? "#dcfce7" : "#fee2e2",
+              color: run.evaluation.writing.isGoldenMatch ? "#166534" : "#991b1b",
+              fontWeight: 700
+            }}>
+              {run.evaluation.writing.alignmentScore}%
+            </span>
           )}
+        </button>
+      </div>
 
-          {/* Carousel Presentation Preview */}
-          {activeSlides.length > 0 ? (
-            <div className="card">
-              <h3 style={{ marginBottom: 20 }}>Слайды карусели</h3>
+      {/* TAB 1: CONTENT & MULTI-PLATFORM ADAPTATION EDITOR */}
+      {activeMainTab === "editor" && (
+        <section style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24, minWidth: 0 }}>
+          {/* Left Column: Post Content & Adaptation */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            {/* Post Adaptations & Editor Card */}
+            <div className="card" style={{ padding: 24, border: "1px solid #d0d7de", borderRadius: 16, background: "#ffffff" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>🌐 Публикация & Мультипостинг</h3>
+                  <p style={{ margin: "4px 0 0 0", fontSize: 13, color: "#57606a" }}>
+                    Просмотр и редактирование поста для LinkedIn, а также автоматическая адаптация для Telegram и Threads.
+                  </p>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <select
+                    value={adaptLength}
+                    onChange={(e) => setAdaptLength(e.target.value as "short" | "long")}
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: 8,
+                      border: "1px solid #d0d7de",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      background: "#f6f8fa",
+                    }}
+                  >
+                    <option value="long">📜 Подробный (~2000 симв.)</option>
+                    <option value="short">📝 Краткий (~500 симв.)</option>
+                  </select>
+                  <button
+                    disabled={isAdapting}
+                    onClick={handleAdapt}
+                    style={{
+                      padding: "10px 16px",
+                      borderRadius: 8,
+                      background: "linear-gradient(135deg, #0088cc, #24292e)",
+                      color: "#ffffff",
+                      border: "none",
+                      fontWeight: 700,
+                      fontSize: 13,
+                      cursor: isAdapting ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {isAdapting ? "⏳ Генерация..." : "🚀 Адаптировать (TG & Threads)"}
+                  </button>
+                </div>
+              </div>
 
-              {/* Slide block */}
-              {(() => {
-                const isLightTemplate = ["cover-1", "cover-6"].includes(selectedTemplate);
-                return (
-                  <div style={{
-                    aspectRatio: "1/1",
-                    maxWidth: 460,
-                    margin: "0 auto 20px auto",
-                    background: isLightTemplate ? "#ffffff" : selectedTemplate === "cover-3" || selectedTemplate === "cover-8" ? "#0D1117" : selectedTemplate === "cover-4" || selectedTemplate === "cover-9" ? "#0F172A" : selectedTemplate === "cover-5" ? "#090D16" : selectedTemplate === "cover-7" ? "#030712" : "#1e293b",
-                    border: isLightTemplate ? "3px solid var(--green)" : `3px solid ${accentColor}`,
-                    borderRadius: 16,
-                    padding: 28,
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "space-between",
-                    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-                    position: "relative",
-                  }}>
-                    <div>
-                      {isAwaitingApproval ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                          <label style={{ fontSize: 11, color: isLightTemplate ? "#6b7280" : "rgba(255,255,255,0.6)", fontWeight: 600 }}>Заголовок слайда</label>
-                          <input
-                            type="text"
-                            value={activeSlides[activeSlide].title}
-                            onChange={(e) => handleSlideChange(activeSlide, "title", e.target.value)}
-                            style={{
-                              fontSize: 16,
-                              fontWeight: "bold",
-                              background: isLightTemplate ? "#f9fafb" : "rgba(255,255,255,0.12)",
-                              color: isLightTemplate ? "#111827" : "#fff",
-                              border: isLightTemplate ? "1px solid #d1d5db" : "1px solid rgba(255,255,255,0.2)",
-                              width: "100%",
-                              padding: "6px 10px",
-                              borderRadius: "6px"
-                            }}
-                          />
-                      <label style={{ fontSize: 11, color: selectedTemplate === "cover-1" ? "#6b7280" : "rgba(255,255,255,0.6)", fontWeight: 600, marginTop: 4 }}>Буллиты слайда (по одному на строку)</label>
-                      <textarea
-                        rows={4}
-                        value={activeSlides[activeSlide].bullets.join("\n")}
-                        onChange={(e) => handleSlideChange(activeSlide, "bullets", e.target.value.split("\n"))}
-                        style={{
-                          fontSize: 14,
-                          fontFamily: "inherit",
-                          background: selectedTemplate === "cover-1" ? "#f9fafb" : "rgba(255,255,255,0.12)",
-                          color: selectedTemplate === "cover-1" ? "#111827" : "#fff",
-                          border: selectedTemplate === "cover-1" ? "1px solid #d1d5db" : "1px solid rgba(255,255,255,0.2)",
-                          resize: "none",
-                          width: "100%",
-                          padding: "6px 10px",
-                          borderRadius: "6px"
-                        }}
-                      />
-                      <label style={{ fontSize: 11, color: selectedTemplate === "cover-1" ? "#6b7280" : "rgba(255,255,255,0.6)", fontWeight: 600, marginTop: 4 }}>Иллюстрация слайда</label>
-                      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                        <select
-                          value={activeSlides[activeSlide].illustration || "none"}
-                          onChange={(e) => handleSlideChange(activeSlide, "illustration", e.target.value)}
-                          style={{
-                            flex: 1,
-                            padding: "8px",
-                            borderRadius: "6px",
-                            background: selectedTemplate === "cover-1" ? "#f9fafb" : "rgba(255,255,255,0.12)",
-                            color: selectedTemplate === "cover-1" ? "#111827" : "#fff",
-                            border: selectedTemplate === "cover-1" ? "1px solid #d1d5db" : "1px solid rgba(255,255,255,0.2)",
-                            fontSize: "13px"
-                          }}
-                        >
-                          <option value="none">Без иллюстрации</option>
-                          {availableIllustrations.map((ill) => (
-                            <option key={ill._id} value={ill.name}>{ill.name}</option>
-                          ))}
-                        </select>
-                        {activeSlides[activeSlide].illustration && activeSlides[activeSlide].illustration !== "none" && (
-                          <div
-                            style={{
-                              width: 36,
-                              height: 36,
-                              background: selectedTemplate === "cover-1" ? "#f3f4f6" : "rgba(255,255,255,0.1)",
-                              border: selectedTemplate === "cover-1" ? "1px solid #e5e7eb" : "none",
-                              borderRadius: 6,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              overflow: "hidden",
-                              padding: 4
-                            }}
-                            dangerouslySetInnerHTML={{
-                              __html: availableIllustrations.find(i => i.name === activeSlides[activeSlide].illustration)?.svgContent || ""
-                            }}
-                          />
-                        )}
+              {/* Platform Selector Tabs */}
+              <div style={{ display: "flex", gap: 8, marginBottom: 20, borderBottom: "1px solid #eaeef2", paddingBottom: 10 }}>
+                <button
+                  onClick={() => setActivePlatformTab("linkedin")}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: "8px 8px 0 0",
+                    border: "none",
+                    borderBottom: activePlatformTab === "linkedin" ? "3px solid #0a66c2" : "none",
+                    background: activePlatformTab === "linkedin" ? "#ddf4ff" : "transparent",
+                    color: activePlatformTab === "linkedin" ? "#0969da" : "#57606a",
+                    fontWeight: activePlatformTab === "linkedin" ? 700 : 500,
+                    cursor: "pointer",
+                    fontSize: 14,
+                  }}
+                >
+                  🌐 LinkedIn (Оригинал)
+                </button>
+                <button
+                  onClick={() => setActivePlatformTab("telegram")}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: "8px 8px 0 0",
+                    border: "none",
+                    borderBottom: activePlatformTab === "telegram" ? "3px solid #0088cc" : "none",
+                    background: activePlatformTab === "telegram" ? "#e0f2fe" : "transparent",
+                    color: activePlatformTab === "telegram" ? "#0369a1" : "#57606a",
+                    fontWeight: activePlatformTab === "telegram" ? 700 : 500,
+                    cursor: "pointer",
+                    fontSize: 14,
+                  }}
+                >
+                  📱 Telegram (RU) {run.adaptations?.telegram?.alignmentScore ? `🛡️ ${run.adaptations.telegram.alignmentScore}%` : ""}
+                </button>
+                <button
+                  onClick={() => setActivePlatformTab("threads")}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: "8px 8px 0 0",
+                    border: "none",
+                    borderBottom: activePlatformTab === "threads" ? "3px solid #000000" : "none",
+                    background: activePlatformTab === "threads" ? "#f3f4f6" : "transparent",
+                    color: activePlatformTab === "threads" ? "#111827" : "#57606a",
+                    fontWeight: activePlatformTab === "threads" ? 700 : 500,
+                    cursor: "pointer",
+                    fontSize: 14,
+                  }}
+                >
+                  🧵 Threads (RU) {run.adaptations?.threads?.alignmentScore ? `🛡️ ${run.adaptations.threads.alignmentScore}%` : ""}
+                </button>
+              </div>
+
+              {/* Platform Specific Content */}
+              {activePlatformTab === "linkedin" && (
+                <div>
+                  {isAwaitingApproval ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Hook (Заголовок)</label>
+                        <input
+                          type="text"
+                          value={hook}
+                          onChange={(e) => setHook(e.target.value)}
+                          style={{ fontSize: 15, fontWeight: "bold", padding: 10, borderRadius: 8, border: "1px solid var(--border)" }}
+                        />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Тело публикации</label>
+                        <textarea
+                          rows={8}
+                          value={bodyText}
+                          onChange={(e) => setBodyText(e.target.value)}
+                          style={{ fontSize: 14, fontFamily: "inherit", resize: "vertical", padding: 10, borderRadius: 8, border: "1px solid var(--border)", lineHeight: 1.5 }}
+                        />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>CTA (Призыв к действию)</label>
+                        <input
+                          type="text"
+                          value={cta}
+                          onChange={(e) => setCta(e.target.value)}
+                          style={{ fontSize: 14, color: "var(--primary)", fontWeight: 600, padding: 10, borderRadius: 8, border: "1px solid var(--border)" }}
+                        />
                       </div>
                     </div>
                   ) : (
-                    <>
-                      <h4 style={{
-                        fontSize: 24,
-                        marginBottom: 24,
-                        color: selectedTemplate === "cover-1" ? "#111827" : "#fff",
-                        lineHeight: 1.3
-                      }}>
-                        {activeSlides[activeSlide].title}
-                      </h4>
-                      <ul style={{ paddingLeft: 20, margin: 0 }}>
-                        {activeSlides[activeSlide].bullets.map((b: string, i: number) => (
-                          <li key={i} style={{
-                            fontSize: 16,
-                            color: selectedTemplate === "cover-1" ? "#374151" : "#cbd5e1",
-                            marginBottom: 12,
-                            lineHeight: 1.4
-                          }}>
-                            {b}
-                          </li>
-                        ))}
-                      </ul>
-                      {activeSlides[activeSlide].illustration && activeSlides[activeSlide].illustration !== "none" && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16 }}>
-                          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>Иллюстрация: <strong>{activeSlides[activeSlide].illustration}</strong></span>
-                          <div
-                            style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", padding: 2 }}
-                            dangerouslySetInnerHTML={{
-                              __html: availableIllustrations.find(i => i.name === activeSlides[activeSlide].illustration)?.svgContent || ""
-                            }}
-                          />
-                        </div>
-                      )}
-                    </>
+                    <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", padding: 20, borderRadius: 12, fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                      <strong style={{ fontSize: 16, display: "block", marginBottom: 12, color: "#0f172a" }}>{writingResult?.hook}</strong>
+                      {writingResult?.text}
+                      <div style={{ marginTop: 16, color: "#0969da", fontWeight: 600 }}>{writingResult?.cta}</div>
+                    </div>
                   )}
                 </div>
+              )}
 
-                <div style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  fontSize: 13,
-                  color: selectedTemplate === "cover-1" ? "#6b7280" : "rgba(255,255,255,0.5)",
-                  borderTop: selectedTemplate === "cover-1" ? "1px solid #e5e7eb" : "1px solid rgba(255,255,255,0.1)",
-                  paddingTop: 16
-                }}>
-                  {isAwaitingApproval ? (
-                    <input
-                      type="text"
-                      value={activeSlides[activeSlide].footer}
-                      onChange={(e) => handleSlideChange(activeSlide, "footer", e.target.value)}
-                      placeholder="Подпись футера"
-                      style={{
-                        fontSize: 12,
-                        background: selectedTemplate === "cover-1" ? "#f9fafb" : "rgba(255,255,255,0.12)",
-                        color: selectedTemplate === "cover-1" ? "#111827" : "#fff",
-                        border: selectedTemplate === "cover-1" ? "1px solid #d1d5db" : "1px solid rgba(255,255,255,0.2)",
-                        padding: "4px 8px",
-                        borderRadius: "4px",
-                        width: "60%"
-                      }}
-                    />
+              {activePlatformTab === "telegram" && (
+                <div>
+                  {run.adaptations?.telegram ? (
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, background: "#dcfce7", color: "#166534", padding: "4px 10px", borderRadius: 12 }}>
+                          🛡️ Golden Dataset Match: {run.adaptations.telegram.alignmentScore ?? 95}% (Эмодзи строго в заголовке)
+                        </span>
+                        <button
+                          onClick={() => handleCopyText(run.adaptations!.telegram!.text, "telegram")}
+                          style={{ padding: "6px 12px", borderRadius: 6, border: "1px solid #d0d7de", background: "#ffffff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                        >
+                          {copySuccess === "telegram" ? "✓ Скопировано!" : "📋 Скопировать пост"}
+                        </button>
+                      </div>
+                      <div style={{ background: "#0d1117", color: "#f0f6fc", padding: 20, borderRadius: 12, fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap", fontFamily: "sans-serif" }}>
+                        {run.adaptations.telegram.text}
+                      </div>
+                    </div>
                   ) : (
-                    <span>{activeSlides[activeSlide].footer}</span>
+                    <div style={{ textAlign: "center", padding: 24, color: "#6e7681" }}>
+                      Нажмите кнопку «🚀 Адаптировать (TG & Threads)» выше для генерации.
+                    </div>
                   )}
-                  <span style={{ fontWeight: 600, color: isLightTemplate ? "var(--green)" : accentColor }}>
-                    Слайд {activeSlide + 1} из {activeSlides.length}
-                  </span>
+                </div>
+              )}
+
+              {activePlatformTab === "threads" && (
+                <div>
+                  {run.adaptations?.threads ? (
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, background: "#dcfce7", color: "#166534", padding: "4px 10px", borderRadius: 12 }}>
+                          🛡️ Golden Dataset Match: {run.adaptations.threads.alignmentScore ?? 95}% (Эмодзи строго в заголовке)
+                        </span>
+                        <button
+                          onClick={() => handleCopyText(run.adaptations!.threads!.text, "threads")}
+                          style={{ padding: "6px 12px", borderRadius: 6, border: "1px solid #d0d7de", background: "#ffffff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                        >
+                          {copySuccess === "threads" ? "✓ Скопировано!" : "📋 Скопировать пост"}
+                        </button>
+                      </div>
+                      <div style={{ background: "#ffffff", color: "#111827", border: "1px solid #e5e7eb", padding: 20, borderRadius: 12, fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap", fontFamily: "sans-serif" }}>
+                        {run.adaptations.threads.text}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: "center", padding: 24, color: "#6e7681" }}>
+                      Нажмите кнопку «🚀 Адаптировать (TG & Threads)» выше для генерации.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Strategy & Positioning Context */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            {strategyResult && (
+              <div className="card">
+                <h3 style={{ marginBottom: 14, fontSize: 16 }}>Контент-Стратегия</h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 13 }}>
+                  <div>
+                    <span style={{ display: "block", color: "var(--text-muted)", fontSize: 11, fontWeight: 600, textTransform: "uppercase" }}>Формат</span>
+                    <strong style={{ color: "var(--text-main)" }}>{strategyResult.format}</strong>
+                  </div>
+                  <div>
+                    <span style={{ display: "block", color: "var(--text-muted)", fontSize: 11, fontWeight: 600, textTransform: "uppercase" }}>Целевая аудитория</span>
+                    <strong style={{ color: "var(--text-main)" }}>{strategyResult.target_audience}</strong>
+                  </div>
+                  <div>
+                    <span style={{ display: "block", color: "var(--text-muted)", fontSize: 11, fontWeight: 600, textTransform: "uppercase" }}>Ключевая идея (Core Idea)</span>
+                    <p style={{ margin: "4px 0 0 0", color: "var(--text-secondary)", lineHeight: 1.4 }}>{strategyResult.core_idea}</p>
+                  </div>
                 </div>
               </div>
-              );
-              })()}
+            )}
 
-              {/* Slider Controls */}
-              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 16 }}>
-                <button
-                  disabled={activeSlide === 0}
-                  onClick={() => setActiveSlide((prev) => prev - 1)}
-                  className="btn btn-secondary"
-                  style={{ padding: "8px 16px", borderRadius: 6, fontSize: 13 }}
-                >
-                  ← Назад
-                </button>
-
-                {/* Dots indicator */}
-                <div style={{ display: "flex", gap: 6 }}>
-                  {activeSlides.map((_, idx) => (
-                    <span
-                      key={idx}
-                      onClick={() => setActiveSlide(idx)}
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        background: activeSlide === idx ? accentColor : "#d1d5db",
-                        cursor: "pointer",
-                        transition: "background 0.2s"
-                      }}
-                    />
-                  ))}
+            {positioningResult && (
+              <div className="card">
+                <h3 style={{ marginBottom: 14, fontSize: 16 }}>Позиционирование</h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 13 }}>
+                  <div>
+                    <span style={{ display: "block", color: "var(--text-muted)", fontSize: 11, fontWeight: 600, textTransform: "uppercase" }}>Соответствие теме</span>
+                    <strong style={{ color: positioningResult.accepted ? "var(--green)" : "var(--red)" }}>
+                      {positioningResult.relevance}% (Relevance)
+                    </strong>
+                  </div>
+                  <div>
+                    <span style={{ display: "block", color: "var(--text-muted)", fontSize: 11, fontWeight: 600, textTransform: "uppercase" }}>Обоснование</span>
+                    <p style={{ margin: "4px 0 0 0", color: "var(--text-secondary)", lineHeight: 1.4 }}>{positioningResult.reason}</p>
+                  </div>
                 </div>
-
-                <button
-                  disabled={activeSlide === activeSlides.length - 1}
-                  onClick={() => setActiveSlide((prev) => prev + 1)}
-                  className="btn btn-secondary"
-                  style={{ padding: "8px 16px", borderRadius: 6, fontSize: 13 }}
-                >
-                  Вперед →
-                </button>
               </div>
+            )}
+          </div>
+        </section>
+      )}
 
-              {/* Template Style Toggle Selector */}
-              <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 24, marginBottom: 12, flexWrap: "wrap" }}>
-                {[
-                  { key: "cover-1", label: "☀️ Светлая сетка", color: "#10B981" },
-                  { key: "cover-2", label: "🌙 Тёмный Purple", color: "#8b5cf6" },
-                  { key: "cover-3", label: "💻 Cyberpunk Terminal", color: "#00F5FF" },
-                  { key: "cover-4", label: "📐 Blueprint Spec", color: "#FACC15" },
-                  { key: "cover-5", label: "🔮 Obsidian Glass", color: "#EC4899" },
-                  { key: "cover-6", label: "📰 Warm Editorial", color: "#EA580C" },
-                  { key: "cover-7", label: "🟩 Matrix Emerald", color: "#10B981" },
-                  { key: "cover-8", label: "🐙 GitHub Repos", color: "#58A6FF" },
-                  { key: "cover-9", label: "🛠️ Pet Projects", color: "#38BDF8" },
-                ].map((tmpl) => (
-                  <button
-                    key={tmpl.key}
-                    type="button"
-                    onClick={() => setSelectedTemplate(tmpl.key)}
-                    className="btn"
-                    style={{
-                      padding: "8px 14px",
-                      borderRadius: 8,
-                      fontSize: 12,
-                      background: selectedTemplate === tmpl.key ? tmpl.color : "#f3f4f6",
-                      color: selectedTemplate === tmpl.key ? (["#FACC15", "#00F5FF"].includes(tmpl.color) ? "#0F172A" : "#fff") : "#374151",
-                      border: selectedTemplate === tmpl.key ? `2px solid ${tmpl.color}` : "2px solid #e5e7eb",
-                      cursor: "pointer",
-                      fontWeight: 600,
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    {tmpl.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Dynamic ZIP Export / PNG Preview */}
-              {designResult && (
-                (() => {
-                  const styleData = designResult.rendered_styles?.[selectedTemplate];
-
-                  const currentPreviewId = styleData?.previewId ||
-                    (selectedTemplate === "cover-1" ? (designResult.preview_cover_1_id || designResult.imageId) :
-                     selectedTemplate === "cover-2" ? (designResult.preview_cover_2_id || designResult.imageId) :
-                     undefined);
-
-                  const currentZipId = styleData?.zipId ||
-                    (selectedTemplate === "cover-1" ? (designResult.zip_cover_1_id || designResult.imageId) :
-                     selectedTemplate === "cover-2" ? (designResult.zip_cover_2_id || designResult.imageId) :
-                     undefined);
-
+      {/* TAB 2: CAROUSEL & SLIDE DECK EDITOR */}
+      {activeMainTab === "carousel" && (
+        <section style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, minWidth: 0 }}>
+          {activeSlides.length > 0 ? (
+            <>
+              {/* Left Column: Interactive Slide Editor */}
+              <div className="card" style={{ padding: 24 }}>
+                <h3 style={{ marginBottom: 20 }}>Слайды карусели</h3>
+                {(() => {
+                  const isLightTemplate = ["cover-1", "cover-6"].includes(selectedTemplate);
                   return (
-                    <div style={{ marginTop: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 16, width: "100%" }}>
-                      {isReRendering && (
-                        <div style={{
-                          padding: "6px 12px",
-                          borderRadius: "4px",
-                          background: "rgba(204, 132, 255, 0.15)",
-                          border: "1px solid #CC84FF",
-                          color: "#CC84FF",
-                          fontSize: "12px",
-                          fontWeight: 500,
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 6,
-                          marginBottom: 8,
-                        }}>
-                          ⏳ Генерация новых изображений...
-                        </div>
-                      )}
-
-                      {currentZipId ? (
-                        <>
-                          <div style={{ width: "100%" }}>
-                            <span style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 12, fontWeight: 600 }}>
-                              Предпросмотр всех слайдов карусели (прокрутка вбок):
-                            </span>
-                            <div style={{
-                              display: "flex",
-                              gap: 16,
-                              overflowX: "auto",
-                              paddingBottom: 16,
-                              width: "100%",
-                              scrollSnapType: "x mandatory",
-                            }}>
-                              {/* Dynamically display each slide PNG extracted from the zip */}
-                              {Array.from({ length: activeSlides.length || designResult.card_count || 5 }).map((_, index) => (
-                                <div
-                                  key={index}
-                                  style={{
-                                    flex: "0 0 200px",
-                                    scrollSnapAlign: "start",
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    gap: 6,
-                                    textAlign: "center"
-                                  }}
-                                >
-                                  <img
-                                    src={`/api/proxy/images/${currentZipId}?index=${index}&t=${encodeURIComponent(run?.updatedAt || "")}`}
-                                    alt={`Slide ${index + 1}`}
-                                    loading="lazy"
-                                    style={{
-                                      width: "100%",
-                                      aspectRatio: "1080/1350",
-                                      borderRadius: "8px",
-                                      border: "1px solid var(--border)",
-                                      boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-                                      objectFit: "cover",
-                                    }}
-                                  />
-                                  <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 500 }}>
-                                    Слайд {index + 1}
-                                  </span>
-                                </div>
-                              ))}
+                    <div style={{
+                      aspectRatio: "1/1",
+                      maxWidth: 420,
+                      margin: "0 auto 20px auto",
+                      background: isLightTemplate ? "#ffffff" : selectedTemplate === "cover-3" || selectedTemplate === "cover-8" ? "#0D1117" : selectedTemplate === "cover-4" || selectedTemplate === "cover-9" ? "#0F172A" : selectedTemplate === "cover-5" ? "#090D16" : selectedTemplate === "cover-7" ? "#030712" : "#1e293b",
+                      border: isLightTemplate ? "3px solid var(--green)" : `3px solid ${accentColor}`,
+                      borderRadius: 16,
+                      padding: 24,
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                      position: "relative",
+                    }}>
+                      <div>
+                        {isAwaitingApproval ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            <label style={{ fontSize: 11, color: isLightTemplate ? "#6b7280" : "rgba(255,255,255,0.6)", fontWeight: 600 }}>Заголовок слайда</label>
+                            <input
+                              type="text"
+                              value={activeSlides[activeSlide].title}
+                              onChange={(e) => handleSlideChange(activeSlide, "title", e.target.value)}
+                              style={{
+                                fontSize: 15,
+                                fontWeight: "bold",
+                                background: isLightTemplate ? "#f9fafb" : "rgba(255,255,255,0.12)",
+                                color: isLightTemplate ? "#111827" : "#fff",
+                                border: isLightTemplate ? "1px solid #d1d5db" : "1px solid rgba(255,255,255,0.2)",
+                                width: "100%",
+                                padding: "6px 10px",
+                                borderRadius: "6px"
+                              }}
+                            />
+                            <label style={{ fontSize: 11, color: isLightTemplate ? "#6b7280" : "rgba(255,255,255,0.6)", fontWeight: 600 }}>Буллиты слайда (по одному на строку)</label>
+                            <textarea
+                              rows={4}
+                              value={activeSlides[activeSlide].bullets.join("\n")}
+                              onChange={(e) => handleSlideChange(activeSlide, "bullets", e.target.value.split("\n"))}
+                              style={{
+                                fontSize: 13,
+                                fontFamily: "inherit",
+                                background: isLightTemplate ? "#f9fafb" : "rgba(255,255,255,0.12)",
+                                color: isLightTemplate ? "#111827" : "#fff",
+                                border: isLightTemplate ? "1px solid #d1d5db" : "1px solid rgba(255,255,255,0.2)",
+                                resize: "none",
+                                width: "100%",
+                                padding: "6px 10px",
+                                borderRadius: "6px"
+                              }}
+                            />
+                            <label style={{ fontSize: 11, color: isLightTemplate ? "#6b7280" : "rgba(255,255,255,0.6)", fontWeight: 600 }}>Иллюстрация слайда</label>
+                            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                              <select
+                                value={activeSlides[activeSlide].illustration || "none"}
+                                onChange={(e) => handleSlideChange(activeSlide, "illustration", e.target.value)}
+                                style={{
+                                  flex: 1,
+                                  padding: "8px",
+                                  borderRadius: "6px",
+                                  background: isLightTemplate ? "#f9fafb" : "rgba(255,255,255,0.12)",
+                                  color: isLightTemplate ? "#111827" : "#fff",
+                                  border: isLightTemplate ? "1px solid #d1d5db" : "1px solid rgba(255,255,255,0.2)",
+                                  fontSize: "13px"
+                                }}
+                              >
+                                <option value="none">Без иллюстрации</option>
+                                {availableIllustrations.map((ill) => (
+                                  <option key={ill._id} value={ill.name}>{ill.name}</option>
+                                ))}
+                              </select>
                             </div>
                           </div>
+                        ) : (
+                          <>
+                            <h4 style={{ fontSize: 22, marginBottom: 16, color: isLightTemplate ? "#111827" : "#fff", lineHeight: 1.3 }}>
+                              {activeSlides[activeSlide].title}
+                            </h4>
+                            <ul style={{ paddingLeft: 20, margin: 0 }}>
+                              {activeSlides[activeSlide].bullets.map((b: string, i: number) => (
+                                <li key={i} style={{ fontSize: 14, color: isLightTemplate ? "#374151" : "#cbd5e1", marginBottom: 10, lineHeight: 1.4 }}>
+                                  {b}
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
+                      </div>
 
-                          <div style={{ textAlign: "center", marginTop: 8 }}>
-                            <a
-                              href={`/api/proxy/images/${currentZipId}`}
-                              download={`carousel_${run?.runId || "run"}_${selectedTemplate}.zip`}
-                              className="btn btn-primary"
-                              style={{
-                                padding: "10px 20px",
-                                textDecoration: "none",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 8,
-                                fontWeight: 600,
-                              }}
-                            >
-                              📦 Скачать ZIP Архив (Слайды PNG)
-                            </a>
-                            <span style={{ display: "block", fontSize: 11, color: "var(--text-muted)", marginTop: 6 }}>
-                              Архив содержит обложку и карточки поста в формате PNG
-                            </span>
-                          </div>
-                        </>
-                      ) : (
-                        <div style={{
-                          padding: "16px 20px",
-                          background: "rgba(245, 158, 11, 0.1)",
-                          border: "1px solid #f59e0b",
-                          borderRadius: 8,
-                          textAlign: "center",
-                          fontSize: 13,
-                          color: "#d97706",
-                          marginTop: 12,
-                          width: "100%",
-                        }}>
-                          ⚡ Карточки для шаблона <strong>{selectedTemplate}</strong> еще не отрендерены в этом старом прогоне.
-                          <br />
-                          Нажмите <strong>«Сохранить правки»</strong> выше или запустите <strong>перегенерацию</strong>, чтобы сгенерировать PNG-карточки для всех 7 стилей!
-                        </div>
-                      )}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, paddingTop: 12, borderTop: isLightTemplate ? "1px solid #e5e7eb" : "1px solid rgba(255,255,255,0.1)" }}>
+                        <span>{activeSlides[activeSlide].footer}</span>
+                        <span style={{ fontWeight: 600, color: isLightTemplate ? "var(--green)" : accentColor }}>
+                          Слайд {activeSlide + 1} из {activeSlides.length}
+                        </span>
+                      </div>
                     </div>
                   );
-                })()
-              )}
-            </div>
-          ) : designResult ? (
-            <div className="card" style={{ textAlign: "center", color: "var(--text-muted)" }}>
-              Нет данных для карусели.
-            </div>
-          ) : null}
-        </div>
+                })()}
 
-        {/* Right Side: Audits and Metadata */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-          {/* SEO Audit Result */}
-          {seoResult ? (
-            <div className="card">
-              <h3 style={{ marginBottom: 20 }}>SEO Аудит</h3>
-              <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 20 }}>
-                <div style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: "50%",
-                  background: `conic-gradient(${seoResult.score >= 80 ? "var(--green)" : "var(--amber)"} ${seoResult.score * 3.6}deg, #e5e7eb 0deg)`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center"
-                }}>
+                {/* Slider Controls */}
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 16, marginBottom: 20 }}>
+                  <button
+                    disabled={activeSlide === 0}
+                    onClick={() => setActiveSlide((prev) => prev - 1)}
+                    className="btn btn-secondary"
+                    style={{ padding: "8px 16px", borderRadius: 6, fontSize: 13 }}
+                  >
+                    ← Назад
+                  </button>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {activeSlides.map((_, idx) => (
+                      <span
+                        key={idx}
+                        onClick={() => setActiveSlide(idx)}
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          background: activeSlide === idx ? accentColor : "#d1d5db",
+                          cursor: "pointer",
+                          transition: "background 0.2s"
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    disabled={activeSlide === activeSlides.length - 1}
+                    onClick={() => setActiveSlide((prev) => prev + 1)}
+                    className="btn btn-secondary"
+                    style={{ padding: "8px 16px", borderRadius: 6, fontSize: 13 }}
+                  >
+                    Вперед →
+                  </button>
+                </div>
+
+                {/* Template Style Toggle Selector */}
+                <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
+                  {[
+                    { key: "cover-1", label: "☀️ Светлая сетка", color: "#10B981" },
+                    { key: "cover-2", label: "🌙 Тёмный Purple", color: "#8b5cf6" },
+                    { key: "cover-3", label: "💻 Cyberpunk Terminal", color: "#00F5FF" },
+                    { key: "cover-4", label: "📐 Blueprint Spec", color: "#FACC15" },
+                    { key: "cover-5", label: "🔮 Obsidian Glass", color: "#EC4899" },
+                    { key: "cover-6", label: "📰 Warm Editorial", color: "#EA580C" },
+                    { key: "cover-7", label: "🟩 Matrix Emerald", color: "#10B981" },
+                    { key: "cover-8", label: "🐙 GitHub Repos", color: "#58A6FF" },
+                    { key: "cover-9", label: "🛠️ Pet Projects", color: "#38BDF8" },
+                  ].map((tmpl) => (
+                    <button
+                      key={tmpl.key}
+                      type="button"
+                      onClick={() => setSelectedTemplate(tmpl.key)}
+                      className="btn"
+                      style={{
+                        padding: "6px 12px",
+                        borderRadius: 8,
+                        fontSize: 12,
+                        background: selectedTemplate === tmpl.key ? tmpl.color : "#f3f4f6",
+                        color: selectedTemplate === tmpl.key ? (["#FACC15", "#00F5FF"].includes(tmpl.color) ? "#0F172A" : "#fff") : "#374151",
+                        border: selectedTemplate === tmpl.key ? `2px solid ${tmpl.color}` : "2px solid #e5e7eb",
+                        cursor: "pointer",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {tmpl.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Right Column: Carousel PNG Preview Gallery & ZIP Download */}
+              <div className="card" style={{ padding: 24, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <div>
+                  <h3 style={{ marginBottom: 16 }}>Предпросмотр всех слайдов</h3>
+                  {designResult && (() => {
+                    const styleData = designResult.rendered_styles?.[selectedTemplate];
+                    const currentZipId = styleData?.zipId ||
+                      (selectedTemplate === "cover-1" ? (designResult.zip_cover_1_id || designResult.imageId) :
+                       selectedTemplate === "cover-2" ? (designResult.zip_cover_2_id || designResult.imageId) : undefined);
+
+                    return currentZipId ? (
+                      <div>
+                        <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 16, scrollSnapType: "x mandatory" }}>
+                          {Array.from({ length: activeSlides.length || designResult.card_count || 5 }).map((_, index) => (
+                            <div key={index} style={{ flex: "0 0 160px", scrollSnapAlign: "start", textAlign: "center" }}>
+                              <img
+                                src={`/api/proxy/images/${currentZipId}?index=${index}&t=${encodeURIComponent(run?.updatedAt || "")}`}
+                                alt={`Slide ${index + 1}`}
+                                loading="lazy"
+                                style={{ width: "100%", aspectRatio: "1080/1350", borderRadius: 8, border: "1px solid var(--border)", objectFit: "cover" }}
+                              />
+                              <span style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4, display: "block" }}>Слайд {index + 1}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ textAlign: "center", marginTop: 20 }}>
+                          <a
+                            href={`/api/proxy/images/${currentZipId}`}
+                            download={`carousel_${run?.runId || "run"}_${selectedTemplate}.zip`}
+                            className="btn btn-primary"
+                            style={{ padding: "12px 24px", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 15 }}
+                          >
+                            📦 Скачать ZIP Архив (Слайды PNG)
+                          </a>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ padding: 20, background: "rgba(245, 158, 11, 0.1)", borderRadius: 8, color: "#d97706", fontSize: 13, textAlign: "center" }}>
+                        ⚡ Слайды для шаблона {selectedTemplate} еще не отрендерены. Нажмите «Сохранить правки» выше.
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="card" style={{ gridColumn: "1 / -1", textAlign: "center", color: "var(--text-muted)" }}>
+              Карусель еще генерируется...
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* TAB 3: VALIDATION, SEO AUDIT & LOGS */}
+      {activeMainTab === "analytics" && (
+        <section style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 24, minWidth: 0 }}>
+          {/* Left Column: Golden Dataset Evaluation & Raw Logs */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            {/* Golden Dataset Evaluation Panel */}
+            {run.evaluation && (run.evaluation.writing || run.evaluation.design) ? (
+              <div style={{
+                background: "linear-gradient(135deg, rgba(15,23,42,0.95) 0%, rgba(30,41,59,0.95) 100%)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 16,
+                padding: "22px 24px",
+              }}>
+                <div style={{ fontSize: 13, color: "#94a3b8", fontWeight: 700, marginBottom: 16, letterSpacing: "0.05em", textTransform: "uppercase" }}>
+                  🛡️ GOLDEN DATASET VALIDATION (QUALITY GATE)
+                </div>
+                <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                  {run.evaluation.writing && (() => {
+                    const { alignmentScore, isGoldenMatch, driftReport } = run.evaluation!.writing!;
+                    const failedRules = driftReport.filter(r => !r.passed);
+                    return (
+                      <div style={{
+                        flex: 1, minWidth: 260,
+                        background: isGoldenMatch ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)",
+                        border: `1px solid ${isGoldenMatch ? "rgba(16,185,129,0.3)" : "rgba(239,68,68,0.3)"}`,
+                        borderRadius: 12, padding: "16px 18px",
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: "#f8fafc" }}>✍️ Writing Agent</span>
+                          <span style={{ fontSize: 20, fontWeight: 800, color: alignmentScore >= 80 ? "#10b981" : alignmentScore >= 50 ? "#f59e0b" : "#ef4444" }}>
+                            {alignmentScore}%
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                          {driftReport.map((r) => (
+                            <span key={r.rule} title={r.details} style={{
+                              fontSize: 11, padding: "3px 8px", borderRadius: 20,
+                              background: r.passed ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)",
+                              color: r.passed ? "#34d399" : "#f87171",
+                              border: `1px solid ${r.passed ? "rgba(52,211,153,0.3)" : "rgba(248,113,113,0.3)"}`,
+                              cursor: "help",
+                            }}>
+                              {r.passed ? "✓" : "✗"} {r.rule.replace(/_/g, " ")}
+                            </span>
+                          ))}
+                        </div>
+                        {failedRules.length > 0 && (
+                          <div style={{ marginTop: 12, fontSize: 12, color: "#f87171" }}>
+                            {failedRules[0].details}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {run.evaluation.design && (() => {
+                    const { alignmentScore, isGoldenMatch, driftReport } = run.evaluation!.design!;
+                    const failedRules = driftReport.filter(r => !r.passed);
+                    return (
+                      <div style={{
+                        flex: 1, minWidth: 260,
+                        background: isGoldenMatch ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)",
+                        border: `1px solid ${isGoldenMatch ? "rgba(16,185,129,0.3)" : "rgba(239,68,68,0.3)"}`,
+                        borderRadius: 12, padding: "16px 18px",
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: "#f8fafc" }}>🎨 Design Agent</span>
+                          <span style={{ fontSize: 20, fontWeight: 800, color: alignmentScore >= 80 ? "#10b981" : alignmentScore >= 50 ? "#f59e0b" : "#ef4444" }}>
+                            {alignmentScore}%
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                          {driftReport.map((r) => (
+                            <span key={r.rule} title={r.details} style={{
+                              fontSize: 11, padding: "3px 8px", borderRadius: 20,
+                              background: r.passed ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)",
+                              color: r.passed ? "#34d399" : "#f87171",
+                              border: `1px solid ${r.passed ? "rgba(52,211,153,0.3)" : "rgba(248,113,113,0.3)"}`,
+                              cursor: "help",
+                            }}>
+                              {r.passed ? "✓" : "✗"} {r.rule.replace(/_/g, " ")}
+                            </span>
+                          ))}
+                        </div>
+                        {failedRules.length > 0 && (
+                          <div style={{ marginTop: 12, fontSize: 12, color: "#f87171" }}>
+                            {failedRules[0].details}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            ) : (
+              <div className="card" style={{ textAlign: "center", color: "var(--text-muted)" }}>
+                Данные валидации Golden Dataset пока не рассчитаны для этого прогона.
+              </div>
+            )}
+
+            {/* Raw Log Explorer */}
+            <div className="card" style={{ padding: 20 }}>
+              <h3 style={{ fontSize: 16, marginBottom: 12 }}>Отладочные логи</h3>
+              <details style={{ fontSize: 13 }}>
+                <summary style={{ cursor: "pointer", color: "var(--text-muted)", fontWeight: 600 }}>Посмотреть RAW JSON стадий</summary>
+                <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+                  {stages.map((s) => (
+                    <div key={s.stage} style={{ background: "#f8fafc", border: "1px solid var(--border)", borderRadius: 8, padding: 12 }}>
+                      <strong style={{ display: "block", textTransform: "uppercase", fontSize: 11, color: "var(--primary)", marginBottom: 6 }}>
+                        {s.stage}
+                      </strong>
+                      <pre style={{ margin: 0, fontSize: 11, overflowX: "auto", color: "var(--text-muted)" }}>
+                        {JSON.stringify(s.result, null, 2)}
+                      </pre>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            </div>
+          </div>
+
+          {/* Right Column: SEO Audit */}
+          <div>
+            {seoResult ? (
+              <div className="card" style={{ padding: 24 }}>
+                <h3 style={{ marginBottom: 20 }}>SEO Аудит</h3>
+                <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 20 }}>
                   <div style={{
-                    width: 68,
-                    height: 68,
+                    width: 80,
+                    height: 80,
                     borderRadius: "50%",
-                    background: "#ffffff",
+                    background: `conic-gradient(${seoResult.score >= 80 ? "var(--green)" : "var(--amber)"} ${seoResult.score * 3.6}deg, #e5e7eb 0deg)`,
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "center",
-                    flexDirection: "column"
+                    justifyContent: "center"
                   }}>
-                    <span style={{ fontSize: 20, fontWeight: "bold", color: "var(--text-main)" }}>{seoResult.score}</span>
-                    <span style={{ fontSize: 9, color: "var(--text-muted)", textTransform: "uppercase" }}>score</span>
+                    <div style={{
+                      width: 68,
+                      height: 68,
+                      borderRadius: "50%",
+                      background: "#ffffff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexDirection: "column"
+                    }}>
+                      <span style={{ fontSize: 20, fontWeight: "bold", color: "var(--text-main)" }}>{seoResult.score}</span>
+                      <span style={{ fontSize: 9, color: "var(--text-muted)", textTransform: "uppercase" }}>score</span>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 style={{ margin: "0 0 4px 0", color: seoResult.score >= 80 ? "var(--green)" : "var(--amber)" }}>
+                      {seoResult.score >= 80 ? "Проверка пройдена" : "Требует внимания"}
+                    </h4>
+                    <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                      {seoResult.score >= 80 ? "Пост соответствует всем стандартам" : "Рекомендуется доработка текста"}
+                    </span>
                   </div>
                 </div>
-                <div>
-                  <h4 style={{ margin: "0 0 4px 0", color: seoResult.score >= 80 ? "var(--green)" : "var(--amber)" }}>
-                    {seoResult.score >= 80 ? "Проверка пройдена" : "Требует внимания"}
-                  </h4>
-                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                    {seoResult.score >= 80 ? "Пост соответствует всем стандартам" : "Рекомендуется доработка текста"}
-                  </span>
-                </div>
-              </div>
 
-              {seoResult.recommendations && seoResult.recommendations.length > 0 ? (
-                <div>
-                  <strong style={{ fontSize: 13, display: "block", marginBottom: 10 }}>Рекомендации:</strong>
-                  <ul style={{ padding: 0, margin: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
-                    {seoResult.recommendations.map((rec: string, idx: number) => (
-                      <li key={idx} style={{ display: "flex", gap: 8, fontSize: 13, color: "var(--text-muted)" }}>
-                        <span style={{ color: "var(--amber)" }}>⚠</span>
-                        <span>{rec}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <p style={{ fontSize: 13, color: "var(--green)", margin: 0 }}>✓ Рекомендаций нет, текст идеален!</p>
-              )}
-            </div>
-          ) : null}
-
-          {/* Strategy Details */}
-          {strategyResult ? (
-            <div className="card">
-              <h3 style={{ marginBottom: 16 }}>Контент-Стратегия</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 14 }}>
-                <div>
-                  <span style={{ display: "block", color: "var(--text-muted)", fontSize: 11, fontWeight: 600, textTransform: "uppercase" }}>Формат публикации</span>
-                  <strong style={{ color: "var(--text-main)" }}>{strategyResult.format}</strong>
-                </div>
-                <div>
-                  <span style={{ display: "block", color: "var(--text-muted)", fontSize: 11, fontWeight: 600, textTransform: "uppercase" }}>Целевая аудитория</span>
-                  <strong style={{ color: "var(--text-main)" }}>{strategyResult.target_audience}</strong>
-                </div>
-                <div>
-                  <span style={{ display: "block", color: "var(--text-muted)", fontSize: 11, fontWeight: 600, textTransform: "uppercase" }}>Ключевой месседж (Core Idea)</span>
-                  <p style={{ margin: "4px 0 0 0", color: "var(--text-secondary)", lineHeight: 1.4 }}>{strategyResult.core_idea}</p>
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          {/* Positioning Results */}
-          {positioningResult ? (
-            <div className="card">
-              <h3 style={{ marginBottom: 16 }}>Позиционирование</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 14 }}>
-                <div>
-                  <span style={{ display: "block", color: "var(--text-muted)", fontSize: 11, fontWeight: 600, textTransform: "uppercase" }}>Соответствие теме</span>
-                  <strong style={{ color: positioningResult.accepted ? "var(--green)" : "var(--red)" }}>
-                    {positioningResult.relevance}% (Relevance)
-                  </strong>
-                </div>
-                <div>
-                  <span style={{ display: "block", color: "var(--text-muted)", fontSize: 11, fontWeight: 600, textTransform: "uppercase" }}>Обоснование позиционирования</span>
-                  <p style={{ margin: "4px 0 0 0", color: "var(--text-secondary)", lineHeight: 1.4 }}>{positioningResult.reason}</p>
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          {/* Raw Log Explorer */}
-          <div className="card" style={{ padding: 16 }}>
-            <h3 style={{ fontSize: 15, marginBottom: 12 }}>Отладочные логи</h3>
-            <details style={{ fontSize: 13 }}>
-              <summary style={{ cursor: "pointer", color: "var(--text-muted)", fontWeight: 500 }}>Посмотреть RAW JSON стадий</summary>
-              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
-                {stages.map((s) => (
-                  <div key={s.stage} style={{ background: "#f8fafc", border: "1px solid var(--border)", borderRadius: 8, padding: 12 }}>
-                    <strong style={{ display: "block", textTransform: "uppercase", fontSize: 11, color: "var(--primary)", marginBottom: 6 }}>
-                      {s.stage}
-                    </strong>
-                    <pre style={{ margin: 0, fontSize: 11, overflowX: "auto", color: "var(--text-muted)" }}>
-                      {JSON.stringify(s.result, null, 2)}
-                    </pre>
+                {seoResult.recommendations && seoResult.recommendations.length > 0 ? (
+                  <div>
+                    <strong style={{ fontSize: 13, display: "block", marginBottom: 10 }}>Рекомендации:</strong>
+                    <ul style={{ padding: 0, margin: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+                      {seoResult.recommendations.map((rec: string, idx: number) => (
+                        <li key={idx} style={{ display: "flex", gap: 8, fontSize: 13, color: "var(--text-muted)" }}>
+                          <span style={{ color: "var(--amber)" }}>⚠</span>
+                          <span>{rec}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                ))}
+                ) : (
+                  <p style={{ fontSize: 13, color: "var(--green)", margin: 0 }}>✓ Рекомендаций нет, текст идеален!</p>
+                )}
               </div>
-            </details>
+            ) : (
+              <div className="card" style={{ textAlign: "center", color: "var(--text-muted)" }}>
+                Данные SEO аудита ещё генерируются...
+              </div>
+            )}
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Reprocess Dialog Modal */}
       {isReprocessModalOpen && (

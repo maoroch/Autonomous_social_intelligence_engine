@@ -17,7 +17,9 @@ export async function fetchGithubTrending(): Promise<Array<{ title: string; url:
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    const response = await fetch("https://api.github.com/search/repositories?q=pushed:>2025-01-01+stars:>1000&sort=stars&order=desc&per_page=15", {
+    const pages = [1, 2, 3];
+    const page = pages[Math.floor(Math.random() * pages.length)];
+    const response = await fetch(`https://api.github.com/search/repositories?q=created:>2025-01-01+stars:>100&sort=updated&order=desc&per_page=15&page=${page}`, {
       headers: {
         "User-Agent": "LinkedIn-AI-Agent-Tool/1.0",
         "Accept": "application/vnd.github.v3+json",
