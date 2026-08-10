@@ -14,14 +14,15 @@ const MONGO_DB_NAME = process.env.MONGO_DB_NAME || "linkedin_pipeline";
 
 export interface EvaluateRequest {
   runId: string;
-  platform: "linkedin" | "telegram" | "threads";
+  tenantId?: string;
+  platform: "linkedin" | "instagram" | "telegram" | "threads";
   text: string;
   pillarId?: string;
   targetLanguage?: string;
 }
 
 export function evaluateText(req: EvaluateRequest): { alignmentScore: number; driftReport: { rule: string; passed: boolean; details: string }[] } {
-  const { platform, text, targetLanguage } = req;
+  const { platform, text, pillarId, tenantId, targetLanguage } = req;
   const driftReport: { rule: string; passed: boolean; details: string }[] = [];
   let deductions = 0;
 
@@ -126,7 +127,7 @@ export function evaluateText(req: EvaluateRequest): { alignmentScore: number; dr
   }
   // 5. Pharma Specific Validation Rules (Testo Pharma Rubrics)
   const isPharmaRubric = pillarId?.startsWith("pharma-") || text.includes("GxP") || text.includes("21 CFR Part 11") || text.includes("холодовая цепь");
-  
+
   if (isPharmaRubric) {
     const hasDisclaimer = text.toLowerCase().includes("документации производителя") || text.toLowerCase().includes("характеристики уточняйте");
     if (!hasDisclaimer) {

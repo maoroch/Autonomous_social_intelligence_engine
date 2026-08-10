@@ -99,8 +99,8 @@ export class AiClient {
     const limit = provider === "gemini"
       ? (this.config.geminiRateLimit ?? 12)
       : provider === "openrouter"
-      ? (this.config.openrouterRateLimit ?? 30)
-      : (this.config.groqRateLimit ?? 30);
+        ? (this.config.openrouterRateLimit ?? 30)
+        : (this.config.groqRateLimit ?? 30);
 
     const key = `ratelimit:${provider}`;
     const windowSeconds = 60;

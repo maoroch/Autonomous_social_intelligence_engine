@@ -116,21 +116,21 @@ async function processWritingJob(job: AgentJob): Promise<unknown> {
   if (run?.profileId) {
     try {
       dbProfile = await profilesCol.findOne({ _id: new ObjectId(run.profileId) });
-    } catch(err) {
+    } catch (err) {
       logger.warn({ runId: job.runId, profileId: run.profileId }, "Failed to find specified profile, falling back to default");
     }
   }
   if (!dbProfile) {
     dbProfile = await profilesCol.findOne({});
   }
-  const authorProfile = dbProfile 
+  const authorProfile = dbProfile
     ? {
-        topics: Array.isArray(dbProfile.topics) ? dbProfile.topics : DEFAULT_PROFILE.topics,
-        forbidden_words: Array.isArray(dbProfile.forbidden_words) ? dbProfile.forbidden_words : DEFAULT_PROFILE.forbidden_words,
-        cta_style: typeof dbProfile.cta_style === "string" ? dbProfile.cta_style : DEFAULT_PROFILE.cta_style,
-        use_emoji: typeof dbProfile.use_emoji === "boolean" ? dbProfile.use_emoji : DEFAULT_PROFILE.use_emoji,
-        tone: typeof dbProfile.tone === "string" ? dbProfile.tone : DEFAULT_PROFILE.tone,
-      }
+      topics: Array.isArray(dbProfile.topics) ? dbProfile.topics : DEFAULT_PROFILE.topics,
+      forbidden_words: Array.isArray(dbProfile.forbidden_words) ? dbProfile.forbidden_words : DEFAULT_PROFILE.forbidden_words,
+      cta_style: typeof dbProfile.cta_style === "string" ? dbProfile.cta_style : DEFAULT_PROFILE.cta_style,
+      use_emoji: typeof dbProfile.use_emoji === "boolean" ? dbProfile.use_emoji : DEFAULT_PROFILE.use_emoji,
+      tone: typeof dbProfile.tone === "string" ? dbProfile.tone : DEFAULT_PROFILE.tone,
+    }
     : DEFAULT_PROFILE;
 
   // Мультиарендность: определяем tenantId и подгружаем IndustryProfile.
@@ -178,7 +178,7 @@ async function processWritingJob(job: AgentJob): Promise<unknown> {
 Here are examples of high-performing posts matching strictly this content rubric. 
 Study their tone, spacing, scannability, list structure, hook strength, and copy their style:
 ${goldenPosts.map((gp, i) => `
---- Example ${i+1} ---
+--- Example ${i + 1} ---
 Hook: ${gp.hook || ""}
 Text:
 ${gp.text || gp.caption || ""}
@@ -360,7 +360,7 @@ ${industryProfile.glossary.map((g) => `- "${g.term}"${g.definition ? `: ${g.defi
   if (trendItemsList.length > 0) {
     verifiedSourcesBlock = `\nCRITICAL GITHUB REPOSITORY MATCHING REQUIREMENT:
 You MUST feature 3-4 DIFFERENT repositories using the titles and exact URLs below:
-${trendItemsList.map((t, idx) => `- Repo #${idx+1}: "${t.title}" -> ${t.url}`).join("\n")}
+${trendItemsList.map((t, idx) => `- Repo #${idx + 1}: "${t.title}" -> ${t.url}`).join("\n")}
 DO NOT REPEAT THE SAME REPOSITORY OR THE SAME URL MULTIPLE TIMES. EVERY REPOSITORY MUST HAVE A UNIQUE URL.\n`;
   }
 
@@ -769,7 +769,7 @@ app.post("/adapt", async (req, res) => {
     ]);
 
     const parsed = parseCleanJson(aiRes.text);
-    
+
     // Ensure hook starts with an emoji
     const emojiRegex = /[\u{1F300}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
     let rawHook = (parsed.hook || topicTitle || "Разбор технологии").trim();
@@ -811,7 +811,7 @@ app.post("/adapt", async (req, res) => {
 async function start() {
   await connectMongo(MONGO_URI, MONGO_DB_NAME);
   logger.info("Connected to MongoDB");
-  
+
   app.listen(PORT, () => logger.info({ port: PORT }, "agent-writing listening"));
 }
 

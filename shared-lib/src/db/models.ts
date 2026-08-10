@@ -47,7 +47,7 @@ export interface PlatformAdaptation {
 export interface GoldenEvaluationDoc {
   _id?: ObjectId;
   runId: string;
-  platform: "linkedin" | "telegram" | "threads";
+  platform: "linkedin" | "instagram" | "telegram" | "threads";
   alignmentScore: number; // 0..100
   driftReport: {
     rule: string;
