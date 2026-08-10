@@ -123,6 +123,15 @@ export const ContentPillarSchema = z.object({
 });
 export type ContentPillar = z.infer<typeof ContentPillarSchema>;
 
+// ---------- Настройки валидации терминологии ----------
+
+export const TerminologyRulesSchema = z.object({
+  mandatoryTerms: z.record(z.string(), z.array(z.string())).default({}),
+  forbiddenTerms: z.array(z.string()).default([]),
+  preferredReplacements: z.record(z.string(), z.string()).default({}),
+});
+export type TerminologyRules = z.infer<typeof TerminologyRulesSchema>;
+
 // ---------- IndustryProfile: главная сущность отраслевой конфигурации ----------
 
 export const IndustryProfileSchema = z.object({
@@ -132,6 +141,7 @@ export const IndustryProfileSchema = z.object({
 
   trendSources: z.array(TrendSourceConfigSchema).default([]),
   glossary: z.array(GlossaryTermSchema).default([]),
+  terminologyRules: TerminologyRulesSchema.default({}),
   audiencePersonas: z.array(AudiencePersonaSchema).default([]),
   contentStyleRules: ContentStyleRulesSchema.default({}),
   brandGuidelines: BrandGuidelinesSchema,
@@ -161,6 +171,11 @@ export const DEFAULT_SOFTWARE_DEV_INDUSTRY_PROFILE: Omit<IndustryProfile, "creat
     { type: "custom", url: "https://www.reddit.com/r/coolgithubprojects", label: "Reddit (r/coolgithubprojects & r/sideproject)", weight: 0.8 },
   ],
   glossary: [],
+  terminologyRules: {
+    mandatoryTerms: {},
+    forbiddenTerms: [],
+    preferredReplacements: {},
+  },
   audiencePersonas: [
     { id: "junior", label: "Junior Developer", description: "Начинающий разработчик", painPoints: [], toneOfVoice: "casual" },
     { id: "middle", label: "Middle Developer", description: "Разработчик среднего уровня", painPoints: [], toneOfVoice: "semi-formal" },

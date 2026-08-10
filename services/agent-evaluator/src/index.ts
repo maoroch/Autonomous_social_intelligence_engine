@@ -1,7 +1,9 @@
 import express, { Request, Response } from "express";
 import dotenv from "dotenv";
 import { connectMongo, getCollection, Collections } from "@pipeline/shared/db";
-import type { GoldenEvaluationDoc } from "@pipeline/shared/db";
+import type { GoldenEvaluationDoc, IndustryProfileDoc } from "@pipeline/shared/db";
+import type { TerminologyRules } from "@pipeline/shared/schemas";
+import { validateTerminology } from "./terminology.js";
 
 dotenv.config();
 
@@ -19,10 +21,11 @@ export interface EvaluateRequest {
   text: string;
   pillarId?: string;
   targetLanguage?: string;
+  terminologyRules?: TerminologyRules;
 }
 
 export function evaluateText(req: EvaluateRequest): { alignmentScore: number; driftReport: { rule: string; passed: boolean; details: string }[] } {
-  const { platform, text, pillarId, tenantId, targetLanguage } = req;
+  const { platform, text, pillarId, tenantId, targetLanguage, terminologyRules } = req;
   const driftReport: { rule: string; passed: boolean; details: string }[] = [];
   let deductions = 0;
 
@@ -196,6 +199,13 @@ export function evaluateText(req: EvaluateRequest): { alignmentScore: number; dr
     });
   }
 
+  // 7. Dynamic Terminology Validation Engine (Niche Glossary & Mandatory Terms)
+  if (terminologyRules) {
+    const termRes = validateTerminology(text, terminologyRules, pillarId);
+    deductions += termRes.deductions;
+    driftReport.push(...termRes.driftReport);
+  }
+
   const alignmentScore = Math.max(0, 100 - deductions);
 
   return { alignmentScore, driftReport };
@@ -207,12 +217,24 @@ app.get("/health", (req: Request, res: Response) => {
 
 app.post("/evaluate", async (req: Request, res: Response) => {
   try {
-    const { runId, platform, text, pillarId, targetLanguage } = req.body as EvaluateRequest;
+    const { runId, tenantId, platform, text, pillarId, targetLanguage } = req.body as EvaluateRequest;
     if (!text || !platform) {
       return res.status(400).json({ error: "Missing required fields: text, platform" });
     }
 
-    const { alignmentScore, driftReport } = evaluateText({ runId, platform, text, pillarId, targetLanguage });
+    let terminologyRules: TerminologyRules | undefined;
+    if (tenantId) {
+      try {
+        const profile = await getCollection<IndustryProfileDoc>(Collections.INDUSTRY_PROFILES).findOne({ tenantId });
+        if (profile?.terminologyRules) {
+          terminologyRules = profile.terminologyRules;
+        }
+      } catch (err) {
+        console.warn(`Failed to fetch IndustryProfile for tenantId: ${tenantId}`);
+      }
+    }
+
+    const { alignmentScore, driftReport } = evaluateText({ runId, tenantId, platform, text, pillarId, targetLanguage, terminologyRules });
 
     // Store evaluation log in MongoDB if runId provided
     if (runId) {
