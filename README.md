@@ -1,106 +1,103 @@
-# LinkedIn AI Content Pipeline
+# LinkedIn & Multi-Platform AI Content Pipeline
 
-Модульная распределенная система генерации контента для LinkedIn на базе специализированных ИИ-агентов под управлением оркестратора **Open Claw** с интерактивным дашбордом для утверждения публикаций (Human-in-the-Loop).
+Модульная распределенная система генерации контента для **LinkedIn**, **Instagram**, **Telegram** и **Threads** на базе специализированных ИИ-агентов под управлением оркестратора **Open Claw** с поддержкой мультиарендности (Multi-Tenancy) и интерактивным дашбордом для утверждения публикаций (Human-in-the-Loop).
 
 ---
 
 ## 🏗 Архитектура системы
 
-Система представляет собой монорепозиторий, разделенный на независимые микросервисы и библиотеки:
+Система представляет собой монорепозиторий микросервисов, связанных через Redis (BullMQ), MongoDB и единый AI-клиент с автоматическим лимитированием и фолбэком (Gemini $\rightarrow$ OpenRouter $\rightarrow$ Groq):
 
 ```
-├── shared-lib/                         # Общие типы, Zod-схемы, клиенты БД (MongoDB, Redis), утилиты логирования
+├── shared-lib/                         # Общие типы, Zod-схемы, клиенты БД (MongoDB, Redis), AI-клиент, RAG-слой
 ├── services/
-│   ├── openclaw/                       # Оркестратор: управление жизненным циклом постов, логика QA, Human Approval API
-│   ├── agent-trend-intelligence/       # Агент анализа трендов: собирает популярные IT-инфоповоды
-│   ├── agent-positioning/              # Агент позиционирования: определяет релевантность темы заданному профилю автора
-│   ├── agent-content-strategy/         # Агент контент-стратегии: формирует структуру и стиль будущей публикации
-│   ├── agent-writing/                  # Агент копирайтинга: пишет заголовки (hook), основной текст и CTA
-│   ├── agent-design/                   # Агент визуализации: генерирует слайды каруселей (PNG) на базе Puppeteer
-│   └── agent-seo/                      # Агент SEO и оптимизации: проводит аудит читаемости и соответствия правилам алгоритмов
-├── web-dashboard/                      # Frontend-дашборд (Next.js, Tailwind, Vanilla CSS) для управления прогонами и редактора постов
-└── docs/                               # Документация проекта, ТЗ и спецификации слияния с Jules
+│   ├── openclaw/                       # Оркестратор: управляет стадиями, QA-петлей качества и Human Approval API
+│   ├── agent-trend-intelligence/       # Агент трендов: сбор инфоповодов (HN, GitHub, Dev.to, RSS, Jina Reader)
+│   ├── agent-positioning/              # Агент позиционирования: фильтрация трендов по профилю автора и нишевому глоссарию
+│   ├── agent-content-strategy/         # Агент контент-стратегии: выбор формата (карусель, reels, story) и рубрики
+│   ├── agent-writing/                  # Агент копирайтинга: пишет посты с изоляцией промптов и RAG-валидацией фактов
+│   ├── agent-design/                   # Агент визуализации: рендеринг PNG-каруселей через Puppeteer Browser Pool
+│   ├── agent-seo/                      # Агент SEO-аудита: проверка читаемости, структурных элементов и лимитов
+│   ├── agent-publishing/               # Агент автопубликации: публикация в LinkedIn API и Instagram Graph API
+│   └── agent-evaluator/                # Агент оценки качества: валидация дрифта от Golden Datasets и комплаенса
+├── web-dashboard/                      # Frontend-дашборд (Next.js 15, Tailwind, Vanilla CSS) для управления прогонами
+├── golden_datasets/                    # Эталонные датасеты постов по рубрикам и платформам
+└── docs/                               # Спецификации, стратегии (Tech-портал, Testo Pharma) и техническая документация
 ```
 
 ---
 
-## 🔄 Очереди и Оркестрация (Open Claw)
+## 🏢 Мультиарендность (Multi-Tenancy Portals)
 
-Каждый ИИ-агент работает как изолированный BullMQ Worker в фоновом режиме. Схема взаимодействия:
-1. **Open Claw** получает команду на запуск нового пайплайна, создает объект `Run` в MongoDB и помещает задачу в очередь первого агента.
-2. Агенты последовательно обрабатывают задачи, публикуя результаты во внутренние структуры БД и отправляя события об окончании в Redis-очередь `queue:pipeline:events`.
-3. При успешном завершении шага Open Claw перенаправляет задачу следующему агенту. В случае ошибок запускается автоматический механизм повторных попыток (до `MAX_RETRIES_PER_STAGE`).
-4. После шага **SEO-аудита** прогон переходит в статус `awaiting_approval` («ожидает подтверждения»), становясь доступным на дашборде.
+Система поддерживает изоляцию контента и настроек между различными порталами (`tenantId`):
+
+1. **Tech Portal (`software-development-default`):**
+   * **Платформа:** LinkedIn / Telegram / Threads.
+   * **Рубрики:** Сравнение технологий (Vs), Разбор архитектуры, Clean Code шпаргалки, GitHub Trending репозитории, Pet-проекты, AI инструменты.
+2. **Testo Portal (`testo` / `industrial-measurement-equipment`):**
+   * **Платформы:** Instagram, Telegram, Threads.
+   * **Рубрики (Фармацевтика & GxP):**
+     * `pharma-compliance-explained` — GxP & 21 CFR Part 11 Compliance (стандарты FDA/EMA, Audit Trail).
+     * `pharma-cold-chain-story` — Cold Chain Integrity & GDP Logistics (контроль температуры при перевозках).
+     * `pharma-audit-ready` — Pharma Audit-Ready Checklist & Myths (чек-листы инспекций и мифы).
 
 ---
 
-## ⚡ Новые возможности (Реализованные доработки)
+## ⚡ Технические решения и надежность пайплайна
 
-### 1. Перегенерация постов с фидбеком пользователя (Reprocess Pipeline)
-* На дашборде добавлена кнопка **«🔄 Переделать пост»**, открывающая модальное окно.
-* Пользователь может написать текстовую заметку (Feedback) с указанием конкретных замечаний к тексту или оформлению.
-* Запрос отправляется на API-эндпоинт оркестратора Open Claw, который сбрасывает статус прогона на `running`, очищает результаты шагов `writing`, `design` и `seo`, а затем заново запускает процесс копирайтинга, передавая ИИ-агенту `extraInstructions` с фидбеком пользователя.
-
-### 2. Горизонтальный скролл-предпросмотр слайдов карусели
-* В дашборде реализована лента горизонтального скролла (`overflow-x: auto`) всех готовых слайдов поста (Cover + Cards).
-* Изображения извлекаются «на лету» из сгенерированного ZIP-архива дизайна с помощью прокси-эндпоинта (`/api/proxy/images/[id]?index=N`).
-* Корректно сверстана сетка страницы: левая колонка имеет `min-width: 0` для предотвращения растягивания верстки широкими контейнерами карусели, благодаря чему правая панель (SEO-аудит, стратегии) всегда остается на своем месте.
-
-### 3. Интеграция Landing Page & Блога (Наработки Jules)
-* Полностью интегрирована маркетинговая составляющая проекта в `/blog` и `/blog/[slug]`.
-* Поддерживается динамический рендеринг статей из единого источника данных с красивой версткой обложек, категорийных тегов, времени чтения и полноценного Markdown-контента.
-
-### 4. Авторы и Профили (Author Profiles)
-* Настройки визуального стиля ИИ-генерации жестко привязаны к выбранному профилю автора (социальные сети, логотипы, аватары).
-* Полностью исправлены стили селектора профилей (светлая тема Notion / Apple, контрастный текст) во всех редакторах слайдов.
+1. **Строгая изоляция промптов по рубрикам (Prompt Isolation):**
+   * При генерации контента под конкретную рубрику системный промпт LLM содержит **только** правила выбранной рубрики без смешивания контекста.
+   * Выборка Few-Shot примеров из `golden_testo_pharma` делается строго по фильтру `{ pillarId, platform }`.
+2. **Puppeteer Browser Pool (`agent-design`):**
+   * Единый переиспользуемый инстанс браузера `getSharedBrowser()` предотвращает спайки CPU/RAM при генерации PNG-слайдов.
+3. **Защита от Race Condition при Human-in-the-Loop:**
+   * При редактировании слайдов в UI status прогона переходит в `RUNNING`, а кнопка `Approve` возвращает `HTTP 409` до окончания рендринга.
+4. **Exponential Backoff с Jitter:**
+   * Автоматический ретрай упавших задач с задержкой $2^n \times 2000\text{ms} + \text{jitter}$ в BullMQ.
+5. **Валидация дрифта (`agent-evaluator`) & Self-Correction Feedback Loop:**
+   * Автоматическая оценка `alignmentScore` по эталонам Golden Datasets. При `score < 85%` запускается 1-pass перегенерация с отчетом об ошибках.
+6. **Идемпотентность публикаций (`agent-publishing`):**
+   * Защита от дублирования постов при повторах очередей.
 
 ---
 
 ## 🚀 Быстрый старт через Docker Compose
 
-Для локального запуска всей инфраструктуры в Docker:
-
-1. Скопируйте файл конфигурации окружения:
+1. Скопируйте файл переменных окружения:
    ```bash
    cp .env.example .env
    ```
-2. Откройте `.env` и вставьте ваши API-ключи (например, `OPENROUTER_API_KEY`, `GROQ_API_KEY` и т.д.).
-3. Запустите сборку и старт всех контейнеров:
+2. Укажите ваши API-ключи (`OPENROUTER_API_KEY`, `GEMINI_API_KEY` и т.д.) в `.env`.
+3. Запустите сборку и запуск контейнеров:
    ```bash
-   docker compose up --build
+   export PATH="/Applications/Docker.app/Contents/Resources/bin:$PATH"
+   docker compose down
+   docker compose up --build -d
    ```
-4. После успешного запуска сервисы будут доступны по адресам:
+4. Выполните скрипты сидинга базы данных:
+   ```bash
+   docker compose exec openclaw npx tsx services/openclaw/src/scripts/seed-organizations.ts
+   docker compose exec openclaw npx tsx services/openclaw/src/scripts/seed-fact-chunks.ts
+   docker compose exec openclaw npx tsx services/openclaw/src/scripts/seed-golden.ts
+   ```
+5. Сервисы будут доступны по адресам:
    * **Next.js Web Dashboard:** [http://localhost:3000](http://localhost:3000)
    * **Open Claw Orchestrator API:** [http://localhost:4000](http://localhost:4000)
 
 ---
 
-## 🛠 Запуск в режиме разработки (без Docker)
+## 🧪 Тестирование прогонов через API
 
-Если вы хотите вносить изменения в код с автоматическим перезапуском (`nodemon` / `next dev`):
+### Запуск Tech-портала (LinkedIn / GitHub Trending):
+```bash
+curl -X POST http://localhost:4000/runs \
+  -H "Content-Type: application/json" \
+  -d '{"tenantId": "software-development-default", "targetPillarId": "github-trending-repos", "topic": {"title": "Trending GitHub Repos", "summary": "Top productivity tools"}}'
+```
 
-1. Установите зависимости в корне проекта:
-   ```bash
-   npm install
-   ```
-2. Соберите общую библиотеку типов:
-   ```bash
-   npm run build -w shared-lib
-   ```
-3. Запустите все микросервисы в режиме разработки:
-   ```bash
-   # Оркестратор
-   npm run dev:openclaw
-   
-   # Агенты по отдельности (в разных вкладках терминала)
-   npm run dev:trend
-   npm run dev:positioning
-   npm run dev:strategy
-   npm run dev:writing
-   npm run dev:design
-   npm run dev:seo
-   
-   # Панель управления
-   npm run dev:dashboard
-   ```
-   *(Убедитесь, что у вас локально запущены инстансы Redis и MongoDB).*
+### Запуск Testo Pharma (Instagram / 21 CFR Part 11):
+```bash
+curl -X POST http://localhost:4000/runs \
+  -H "Content-Type: application/json" \
+  -d '{"tenantId": "testo", "targetPillarId": "pharma-compliance-explained", "topic": {"title": "21 CFR Part 11 Audit Trail", "summary": "GxP Environmental Monitoring"}}'
+```
