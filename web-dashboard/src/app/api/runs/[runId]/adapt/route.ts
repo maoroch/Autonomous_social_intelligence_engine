@@ -71,6 +71,7 @@ export async function POST(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           runId,
+          tenantId: run.tenantId,
           platform: "telegram",
           text: tgData.text,
           pillarId: run.contentPillarId,
@@ -92,6 +93,7 @@ export async function POST(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           runId,
+          tenantId: run.tenantId,
           platform: "threads",
           text: thData.text,
           pillarId: run.contentPillarId,

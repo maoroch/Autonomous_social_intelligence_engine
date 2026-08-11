@@ -1,7 +1,7 @@
 import express, { Request, Response } from "express";
 import dotenv from "dotenv";
 import { connectMongo, getCollection, Collections } from "@pipeline/shared/db";
-import type { GoldenEvaluationDoc, IndustryProfileDoc } from "@pipeline/shared/db";
+import type { GoldenEvaluationDoc, IndustryProfileDoc, PipelineRunDoc } from "@pipeline/shared/db";
 import type { TerminologyRules } from "@pipeline/shared/schemas";
 import { validateTerminology } from "./terminology.js";
 
@@ -217,9 +217,22 @@ app.get("/health", (req: Request, res: Response) => {
 
 app.post("/evaluate", async (req: Request, res: Response) => {
   try {
-    const { runId, tenantId, platform, text, pillarId, targetLanguage } = req.body as EvaluateRequest;
+    let { runId, tenantId, platform, text, pillarId, targetLanguage } = req.body as EvaluateRequest;
     if (!text || !platform) {
       return res.status(400).json({ error: "Missing required fields: text, platform" });
+    }
+
+    // Auto-fallback: if runId is provided but tenantId or pillarId are omitted, resolve from DB
+    if (runId && (!tenantId || !pillarId)) {
+      try {
+        const runDoc = await getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS).findOne({ runId });
+        if (runDoc) {
+          if (!tenantId) tenantId = runDoc.tenantId;
+          if (!pillarId) pillarId = runDoc.contentPillarId;
+        }
+      } catch (err) {
+        console.warn(`Failed to resolve tenantId/pillarId from pipeline_runs for runId: ${runId}`);
+      }
     }
 
     let terminologyRules: TerminologyRules | undefined;

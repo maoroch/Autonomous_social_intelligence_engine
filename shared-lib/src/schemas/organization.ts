@@ -6,7 +6,7 @@ import { z } from "zod";
  * См. TZ_vertical_agnostic_b2b_saas.md и TZ_v3_instagram_testo_portal.md.
  */
 
-export const PublishingPlatform = z.enum(["linkedin", "instagram"]);
+export const PublishingPlatform = z.enum(["linkedin", "instagram", "telegram", "threads"]);
 export type PublishingPlatform = z.infer<typeof PublishingPlatform>;
 
 export const OrganizationSchema = z.object({

@@ -61,6 +61,7 @@ services:
       MONGO_DB_NAME: linkedin_pipeline
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     depends_on:
       redis:
         condition: service_healthy
@@ -80,6 +81,7 @@ services:
       MONGO_DB_NAME: linkedin_pipeline
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     depends_on:
       redis:
         condition: service_healthy
@@ -99,6 +101,7 @@ services:
       MONGO_DB_NAME: linkedin_pipeline
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     depends_on:
       redis:
         condition: service_healthy
@@ -118,6 +121,7 @@ services:
       MONGO_DB_NAME: linkedin_pipeline
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     depends_on:
       redis:
         condition: service_healthy
@@ -137,6 +141,7 @@ services:
       MONGO_DB_NAME: linkedin_pipeline
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     depends_on:
       redis:
         condition: service_healthy
@@ -156,6 +161,7 @@ services:
       MONGO_DB_NAME: linkedin_pipeline
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     depends_on:
       redis:
         condition: service_healthy

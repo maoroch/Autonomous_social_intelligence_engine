@@ -31,7 +31,7 @@ export function validateTerminology(
       if (lowerText.includes(termLower)) return false;
       // Handle Russian declensions for "холодовая цепь" -> "холодовой цепи", etc.
       const words = termLower.split(/\s+/);
-      const stems = words.map(w => w.length > 4 ? w.substring(0, w.length - 2) : w);
+      const stems = words.map(w => w.length >= 4 ? w.substring(0, Math.max(3, w.length - 2)) : w);
       return !stems.every(stem => lowerText.includes(stem));
     });
 
