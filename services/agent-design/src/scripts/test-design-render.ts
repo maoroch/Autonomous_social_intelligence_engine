@@ -117,7 +117,8 @@ async function runLocalDesignTest() {
     renderedSlides.forEach((html, i) => {
       const hasLogo = html.includes("azia-test.com") && html.includes("style=\"height: 60px");
       const hasFooter = html.includes("footer-brand");
-      console.log(`   Slide ${i + 1} (${deck.slides[i].isCover ? "Cover" : "Card"}): Logo 60px embedded = ${hasLogo}, Footer container = ${hasFooter}`);
+      const isCoverSlide = deck.slides[i]?.isCover ?? false;
+      console.log(`   Slide ${i + 1} (${isCoverSlide ? "Cover" : "Card"}): Logo 60px embedded = ${hasLogo}, Footer container = ${hasFooter}`);
     });
 
     console.log(`✅ ${deck.name} design rendering PASSED!\n`);

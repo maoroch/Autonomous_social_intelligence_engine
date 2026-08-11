@@ -622,9 +622,29 @@ Please generate the carousel slide deck design structure in JSON format.`;
       const t = text.toLowerCase();
 
       const nicheKeywordMap: Record<string, string[]> = {
-        thermometer: ["temperature", "температур", "thermo", "heat", "тепло"],
+        // --- Рубрика 1: GxP / 21 CFR Part 11 ---
+        "audit-trail": ["audit trail", "аудит-трейл", "системный журнал", "eres", "21 cfr part 11", "электронные записи"],
+        "digital-signature": ["digital signature", "электронная подпись", "эцп", "подпись", "signature"],
+        "data-integrity": ["data integrity", "целостность данных", "alcoa", "неизменяемость", "защита от фальсификации"],
+        certificate: ["certificate", "calibration", "сертификат", "калибров", "госреестр", "поверка", "iso 17025"],
+        "gxp-shield": ["gxp", "gmp", "комплаенс", "стандарт качества", "нормативы", "щит"],
+
+        // --- Рубрика 2: Холодовая цепь (GDP logistics) ---
+        "cold-chain-truck": ["cold chain", "холодовая цепь", "логистик", "транспорт", "рефрижератор", "gdp logistics"],
+        thermometer: ["temperature", "температур", "thermo", "градусник", "термолабильный", "режим"],
+        "data-logger": ["логгер", "logger", "testo 174t", "самописец", "регистратор", "эксцесс"],
+        "3tier-redundancy": ["резервирование", "redundancy", "память", "saveris", "избыточность", "3-уровневое"],
+        "warehouse-sensor": ["склад", "warehouse", "хранение", "датчик", "зоны хранения", "фармсклад"],
+
+        // --- Рубрика 3: Инспекции / Audit Preparedness ---
+        "inspection-checklist": ["чек-лист", "checklist", "инспекция", "fda", "ema", "минпромторг", "готовность"],
+        "thermal-imager": ["тепловизор", "thermal imager", "testo 883", "термография", "утечка тепла"],
+        "audit-report": ["отчет", "отчёт", "report", "протокол", "аудиторский отчет", "документация"],
+        "cleanroom-gauge": ["манометр", "давление", "чистые помещения", "cleanroom", "дифференциальное давление"],
+        "distributor-badge": ["дистрибьютор", "distributor", "официальный", "гарантия", "оригинал"],
+
+        // --- Запасные ключевые слова ---
         gauge: ["accuracy", "measurement", "точност", "измерен", "range", "диапазон"],
-        certificate: ["certificate", "calibration", "сертификат", "калибров", "iso", "compliance"],
         "alert-triangle": ["warning", "mistake", "ошибк", "риск", "risk", "myth", "миф"],
         calendar: ["season", "сезон", "schedule", "график", "annual", "quarterly"],
       };
