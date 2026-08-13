@@ -73,10 +73,49 @@ function resolveStyleConfigs(industryProfile: IndustryProfile | undefined): Styl
     return SOFTWARE_DEV_STYLES;
   }
 
-  // Нишевые вертикали (Testo и будущие клиенты) — один брендированный template-set.
+  // Нишевые вертикали (Testo и будущие клиенты)
   const palette = industryProfile!.brandGuidelines.colorPalette;
+  
+  // Create 3 specific styles for Testo Pharma
+  if (templateSetId === "industrial-measurement-equipment") {
+    return [
+      {
+        key: "testo-pharma-compliance",
+        coverTemplate: "testo-pharma-compliance/cover",
+        cardTemplate: "testo-pharma-compliance/card",
+        defaultCoverBadge: "COMPLIANCE",
+        defaultCardBadge: "PART 11",
+        brand: { accentColor: "#3B82F6", inkColor: palette[1] ?? "#14171A", paperColor: palette[2] ?? "#FAF9F6" },
+      },
+      {
+        key: "testo-pharma-cold-chain",
+        coverTemplate: "testo-pharma-cold-chain/cover",
+        cardTemplate: "testo-pharma-cold-chain/card",
+        defaultCoverBadge: "LOGISTICS",
+        defaultCardBadge: "GDP",
+        brand: { accentColor: "#06B6D4", inkColor: palette[1] ?? "#14171A", paperColor: palette[2] ?? "#FAF9F6" },
+      },
+      {
+        key: "testo-pharma-audit",
+        coverTemplate: "testo-pharma-audit/cover",
+        cardTemplate: "testo-pharma-audit/card",
+        defaultCoverBadge: "QA",
+        defaultCardBadge: "AUDIT",
+        brand: { accentColor: "#10B981", inkColor: palette[1] ?? "#14171A", paperColor: palette[2] ?? "#FAF9F6" },
+      },
+      // Keep the default one just in case
+      {
+        key: "industrial-measurement-equipment",
+        coverTemplate: "industrial-measurement-equipment/cover",
+        cardTemplate: "industrial-measurement-equipment/card",
+        defaultCoverBadge: "INSIGHT",
+        defaultCardBadge: "DETAILS",
+        brand: { accentColor: palette[0] ?? "#EE8432", inkColor: palette[1] ?? "#14171A", paperColor: palette[2] ?? "#FAF9F6" },
+      }
+    ];
+  }
+
   const brand = {
-    // Плейсхолдер-дефолты из SKILL_testo_carousel_design.md, если брендбук ещё не заполнен клиентом.
     accentColor: palette[0] ?? "#EE8432",
     inkColor: palette[1] ?? "#14171A",
     paperColor: palette[2] ?? "#FAF9F6",
@@ -97,6 +136,32 @@ function resolveStyleConfigs(industryProfile: IndustryProfile | undefined): Styl
 const GITHUB_OCTOCAT_SVG = `<svg viewBox="0 0 24 24" width="220" height="220" fill="#ffffff" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 12px 32px rgba(255,255,255,0.18));"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>`;
 
 const repoScreenshotCache = new Map<string, string>();
+const aiIllustrationCache = new Map<string, string>();
+
+async function generateAiIllustration(imagePrompt: string): Promise<string> {
+  if (!imagePrompt) return "";
+  if (aiIllustrationCache.has(imagePrompt)) {
+    return aiIllustrationCache.get(imagePrompt)!;
+  }
+  try {
+    const encoded = encodeURIComponent(`${imagePrompt}, dark tech style, developer aesthetic, glowing neon, high quality, 8k`);
+    const url = `https://image.pollinations.ai/prompt/${encoded}?width=800&height=500&nologo=true&seed=42`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 7000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (!res.ok) return "";
+    const arrayBuffer = await res.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+    const mime = res.headers.get("content-type") || "image/jpeg";
+    const dataUrl = `data:${mime};base64,${base64}`;
+    aiIllustrationCache.set(imagePrompt, dataUrl);
+    return dataUrl;
+  } catch (err) {
+    logger.warn({ err, imagePrompt }, "Failed to generate AI illustration via Pollinations FLUX.1");
+    return "";
+  }
+}
 
 async function captureGithubRepoScreenshot(githubUrl: string, browser: any): Promise<string> {
   if (!githubUrl || githubUrl === "github.com/trending") return "";
@@ -109,7 +174,12 @@ async function captureGithubRepoScreenshot(githubUrl: string, browser: any): Pro
     page = await browser.newPage();
     await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "dark" }]);
     await page.setViewport({ width: 1200, height: 750, deviceScaleFactor: 1.5 });
-    await page.goto(fullUrl, { waitUntil: "domcontentloaded", timeout: 8000 });
+    const response = await page.goto(fullUrl, { waitUntil: "domcontentloaded", timeout: 8000 });
+    if (!response || response.status() >= 400) {
+      await page.close();
+      logger.warn({ url: fullUrl, status: response?.status() }, "GitHub URL returned 404 or HTTP error, skipping screenshot");
+      return "";
+    }
     
     await page.evaluate(`(() => {
       window.scrollTo(0, 0);
@@ -278,7 +348,18 @@ async function processDesignJob(job: AgentJob): Promise<unknown> {
   const existingDesignDoc = await stageResultsCol.findOne({ runId: job.runId, stage: "design" });
   let validated: any;
 
-  if (existingDesignDoc && (existingDesignDoc.result as any)?.render_data) {
+  // Targeted re-render mode: when the user selects a specific template in the UI and clicks
+  // "Save Changes", only that one style needs to be rendered — not all styleConfigs.
+  // This is triggered when payload.template_name is set AND existing render_data exists.
+  const requestedTemplateName = typeof (job.payload as any)?.template_name === "string"
+    ? (job.payload as any).template_name as string
+    : undefined;
+  const isTargetedRerender = !!(requestedTemplateName && existingDesignDoc && (existingDesignDoc.result as any)?.render_data);
+
+  if (isTargetedRerender) {
+    logger.info({ runId: job.runId, requestedTemplateName }, "Targeted re-render mode: rendering only the requested style.");
+    validated = existingDesignDoc!.result;
+  } else if (existingDesignDoc && (existingDesignDoc.result as any)?.render_data) {
     logger.info({ runId: job.runId }, "Found existing design result. Bypassing LLM generation and using existing render_data.");
     validated = existingDesignDoc.result;
   } else {
@@ -682,24 +763,28 @@ Please generate the carousel slide deck design structure in JSON format.`;
         html = customCard.htmlTemplate;
       } else {
         let templateName = isCover ? style.coverTemplate : style.cardTemplate;
-        if (targetPillar) {
-          const pillarTemplateName = isCover ? `cover-${targetPillar}` : `card-${targetPillar}`;
-          const pillarTemplatePath = path.resolve(__dirname, `../template/${pillarTemplateName}.html`);
-          if (fs.existsSync(pillarTemplatePath)) {
-            templateName = pillarTemplateName;
-          }
-        }
         const templatePath = path.resolve(__dirname, `../template/${templateName}.html`);
         if (!fs.existsSync(templatePath)) {
-          throw new Error(`Template not found: ${templatePath}`);
+          // Fallback to pillar-specific template if style template file doesn't exist
+          if (targetPillar) {
+            const pillarTemplateName = isCover ? `cover-${targetPillar}` : `card-${targetPillar}`;
+            const pillarTemplatePath = path.resolve(__dirname, `../template/${pillarTemplateName}.html`);
+            if (fs.existsSync(pillarTemplatePath)) {
+              templateName = pillarTemplateName;
+            }
+          }
         }
-        html = fs.readFileSync(templatePath, "utf8");
+        const finalTemplatePath = path.resolve(__dirname, `../template/${templateName}.html`);
+        if (!fs.existsSync(finalTemplatePath)) {
+          throw new Error(`Template not found: ${finalTemplatePath}`);
+        }
+        html = fs.readFileSync(finalTemplatePath, "utf8");
       }
 
       const badgeText = escapeHtml(slide.badge || (isCover ? style.defaultCoverBadge : style.defaultCardBadge));
       let titleText = escapeHtml(slide.title || "");
       let footerLeft = "";
-      if (isTestoTenant || style.key === "industrial-measurement-equipment") {
+      if (isTestoTenant || style.key.startsWith("testo-") || style.key === "industrial-measurement-equipment") {
         const isDark = style.brand?.inkColor === "#FFFFFF" || style.brand?.paperColor === "#14171A" || style.key.includes("dark");
         const logoUrl = isDark
           ? "https://azia-test.com/wp-content/uploads/2025/02/whitelogo.svg"
@@ -745,29 +830,41 @@ Please generate the carousel slide deck design structure in JSON format.`;
         const cardRepoIdx = index - 1;
         const rawTitleSlug = (slide.title || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 
+        const unusedTrendRepo = trendRepoUrls.find(u => !seenDeckRepos.has(u) && !u.endsWith("/trending"));
+        const unusedAllRepo = allRepoUrls.find(u => !seenDeckRepos.has(u) && !u.endsWith("/trending"));
+
         if (slideRepoMatch && slideRepoMatch[1] && slideRepoMatch[1] !== "trending") {
-          githubUrl = `github.com/${slideRepoMatch[1].replace(/\/$/, "")}`;
-        } else {
-          const matchInText = allRepoUrls.find(u => u.toLowerCase().includes(rawTitleSlug) && !u.endsWith("/trending")) ||
-                              trendRepoUrls.find(u => u.toLowerCase().includes(rawTitleSlug) && !u.endsWith("/trending"));
-          if (matchInText && !seenDeckRepos.has(matchInText)) {
-            githubUrl = matchInText;
-          } else if (trendRepoUrls[cardRepoIdx] && !seenDeckRepos.has(trendRepoUrls[cardRepoIdx])) {
-            githubUrl = trendRepoUrls[cardRepoIdx];
-          } else if (allRepoUrls[cardRepoIdx] && !allRepoUrls[cardRepoIdx].endsWith("/trending") && !seenDeckRepos.has(allRepoUrls[cardRepoIdx])) {
-            githubUrl = allRepoUrls[cardRepoIdx];
-          } else if (allRepoUrls[0]) {
-            githubUrl = allRepoUrls[0];
-          } else if (rawTitleSlug && rawTitleSlug.length > 2) {
-            githubUrl = `github.com/${rawTitleSlug}/${rawTitleSlug}`;
+          const matchedUrl = `github.com/${slideRepoMatch[1].replace(/\/$/, "")}`;
+          if (!seenDeckRepos.has(matchedUrl)) {
+            githubUrl = matchedUrl;
           }
+        }
+
+        if (!githubUrl) {
+          const matchInText = allRepoUrls.find(u => rawTitleSlug && u.toLowerCase().includes(rawTitleSlug) && !u.endsWith("/trending") && !seenDeckRepos.has(u)) ||
+                              trendRepoUrls.find(u => rawTitleSlug && u.toLowerCase().includes(rawTitleSlug) && !u.endsWith("/trending") && !seenDeckRepos.has(u));
+
+          if (matchInText) {
+            githubUrl = matchInText;
+          } else if (rawTitleSlug && rawTitleSlug.length > 2) {
+            const candidate = allRepoUrls.find(u => u.toLowerCase().includes(rawTitleSlug) && !seenDeckRepos.has(u)) ||
+                              trendRepoUrls.find(u => u.toLowerCase().includes(rawTitleSlug) && !seenDeckRepos.has(u));
+            if (candidate) {
+              githubUrl = candidate;
+            }
+          }
+        }
+        if (githubUrl) {
+          seenDeckRepos.add(githubUrl);
         }
       }
 
-      if (!isCover && githubUrl && (style.key === "cover-8" || style.key === "cover-9")) {
-        const repoSlug = githubUrl.split("/").pop() || "";
-        if (repoSlug) {
-          titleText = escapeHtml(repoSlug);
+      if (!isCover && githubUrl && isGithubShowcase) {
+        if (!slide.title || slide.title.trim().length === 0) {
+          const repoSlug = githubUrl.split("/").pop() || "";
+          if (repoSlug) {
+            titleText = escapeHtml(repoSlug);
+          }
         }
       }
 
@@ -784,16 +881,16 @@ Please generate the carousel slide deck design structure in JSON format.`;
 
       // Dynamic illustration match — Octocat SVG for cover, Puppeteer Repo Screenshots for github cards, standard SVG/PNG for rest
       let svgContent = "";
-      if (isCover && (style.key === "cover-8" || style.key === "cover-9")) {
+      if (isCover && isGithubShowcase) {
         svgContent = GITHUB_OCTOCAT_SVG;
-      } else if (!isCover && (style.key === "cover-8" || style.key === "cover-9")) {
+      } else if (!isCover && isGithubShowcase) {
         const cardRepoIdx = index - 1;
         const urlToCapture = githubUrl || allRepoUrls[cardRepoIdx] || allRepoUrls[0] || "github.com/trending";
         const shotUrl = await captureGithubRepoScreenshot(urlToCapture, browser);
         if (shotUrl) {
           svgContent = `<div class="browser-frame"><div class="browser-header"><div class="browser-dots"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div><div class="browser-url-text">${escapeHtml(urlToCapture)}</div></div><div class="browser-body"><img src="${shotUrl}" alt="${escapeHtml(urlToCapture)}" /></div></div>`;
         } else {
-          svgContent = `<div class="browser-frame"><div class="browser-header"><div class="browser-dots"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div><div class="browser-url-text">${escapeHtml(urlToCapture)}</div></div><div class="browser-body"><div style="background:#0d1117;color:#8b949e;padding:24px;font-family:sans-serif;font-size:20px;height:100%;display:flex;align-items:center;justify-content:center;">GitHub Repository (${escapeHtml(titleText)})</div></div></div>`;
+          svgContent = `<div class="browser-frame" style="background:#0D1117; border: 1px solid #30363D; border-radius: 12px; height: 100%; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 12px 32px rgba(0,0,0,0.5);"><div class="browser-header" style="background:#161B22; padding: 12px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #30363D;"><div style="display:flex; gap:6px;"><span style="width:10px; height:10px; border-radius:50%; background:#FF5F56;"></span><span style="width:10px; height:10px; border-radius:50%; background:#FFBD2E;"></span><span style="width:10px; height:10px; border-radius:50%; background:#27C93F;"></span></div><div style="flex:1; background:#0D1117; color:#8B949E; font-family:monospace; font-size:12px; padding:4px 12px; border-radius:6px; border:1px solid #21262D;">https://${escapeHtml(urlToCapture)}</div></div><div class="browser-body" style="flex:1; padding: 24px; display:flex; flex-direction:column; justify-content:center; background: radial-gradient(circle at top right, rgba(88,166,255,0.08), transparent);"><div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;"><svg width="32" height="32" viewBox="0 0 24 24" fill="#58A6FF"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.435.375-.81 1.095-.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg><span style="font-family:monospace; font-size:22px; font-weight:700; color:#58A6FF;">${escapeHtml(titleText)}</span></div><div style="background:#161B22; border:1px solid #30363D; border-radius:8px; padding:16px 20px; font-family:monospace; font-size:13px; color:#C9D1D9; line-height:1.6;"><span style="color:#79C0FF;">$</span> git clone https://${escapeHtml(urlToCapture)}.git<br/><span style="color:#7EE787;">✓ Verified open-source developer project</span></div></div></div>`;
         }
       }
 
@@ -822,8 +919,9 @@ Please generate the carousel slide deck design structure in JSON format.`;
         .replace("{{BODY}}", bodyHtml)
         .replace("{{FOOTER_LEFT}}", footerLeft)
         .replace("{{PAGE_NUMBER}}", pageText)
-        .replace("{{PROGRESS}}", progressHtml)
+        .replace("{{PAGE_TEXT}}", pageText)
         .replace("{{ILLUSTRATION}}", svgContent)
+        .replace("{{SCREENSHOT_OR_ILLUSTRATION}}", svgContent)
         .replace(/\{\{GITHUB_URL\}\}/g, escapeHtml(githubUrl));
 
       // Инъекция брендовых CSS-переменных для нишевых template-set (Testo и будущие клиенты).
@@ -847,12 +945,22 @@ Please generate the carousel slide deck design structure in JSON format.`;
           logger.warn({ err: e }, "Puppeteer setContent domcontentloaded timed out. Proceeding with current content anyway.");
         }
         
-        // Evaluate dynamic layout parameters based on exact rendered element heights
-        await page.evaluate(`(() => {
-          const headline = document.querySelector(".headline");
-          const bodyText = document.querySelector(".body-text");
-          const badge = document.querySelector(".badge");
-          const container = document.querySelector(".illustration-container");
+        // Evaluate dynamic layout parameters based on exact rendered element heights and ensure images finish loading
+        await page.evaluate(`(async () => {
+          const images = Array.from(document.querySelectorAll("img"));
+          await Promise.all(images.map(img => {
+            if (img.complete) return Promise.resolve();
+            return new Promise(resolve => {
+              img.onload = resolve;
+              img.onerror = resolve;
+              setTimeout(resolve, 2000);
+            });
+          }));
+
+          const headline = document.querySelector(".headline, .title, .title-box, h1, h2");
+          const bodyText = document.querySelector(".body-text, .body-card, .bullets, .code-box");
+          const badge = document.querySelector(".badge, .temp-bar, .top-banner, .stamp");
+          const container = document.querySelector(".illustration-container, .architecture-diagram, .vs-box, .browser-frame, .vault-card");
           const footer = document.querySelector(".footer");
 
           let textBottom = 155; // default padding top
@@ -947,30 +1055,46 @@ Please generate the carousel slide deck design structure in JSON format.`;
   let result: any;
 
   let activeStyleConfigs = styleConfigs;
-  if (isGithubShowcase) {
-    activeStyleConfigs = styleConfigs.filter(s => s.key === "cover-8" || s.key === "cover-9");
-    if (activeStyleConfigs.length === 0) {
-      activeStyleConfigs = [
-        { key: "cover-8", coverTemplate: "cover-8", cardTemplate: "card-8", defaultCoverBadge: "GitHub Trending", defaultCardBadge: "Open Source" },
-        { key: "cover-9", coverTemplate: "cover-9", cardTemplate: "card-9", defaultCoverBadge: "Pet Project", defaultCardBadge: "Portfolio" },
-      ];
+  if (isTargetedRerender && requestedTemplateName) {
+    // Targeted re-render: render the requested style PLUS any missing tenant styles
+    const existingMap = (existingDesignDoc!.result as any)?.rendered_styles ?? {};
+    const missingConfigs = styleConfigs.filter(s => !existingMap[s.key]);
+    const targetConfig = styleConfigs.find(s => s.key === requestedTemplateName);
+
+    const configsToRender = new Set<StyleConfig>();
+    if (targetConfig) configsToRender.add(targetConfig);
+    for (const mc of missingConfigs) configsToRender.add(mc);
+
+    if (configsToRender.size > 0) {
+      activeStyleConfigs = Array.from(configsToRender);
+    } else {
+      logger.warn({ runId: job.runId, requestedTemplateName }, "Requested template not found in styleConfigs, falling back to full render.");
     }
   }
 
-  // Рендерим все сконфигурированные для этого tenant стили (1 для нишевых вертикалей, 2 для software-development).
+  // Рендерим сконфигурированные стили:
+  // - targeted re-render: только один выбранный стиль
+  // - первичный рендер: все стили для данного tenant
   const renderedStyles: Array<{ key: string; previewId: string; zipId: string }> = [];
   for (const style of activeStyleConfigs) {
     const rendered = await renderStyle(browser, style, slides, job.runId, db);
     renderedStyles.push({ key: style.key, ...rendered });
   }
 
-  const requestedKey = typeof validated.template_name === "string" ? validated.template_name : undefined;
+  const requestedKey = requestedTemplateName ?? (typeof validated.template_name === "string" ? validated.template_name : undefined);
   const defaultStyle = renderedStyles.find((s) => s.key === requestedKey) ?? renderedStyles[0];
   if (!defaultStyle) {
     throw new Error("No carousel styles were rendered — styleConfigs was empty");
   }
 
-  const rendered_styles: Record<string, { previewId: string; zipId: string }> = {};
+  // При targeted re-render — мёрджим новый результат в существующую карту rendered_styles,
+  // не затирая уже отрендеренные стили.
+  const existingRenderedStyles: Record<string, { previewId: string; zipId: string }> =
+    isTargetedRerender && (existingDesignDoc!.result as any)?.rendered_styles
+      ? (existingDesignDoc!.result as any).rendered_styles
+      : {};
+
+  const rendered_styles: Record<string, { previewId: string; zipId: string }> = { ...existingRenderedStyles };
   for (const s of renderedStyles) {
     rendered_styles[s.key] = { previewId: s.previewId, zipId: s.zipId };
   }
@@ -979,11 +1103,12 @@ Please generate the carousel slide deck design structure in JSON format.`;
     ...validated,
     template_name: defaultStyle.key,
     rendered_styles,
-    preview_cover_1_id: renderedStyles[0]?.previewId,
-    preview_cover_2_id: renderedStyles[1]?.previewId,
-    zip_cover_1_id: renderedStyles[0]?.zipId,
-    zip_cover_2_id: renderedStyles[1]?.zipId,
-    imageId: defaultStyle.zipId, // Default ZIP ID
+    // Сохраняем алиасы для обратной совместимости (первичный рендер).
+    preview_cover_1_id: rendered_styles["cover-1"]?.previewId ?? renderedStyles[0]?.previewId,
+    preview_cover_2_id: rendered_styles["cover-2"]?.previewId ?? renderedStyles[1]?.previewId,
+    zip_cover_1_id: rendered_styles["cover-1"]?.zipId ?? renderedStyles[0]?.zipId,
+    zip_cover_2_id: rendered_styles["cover-2"]?.zipId ?? renderedStyles[1]?.zipId,
+    imageId: defaultStyle.zipId, // ZIP ID выбранного template
   };
 
   logger.info({ runId: job.runId, cardCount: validated.card_count, imageId: result.imageId }, "Carousel ZIP packages and Cover previews generated successfully");

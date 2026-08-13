@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Card - Tech Discussions & Debates</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;700&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --neon-red: #F43F5E;
+      --dark-bg: #0F090B;
+      --card-bg: #1A0F13;
+      --border-color: #381B24;
+      --ink: #FFE4E6;
+      --muted: #9F1239;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--dark-bg);
+      font-family: "Outfit", sans-serif;
+    }
+    .stage {
+      min-height: 1350px;
+      display: flex;
+      padding: 0; margin: 0;
+    }
+    .post {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background-color: var(--dark-bg);
+      background-image: radial-gradient(#381B24 1px, transparent 1px);
+      background-size: 32px 32px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 100px 88px 88px;
+    }
+    .terminal-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 28px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px 16px 0 0;
+      margin-bottom: -1px;
+    }
+    .dot { width: 16px; height: 16px; border-radius: 50%; }
+    .dot-red { background: #FF5F56; }
+    .dot-yellow { background: #FFBD2E; }
+    .dot-green { background: #27C93F; }
+    .terminal-title {
+      font-family: "Fira Code", monospace;
+      font-size: 24px;
+      color: #FDA4AF;
+      margin-left: 12px;
+    }
+    .terminal-body {
+      flex: 1;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 0 0 20px 20px;
+      padding: 64px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 10px 24px;
+      border-radius: 8px;
+      background: rgba(244, 63, 94, 0.12);
+      border: 1px solid var(--border-color);
+      width: fit-content;
+    }
+    .badge span {
+      font-family: "Fira Code", monospace;
+      font-weight: 700;
+      font-size: 28px;
+      color: var(--neon-red);
+      line-height: 1;
+    }
+    .headline {
+      margin: 36px 0 0;
+      font-weight: 900;
+      font-size: 60px;
+      line-height: 1.18;
+      color: #FFFFFF;
+      letter-spacing: -0.02em;
+    }
+    .body-text {
+      margin: 28px 0 0;
+      font-size: 34px;
+      line-height: 1.45;
+      color: var(--ink);
+    }
+    .illustration-container {
+      margin-top: 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 380px;
+    }
+    .illustration-container svg { height: 100%; width: auto; }
+    .spacer { flex: 1 1 auto; }
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--border-color);
+      padding-top: 28px;
+      margin-top: 24px;
+    }
+    .footer span {
+      font-family: "Fira Code", monospace;
+      font-size: 30px;
+      color: #FDA4AF;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="post">
+      <div class="terminal-header">
+        <div class="dot dot-red"></div>
+        <div class="dot dot-yellow"></div>
+        <div class="dot dot-green"></div>
+        <span class="terminal-title">~/tech-debate-battle.sh</span>
+      </div>
+      <div class="terminal-body">
+        <div class="badge"><span>{{BADGE}}</span></div>
+        <h1 class="headline">{{TITLE}}</h1>
+        <p class="body-text">{{BODY}}</p>
+        <div class="spacer"></div>
+        <div class="illustration-container">{{ILLUSTRATION}}</div>
+        <div class="footer">
+          <span>{{FOOTER_LEFT}}</span>
+          <span>{{PAGE_TEXT}}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

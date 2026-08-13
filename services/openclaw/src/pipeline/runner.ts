@@ -282,12 +282,22 @@ export async function handleAgentFailed(
     { $set: { [`retries.${stage}`]: attempts, updatedAt: new Date() } },
   );
 
+  const stageResultsCol = getCollection<StageResultDoc>(Collections.STAGE_RESULTS);
+  let retryPayload: Record<string, unknown> = {};
+
+  if (stage === PipelineStage.POSITIONING) {
+    const trendStageDoc = await stageResultsCol.findOne({ runId, stage: PipelineStage.TREND });
+    if (trendStageDoc?.result) {
+      retryPayload = trendStageDoc.result as Record<string, unknown>;
+    }
+  }
+
   const queue = queues[stage as keyof AgentQueues];
   const job: AgentJob = {
     runId,
     stage,
     attempt: attempts,
-    payload: {},
+    payload: retryPayload,
     extraInstructions: `Предыдущая попытка завершилась ошибкой: ${errorMessage}. Попробуй ещё раз с учётом этого.`,
   };
   const backoffDelay = Math.pow(2, attempts - 1) * 2000 + Math.floor(Math.random() * 1000);

@@ -1,28 +1,158 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
+  <title>Cover Style 8 - GitHub Repos Showcase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600;700&family=Outfit:wght@700;800;900&family=Plus+Jakarta+Sans:wght@600;700&display=swap" rel="stylesheet">
   <style>
-    body { margin: 0; padding: 0; width: 1080px; height: 1350px; background: #0d1117; color: #f0f6fc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; justify-content: space-between; padding: 80px; box-sizing: border-box; }
-    .header { display: flex; align-items: center; gap: 16px; }
-    .badge { font-size: 22px; font-weight: 700; color: #58a6ff; text-transform: uppercase; letter-spacing: 2px; background: rgba(88, 166, 255, 0.15); padding: 8px 18px; border-radius: 20px; border: 1px solid rgba(88, 166, 255, 0.3); }
-    .title-box { margin-top: 40px; }
-    .title { font-size: 64px; font-weight: 800; line-height: 1.25; background: linear-gradient(135deg, #ffffff 40%, #58a6ff 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .bullets { font-size: 26px; color: #8b949e; line-height: 1.6; margin-top: 30px; }
-    .footer { font-size: 22px; color: #8b949e; display: flex; justify-content: space-between; border-top: 1px solid #30363d; padding-top: 25px; }
+    :root {
+      --bg: #0D1117;
+      --card-bg: #161B22;
+      --border: #30363D;
+      --blue: #58A6FF;
+      --green: #3FB950;
+      --gold: #D29922;
+      --text: #F0F6FC;
+      --muted: #8B949E;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg);
+      font-family: "Outfit", sans-serif;
+    }
+    .stage {
+      min-height: 1350px;
+      display: flex;
+      padding: 0; margin: 0;
+    }
+    .post {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background-color: var(--bg);
+      background-image:
+        linear-gradient(to right, rgba(48, 54, 61, 0.4) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(48, 54, 61, 0.4) 1px, transparent 1px);
+      background-size: 48px 48px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 88px;
+    }
+    .repo-card {
+      flex: 1;
+      background: var(--card-bg);
+      border: 2px solid var(--border);
+      border-radius: 24px;
+      padding: 64px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    }
+    .repo-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+    .badge-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 20px;
+      border-radius: 100px;
+      background: #21262D;
+      border: 1px solid var(--border);
+      font-family: "Fira Code", monospace;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+    .badge.lang {
+      color: var(--blue);
+    }
+    .headline {
+      margin: 24px 0 0;
+      font-weight: 900;
+      font-size: 68px;
+      line-height: 1.15;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    .body-text {
+      margin: 28px 0 0;
+      font-size: 40px;
+      font-weight: 600;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+    .illustration-container {
+      margin-top: 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 300px;
+    }
+    .illustration-container svg { height: 100%; width: auto; }
+    .spacer { flex: 1 1 auto; }
+    .url-box {
+      margin-top: 24px;
+      background: #0D1117;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 24px;
+      font-family: "Fira Code", monospace;
+      font-size: 26px;
+      color: var(--blue);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--border);
+      padding-top: 28px;
+      margin-top: 28px;
+    }
+    .footer span {
+      font-family: "Fira Code", monospace;
+      font-size: 30px;
+      color: var(--muted);
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
-  <div class="header">
-    <div class="badge">{{BADGE}}</div>
-  </div>
-  <div class="title-box">
-    <h1 class="title">{{TITLE}}</h1>
-    <div class="bullets">{{BODY}}</div>
-  </div>
-  <div class="footer">
-    <span>{{FOOTER_LEFT}}</span>
-    <span>{{PAGE_TEXT}}</span>
+  <div class="stage">
+    <div class="post">
+      <div class="repo-card">
+        <div class="repo-meta">
+          <div class="badge-group">
+            <div class="badge"><span>⭐ GITHUB TRENDING</span></div>
+            <div class="badge lang"><span>● OPEN SOURCE</span></div>
+          </div>
+        </div>
+        <h1 class="headline">{{TITLE}}</h1>
+        <p class="body-text">{{BODY}}</p>
+        <div class="spacer"></div>
+        <div class="illustration-container">{{ILLUSTRATION}}</div>
+        <div class="footer">
+          <span>{{FOOTER_LEFT}}</span>
+          <span>{{PAGE_NUMBER}}</span>
+        </div>
+      </div>
+    </div>
   </div>
 </body>
 </html>

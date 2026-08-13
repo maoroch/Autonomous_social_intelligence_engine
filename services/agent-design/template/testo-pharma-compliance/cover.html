@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Testo Pharma Compliance Cover</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=IBM+Plex+Mono:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --compliance-blue: #2563EB;
+      --compliance-navy: #0F172A;
+      --compliance-bg: #F8FAFC;
+      --compliance-border: #CBD5E1;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #e9e9e9;
+      font-family: "Inter", sans-serif;
+    }
+
+    .stage {
+      min-height: 1350px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: 0;
+      margin: 0;
+    }
+
+    .post {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background-color: var(--compliance-bg);
+      background-image:
+        linear-gradient(to right, #E2E8F0 1px, transparent 1px),
+        linear-gradient(to bottom, #E2E8F0 1px, transparent 1px);
+      background-size: 72px 72px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .top-banner {
+      width: 100%;
+      height: 120px;
+      background: var(--compliance-navy);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 108px;
+      border-bottom: 4px solid var(--compliance-blue);
+    }
+
+    .top-banner span {
+      font-family: "IBM Plex Mono", monospace;
+      font-weight: 700;
+      font-size: 24px;
+      letter-spacing: 0.1em;
+      color: #38BDF8;
+      text-transform: uppercase;
+    }
+
+    .top-banner .spec-tag {
+      background: rgba(37, 99, 235, 0.3);
+      color: #93C5FD;
+      padding: 6px 16px;
+      border-radius: 6px;
+      border: 1px solid #3B82F6;
+      font-size: 20px;
+    }
+
+    .content-area {
+      flex: 1;
+      padding: 108px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      z-index: 2;
+    }
+
+    .watermark {
+      position: absolute;
+      right: 40px;
+      bottom: 180px;
+      font-family: "IBM Plex Mono", monospace;
+      font-weight: 700;
+      font-size: 110px;
+      line-height: 1;
+      color: rgba(37, 99, 235, 0.05);
+      pointer-events: none;
+      user-select: none;
+      z-index: 1;
+      text-align: right;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0 28px;
+      height: 56px;
+      background: var(--compliance-blue);
+      border-radius: 8px;
+      width: fit-content;
+      box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+    }
+
+    .badge span {
+      font-family: "IBM Plex Mono", monospace;
+      font-weight: 700;
+      font-size: 26px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #ffffff;
+    }
+
+    .headline {
+      margin: 48px 0 0;
+      max-width: 840px;
+      font-weight: 800;
+      font-size: 66px;
+      line-height: 1.15;
+      color: var(--compliance-navy);
+      border-left: 8px solid var(--compliance-blue);
+      padding-left: 32px;
+    }
+
+    .body-text {
+      margin: 36px 0 0;
+      max-width: 820px;
+      font-weight: 500;
+      font-size: 36px;
+      line-height: 1.45;
+      color: #334155;
+      padding-left: 40px;
+    }
+
+    .illustration-container {
+      margin-top: 40px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 360px;
+    }
+
+    .illustration-container img, .illustration-container svg {
+      height: 100%;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .spacer { flex: 1; }
+
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 2px solid var(--compliance-border);
+      padding-top: 28px;
+    }
+
+    .footer span {
+      font-family: "IBM Plex Mono", monospace;
+      font-weight: 600;
+      font-size: 26px;
+      color: #64748B;
+    }
+
+    .footer-brand img {
+      height: 56px;
+      width: auto;
+      display: block;
+      object-fit: contain;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="stage">
+    <div class="post">
+      <div class="top-banner">
+        <span>REGULATORY COMPLIANCE SPEC</span>
+        <span class="spec-tag">21 CFR PART 11</span>
+      </div>
+
+      <div class="watermark">21 CFR<br/>PART 11</div>
+
+      <div class="content-area">
+        <div class="badge"><span>{{BADGE}}</span></div>
+
+        <h1 class="headline">{{TITLE}}</h1>
+
+        <p class="body-text">{{BODY}}</p>
+
+        <div class="spacer"></div>
+
+        <div class="illustration-container">
+          {{ILLUSTRATION}}
+        </div>
+
+        <div class="footer">
+          <div class="footer-brand">{{FOOTER_LEFT}}</div>
+          <span>{{PAGE_NUMBER}}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

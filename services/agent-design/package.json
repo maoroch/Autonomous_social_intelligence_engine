@@ -13,9 +13,9 @@
     "@pipeline/shared": "*",
     "adm-zip": "^0.5.12",
     "bullmq": "^5.34.0",
-    "puppeteer-core": "^22.10.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "puppeteer-core": "^22.10.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {

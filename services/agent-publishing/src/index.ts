@@ -42,7 +42,7 @@ async function main() {
     return `${OPENCLAW_PUBLIC_BASE_URL.replace(/\/$/, "")}/images/${fileId.toHexString()}`;
   }
 
-  const publishers: Record<PublishingPlatform, PlatformPublisher> = {
+  const publishers: Partial<Record<PublishingPlatform, PlatformPublisher>> = {
     linkedin: new LinkedInPublisher(),
     instagram: new InstagramPublisher(uploadSlideAndGetPublicUrl),
   };
@@ -146,6 +146,9 @@ async function main() {
         if (hasCredentials) {
           logger.info({ runId, platform }, `Publishing carousel to ${platform}...`);
           const publisher = publishers[platform];
+          if (!publisher) {
+            throw new Error(`Direct automated publisher for '${platform}' is not configured. Use manual copy/paste adaptation.`);
+          }
           const result = await publisher.publish({ runId, text, slides, credentials });
           publishUrl = result.url;
         } else {

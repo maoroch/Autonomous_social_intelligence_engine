@@ -277,6 +277,7 @@ ${industryProfile.glossary.map((g) => `- "${g.term}"${g.definition ? `: ${g.defi
   } else if (contentPillarId === "github-trending-repos") {
     rubricWritingInstruction = `\nSPECIFIC RUBRIC INSTRUCTION ("Подборка github репозитории"):
 - Structure this post as a curated showcase of 3-4 trending open-source GitHub repositories/tools.
+- STRICT RULE: Every repository mentioned MUST BE UNIQUE. Do NOT feature or repeat the same repository twice.
 - COVER SLIDE TITLE FORMULA (Slide 1): Must use a high-converting headline formula with sub-caption:
   * Productivity: "5 GitHub Repos That Will Save You 10+ Hours This Week" (Sub-caption: "Stop reinventing the wheel. Bookmark these today 📌")
   * Senior/Architecture: "7 Production-Ready Repos Senior Engineers Keep Quiet About" (Sub-caption: "Learn how large-scale applications are actually built.")
@@ -289,6 +290,17 @@ ${industryProfile.glossary.map((g) => `- "${g.term}"${g.definition ? `: ${g.defi
   2. Primary Language & Core Functionality (What problem it solves)
   3. Verified GitHub Link format (e.g., https://github.com/owner/repo)
 - Include concise developer highlights!`;
+  } else if (contentPillarId === "tech-discussions-debates") {
+    rubricWritingInstruction = `\nSPECIFIC RUBRIC INSTRUCTION ("Обсуждения и споры вокруг технологий"):
+- Structure this post as a provocative engineering debate comparing two contrasting tech stacks or architectural approaches (e.g. Monolith vs Microservices, REST vs gRPC, SPA vs SSR, ORM vs Raw SQL, Node.js vs Go).
+- COVER SLIDE TITLE FORMULA (Slide 1): High-converting battle title with sub-caption:
+  * Formula: "[Option A] vs [Option B]: Which Architecture Wins in 2026?" (Sub-caption: "Pros, cons, and when to pick each approach ⚔️")
+- REPOSITORY / ARGUMENT CARDS (Slides 2..N):
+  * Slide 2: Option A — Key Advantages & Ideal Use Cases
+  * Slide 3: Option B — Key Advantages & Ideal Use Cases
+  * Slide 4: Real-World Performance & Trade-offs (Cost, Complexity, Team Scalability)
+  * Slide 5: Final Engineering Verdict & Guidelines
+- Tone: Analytical, objective, encouraging comments and discussion among developers!`;
   } else if (contentPillarId === "pharma-compliance-explained") {
     rubricWritingInstruction = `\nSPECIFIC RUBRIC INSTRUCTION ("GxP на пальцах / 21 CFR Part 11"):
 - Structure this post as an educational breakdown explaining complex regulatory GxP & 21 CFR Part 11 requirements in plain, accessible terms.
@@ -342,12 +354,6 @@ ${industryProfile.glossary.map((g) => `- "${g.term}"${g.definition ? `: ${g.defi
       }
       if (!foundUrl) {
         foundUrl = extractGithubUrl(item.summary || "") || extractGithubUrl(item.title || "");
-      }
-      if (!foundUrl) {
-        const cleanTitle = (item.title || "dev-tool").toLowerCase().replace(/[^a-z0-9]/g, "");
-        if (cleanTitle && cleanTitle.length > 2) {
-          foundUrl = `https://github.com/${cleanTitle}/${cleanTitle}`;
-        }
       }
       if (foundUrl && !seenUrls.has(foundUrl)) {
         seenUrls.add(foundUrl);
@@ -493,6 +499,7 @@ Please write the post and return the JSON.`;
     "software-development-default": {
       "github-trending-repos": "Сохраните подборку в закладки и поделитесь с коллегами-разработчиками!",
       "pet-projects-showcase": "Сохраните идеи для своего портфолио на GitHub!",
+      "tech-discussions-debates": "А какой подход используете вы в своём проекте? Напишите свои аргументы в комментариях!",
       default: "Поделитесь вашим мнением в комментариях!",
     },
   };

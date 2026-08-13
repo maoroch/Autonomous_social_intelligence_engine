@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Testo Cold Chain Card</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=IBM+Plex+Mono:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --cold-cyan: #0891B2;
+      --cold-bg: #ECFEFF;
+      --cold-text: #083344;
+      --cold-border: #A5F3FC;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #e9e9e9;
+      font-family: "Inter", sans-serif;
+    }
+
+    .stage {
+      min-height: 1350px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: 0;
+      margin: 0;
+    }
+
+    .post {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background: radial-gradient(circle at top right, #CFFAFE 0%, #ECFEFF 60%, #F0FDFA 100%);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 108px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0 28px;
+      height: 48px;
+      background: rgba(8, 145, 178, 0.12);
+      border: 1.5px solid #0891B2;
+      border-radius: 24px;
+      margin-bottom: 32px;
+      width: fit-content;
+    }
+
+    .badge span {
+      font-family: "IBM Plex Mono", monospace;
+      font-weight: 700;
+      font-size: 22px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #0891B2;
+    }
+
+    .headline {
+      margin: 0 0 32px 0;
+      font-weight: 800;
+      font-size: 52px;
+      line-height: 1.2;
+      color: var(--cold-text);
+    }
+
+    .body-card {
+      background: rgba(255, 255, 255, 0.95);
+      border: 2px solid var(--cold-border);
+      border-radius: 16px;
+      padding: 36px;
+      font-weight: 500;
+      font-size: 34px;
+      line-height: 1.5;
+      color: #155E75;
+      box-shadow: 0 8px 24px rgba(6, 182, 212, 0.08);
+    }
+
+    .illustration-container {
+      margin-top: 30px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 320px;
+    }
+
+    .illustration-container img, .illustration-container svg {
+      height: 100%;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .spacer { flex: 1; }
+
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 2px solid var(--cold-border);
+      padding-top: 24px;
+    }
+
+    .footer span {
+      font-family: "IBM Plex Mono", monospace;
+      font-weight: 600;
+      font-size: 24px;
+      color: #0891B2;
+    }
+
+    .footer-brand img {
+      height: 50px;
+      width: auto;
+      display: block;
+      object-fit: contain;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="stage">
+    <div class="post">
+      <div class="badge"><span>{{BADGE}}</span></div>
+
+      <h2 class="headline">{{TITLE}}</h2>
+
+      <div class="body-card body-text">{{BODY}}</div>
+
+      <div class="spacer"></div>
+
+      <div class="illustration-container">
+        {{ILLUSTRATION}}
+      </div>
+
+      <div class="footer">
+        <div class="footer-brand">{{FOOTER_LEFT}}</div>
+        <span>{{PAGE_NUMBER}}</span>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

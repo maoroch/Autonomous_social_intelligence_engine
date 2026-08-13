@@ -89,12 +89,12 @@ export function createApprovalRouter(logger: Logger): Router {
 
     const designResult = designStage?.result as any;
     const selectedTemplate = req.body?.template_name || designResult?.template_name || "cover-2";
+    // Используем rendered_styles[selectedTemplate]?.zipId — корректный ZIP для выбранного шаблона.
+    // Это покрывает все шаблоны: cover-1..9 для software-dev, industrial-measurement-equipment для Testo.
+    // Fallback на imageId только для legacy-прогонов до внедрения rendered_styles.
     const imageId =
-      selectedTemplate === "cover-1"
-        ? designResult?.zip_cover_1_id ?? designResult?.imageId
-        : selectedTemplate === "cover-2"
-          ? designResult?.zip_cover_2_id ?? designResult?.imageId
-          : designResult?.imageId; // нишевые вертикали с одним template-set (например Testo)
+      designResult?.rendered_styles?.[selectedTemplate]?.zipId
+      ?? designResult?.imageId;
 
     // Save chosen template selection to database
     await stageResults().updateOne(
@@ -141,7 +141,7 @@ export function createApprovalRouter(logger: Logger): Router {
 
   router.put("/runs/:runId/edit", async (req, res) => {
     const { runId } = req.params;
-    const { postText, slides, tenantId } = req.body;
+    const { postText, slides, template_name, tenantId } = req.body;
 
     const existingRun = await runs().findOne({ runId });
     if (!existingRun) return res.status(404).json({ error: "run not found" });
@@ -149,13 +149,18 @@ export function createApprovalRouter(logger: Logger): Router {
       return res.status(404).json({ error: "run not found" });
     }
 
-    logger.info({ runId }, "received inline edits from human");
+    logger.info({ runId, template_name }, "received inline edits from human");
 
     if (postText) {
       await stageResults().updateOne(
         { runId, stage: "writing" },
         { $set: { "result.hook": postText.hook, "result.text": postText.text, "result.cta": postText.cta } }
       );
+    }
+
+    const updateFields: Record<string, any> = {};
+    if (template_name) {
+      updateFields["result.template_name"] = template_name;
     }
 
     if (slides && Array.isArray(slides)) {
@@ -169,9 +174,13 @@ export function createApprovalRouter(logger: Logger): Router {
           illustration: slide.illustration
         };
       });
+      updateFields["result.render_data"] = render_data;
+    }
+
+    if (Object.keys(updateFields).length > 0) {
       await stageResults().updateOne(
         { runId, stage: "design" },
-        { $set: { "result.render_data": render_data } }
+        { $set: updateFields }
       );
 
       // Set run status to RUNNING to block concurrent approval while re-rendering
@@ -187,15 +196,94 @@ export function createApprovalRouter(logger: Logger): Router {
           runId,
           stage: PipelineStage.DESIGN,
           attempt: 1,
-          payload: {},
+          payload: { template_name },
         });
-        logger.info({ runId }, "queued design re-rendering for inline edits");
+        logger.info({ runId, template_name }, "queued design re-rendering for inline edits");
       } catch (err) {
         logger.error({ err, runId }, "failed to queue design re-rendering");
       }
     }
 
     res.json({ ok: true });
+  });
+
+  router.post("/runs/:runId/restart", async (req, res) => {
+    const { runId } = req.params;
+    const { notes, tenantId } = req.body;
+
+    logger.info({ runId, notes }, "requested pipeline restart");
+
+    try {
+      const run = await runs().findOne({ runId });
+      if (!run) {
+        return res.status(404).json({ error: "run not found" });
+      }
+      if (!assertTenantOwnership(run, tenantId)) {
+        return res.status(404).json({ error: "run not found" });
+      }
+
+      const strategyDoc = await stageResults().findOne({ runId, stage: PipelineStage.STRATEGY });
+      const strategyResult = (strategyDoc?.result as Record<string, unknown>) ?? null;
+
+      const queues: AgentQueues = {
+        [PipelineStage.TREND]: createQueue<AgentJob>(QueueName.TREND, process.env.REDIS_URL ?? "redis://localhost:6379"),
+        [PipelineStage.POSITIONING]: createQueue<AgentJob>(QueueName.POSITIONING, process.env.REDIS_URL ?? "redis://localhost:6379"),
+        [PipelineStage.STRATEGY]: createQueue<AgentJob>(QueueName.STRATEGY, process.env.REDIS_URL ?? "redis://localhost:6379"),
+        [PipelineStage.WRITING]: createQueue<AgentJob>(QueueName.WRITING, process.env.REDIS_URL ?? "redis://localhost:6379"),
+        [PipelineStage.DESIGN]: createQueue<AgentJob>(QueueName.DESIGN, process.env.REDIS_URL ?? "redis://localhost:6379"),
+        [PipelineStage.SEO]: createQueue<AgentJob>(QueueName.SEO, process.env.REDIS_URL ?? "redis://localhost:6379"),
+      };
+
+      const { enqueueStage } = await import("../pipeline/runner.js");
+
+      if (strategyResult) {
+        // Strategy completed — restart from WRITING stage
+        await runs().updateOne(
+          { runId },
+          {
+            $set: {
+              status: PipelineRunStatus.RUNNING,
+              currentStage: PipelineStage.WRITING,
+              retries: {},
+              updatedAt: new Date(),
+            },
+            $unset: { failedReason: "" }
+          }
+        );
+        await stageResults().deleteMany({
+          runId,
+          stage: { $in: [PipelineStage.WRITING, PipelineStage.DESIGN, PipelineStage.SEO] }
+        });
+        const extraInstructions = notes ? `Инструкции от пользователя по переделке: ${notes}` : undefined;
+        await enqueueStage(queues, runId, PipelineStage.WRITING, strategyResult, extraInstructions);
+        logger.info({ runId }, "restarted run from WRITING stage");
+      } else {
+        // Early failure — restart pipeline from TREND stage
+        await runs().updateOne(
+          { runId },
+          {
+            $set: {
+              status: PipelineRunStatus.RUNNING,
+              currentStage: PipelineStage.TREND,
+              retries: {},
+              updatedAt: new Date(),
+            },
+            $unset: { failedReason: "" }
+          }
+        );
+        await stageResults().deleteMany({ runId });
+        await enqueueStage(queues, runId, PipelineStage.TREND, {
+          profileId: run.profileId,
+          targetPillarId: run.contentPillarId
+        });
+        logger.info({ runId }, "restarted run from TREND stage");
+      }
+
+      res.json({ ok: true });
+    } catch (err: any) {
+      logger.error({ err, runId }, "failed to restart run");
+      res.status(500).json({ error: err.message });
+    }
   });
 
   router.post("/runs/:runId/reprocess", async (req, res) => {
@@ -213,24 +301,9 @@ export function createApprovalRouter(logger: Logger): Router {
         return res.status(404).json({ error: "run not found" });
       }
 
-      // We cycle back to WRITING stage with user notes in extraInstructions
-      // Get the existing strategy stage result to feed into WRITING as input payload
       const strategyDoc = await stageResults().findOne({ runId, stage: PipelineStage.STRATEGY });
-      const strategyResult = (strategyDoc?.result as Record<string, unknown>) ?? {};
+      const strategyResult = (strategyDoc?.result as Record<string, unknown>) ?? null;
 
-      // Reset the run status to running, set currentStage to writing
-      await runs().updateOne(
-        { runId },
-        {
-          $set: {
-            status: PipelineRunStatus.RUNNING,
-            currentStage: PipelineStage.WRITING,
-            updatedAt: new Date(),
-          }
-        }
-      );
-
-      // We recreate the queues structure locally
       const queues: AgentQueues = {
         [PipelineStage.TREND]: createQueue<AgentJob>(QueueName.TREND, process.env.REDIS_URL ?? "redis://localhost:6379"),
         [PipelineStage.POSITIONING]: createQueue<AgentJob>(QueueName.POSITIONING, process.env.REDIS_URL ?? "redis://localhost:6379"),
@@ -240,18 +313,49 @@ export function createApprovalRouter(logger: Logger): Router {
         [PipelineStage.SEO]: createQueue<AgentJob>(QueueName.SEO, process.env.REDIS_URL ?? "redis://localhost:6379"),
       };
 
-      const extraInstructions = notes ? `Инструкции от пользователя по переделке: ${notes}` : "Пользователь попросил переделать публикацию.";
-
-      // Delete stage results from writing onwards so they are regenerated
-      await stageResults().deleteMany({
-        runId,
-        stage: { $in: [PipelineStage.WRITING, PipelineStage.DESIGN, PipelineStage.SEO] }
-      });
-
       const { enqueueStage } = await import("../pipeline/runner.js");
-      await enqueueStage(queues, runId, PipelineStage.WRITING, strategyResult, extraInstructions);
 
-      logger.info({ runId }, "successfully cycled run back to WRITING stage for manual reprocess");
+      if (strategyResult) {
+        await runs().updateOne(
+          { runId },
+          {
+            $set: {
+              status: PipelineRunStatus.RUNNING,
+              currentStage: PipelineStage.WRITING,
+              retries: {},
+              updatedAt: new Date(),
+            },
+            $unset: { failedReason: "" }
+          }
+        );
+        await stageResults().deleteMany({
+          runId,
+          stage: { $in: [PipelineStage.WRITING, PipelineStage.DESIGN, PipelineStage.SEO] }
+        });
+        const extraInstructions = notes ? `Инструкции от пользователя по переделке: ${notes}` : "Пользователь попросил переделать публикацию.";
+        await enqueueStage(queues, runId, PipelineStage.WRITING, strategyResult, extraInstructions);
+        logger.info({ runId }, "successfully cycled run back to WRITING stage for manual reprocess");
+      } else {
+        await runs().updateOne(
+          { runId },
+          {
+            $set: {
+              status: PipelineRunStatus.RUNNING,
+              currentStage: PipelineStage.TREND,
+              retries: {},
+              updatedAt: new Date(),
+            },
+            $unset: { failedReason: "" }
+          }
+        );
+        await stageResults().deleteMany({ runId });
+        await enqueueStage(queues, runId, PipelineStage.TREND, {
+          profileId: run.profileId,
+          targetPillarId: run.contentPillarId
+        });
+        logger.info({ runId }, "restarted run from TREND stage");
+      }
+
       res.json({ ok: true });
     } catch (err: any) {
       logger.error({ err, runId }, "failed to cycle run back for reprocess");

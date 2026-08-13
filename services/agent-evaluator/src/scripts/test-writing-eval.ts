@@ -2,9 +2,10 @@ import "dotenv/config";
 import { validateTerminology } from "../terminology.js";
 
 function runWritingEvaluatorUnitTest() {
-  console.log("🚀 Starting standalone Agent-Writing & Evaluator unit test for ALL 3 Testo Pharma rubrics (0 LLM tokens)...\n");
+  console.log("🚀 Starting standalone Agent-Writing & Evaluator unit test for BOTH Portals & ALL 6 Rubrics (0 LLM tokens)...\n");
 
-  const terminologyRules = {
+  // Rules for Testo Portal
+  const testoTerminologyRules = {
     mandatoryTerms: {
       "pharma-compliance-explained": ["21 cfr part 11", "gxp", "audit trail", "testo", "дистрибьютор"],
       "pharma-cold-chain-story": ["холодовая цепь", "gdp", "контроль", "testo", "дистрибьютор"],
@@ -17,10 +18,24 @@ function runWritingEvaluatorUnitTest() {
     },
   };
 
-  const sampleDecks = [
+  // Rules for Tech Portal
+  const techTerminologyRules = {
+    mandatoryTerms: {
+      "pet-projects-showcase": ["github", "pet-project", "репозиторий", "архитектура", "stack"],
+      "github-trending-repos": ["github", "open-source", "stars", "репозиторий", "developer"],
+      "tech-trends-insights": ["architecture", "engineering", "system design", "scalability", "performance"],
+    },
+    forbiddenTerms: ["китайский софт", "слив курсов", "взлом бесплатно", "кряк програм", "говнокод"],
+    preferredReplacements: {
+      "скрипт на коленке": "production-ready сервис",
+    },
+  };
+
+  const testoDecks = [
     {
       rubricId: "pharma-compliance-explained",
-      name: "Рубрика 1: GxP на пальцах / 21 CFR Part 11 (pharma-compliance-explained)",
+      name: "Testo Rubric 1: GxP на пальцах / 21 CFR Part 11",
+      rules: testoTerminologyRules,
       text: `Стандарт 21 CFR Part 11 требует полного контроля целостности электронных записей ERES. 
 Любое изменение калибровки оборудования в чистых помещениях должно фиксироваться в неизменяемом системном журнале Audit Trail.
 Автоматизация процедур GxP и GMP исключает риск отзыва партий лекарственных препаратов.
@@ -28,7 +43,8 @@ function runWritingEvaluatorUnitTest() {
     },
     {
       rubricId: "pharma-cold-chain-story",
-      name: "Рубрика 2: Холодовая цепь без слепых зон (GDP logistics) (pharma-cold-chain-story)",
+      name: "Testo Rubric 2: Холодовая цепь без слепых зон (GDP logistics)",
+      rules: testoTerminologyRules,
       text: `Температурные эксцессы при транспортировке термолабильных медикаментов ведут к списанию всей партии.
 Стандарт GDP требует жесткий непрерывный контроль температурного режима на всем протяжении холодовой цепи.
 Логгеры Testo 174T обеспечивают трёхуровневое резервирование данных и автоматическое формирование квалификационных отчетов.
@@ -36,7 +52,8 @@ function runWritingEvaluatorUnitTest() {
     },
     {
       rubricId: "pharma-audit-ready",
-      name: "Рубрика 3: Готовы к инспекции? / Audit Preparedness (pharma-audit-ready)",
+      name: "Testo Rubric 3: Готовы к инспекции? / Audit Preparedness",
+      rules: testoTerminologyRules,
       text: `Инспекция регуляторных органов FDA, EMA и Минпромторга проверяет соответствие принципам ALCOA+.
 Тепловизионный аудит чистых помещений тепловизорами Testo 883 гарантирует оперативное выявление температурных аномалий.
 Чек-лист готовности к аудиту включает валидацию ERES, разделение ролей пользователей и сертификаты калибровки.
@@ -44,11 +61,66 @@ function runWritingEvaluatorUnitTest() {
     },
   ];
 
+  const techDecks = [
+    {
+      rubricId: "pet-projects-showcase",
+      name: "Tech Rubric 1: Подборка pet-проектов для GitHub",
+      rules: techTerminologyRules,
+      text: `Хочешь пополнить своё портфолио разработчика мощными проектами?
+В этой подборке разберём отличный pet-project с современной микросервисной технической architecture.
+Исходный код репозитория выложен на GitHub с настроенными CI/CD и чистым технологическим stack.
+Звезди репозиторий на GitHub и добавляй архитектуру в свое портфолио!`,
+    },
+    {
+      rubricId: "github-trending-repos",
+      name: "Tech Rubric 2: Подборка GitHub репозиториев",
+      rules: techTerminologyRules,
+      text: `Представляем самые трендовые open-source разработки этой недели на GitHub!
+Этот полезный репозиторий уже набрал более 10 000 stars и помогает каждому developer оптимизировать повседневные задачи.
+Проект содержит подробную документацию, гайды по интеграции и открыт для контрибьюторов.
+Подписывайся на обновления, сохраняй полезные репозитории и развивай open-source!`,
+    },
+    {
+      rubricId: "tech-trends-insights",
+      name: "Tech Rubric 3: Тренды и архитектура в Software Engineering",
+      rules: techTerminologyRules,
+      text: `Проектирование распределенных сервисов требует глубокого понимания инженерных принципов Software Engineering.
+Разберем паттерны System Design для обеспечения высокой scalability и максимальной performance под нагрузкой.
+Качественная architecture гарантирует отказоустойчивость сервиса и минимальные задержки при обработке данных.
+Проектируй отказоустойчивые системы и внедряй лучшие практики System Design!`,
+    },
+  ];
+
   let totalFailures = 0;
 
-  for (const deck of sampleDecks) {
+  console.log("---------------------------------------------------------");
+  console.log("🏢 PORTAL 1: Testo Industrial Measurement Portal");
+  console.log("---------------------------------------------------------");
+
+  for (const deck of testoDecks) {
     console.log(`📌 Testing ${deck.name}...`);
-    const evalRes = validateTerminology(deck.text, terminologyRules, deck.rubricId);
+    const evalRes = validateTerminology(deck.text, deck.rules, deck.rubricId);
+
+    console.log(`   Deductions: ${evalRes.deductions}`);
+    evalRes.driftReport.forEach(r => {
+      console.log(`   [${r.passed ? "PASSED" : "FAILED"}] ${r.rule}: ${r.details}`);
+    });
+
+    if (evalRes.deductions > 0 || evalRes.driftReport.some(r => !r.passed)) {
+      console.error(`❌ Failed rubric test for ${deck.rubricId}`);
+      totalFailures++;
+    } else {
+      console.log(`✅ Rubric ${deck.rubricId} PASSED with 100% compliance!\n`);
+    }
+  }
+
+  console.log("---------------------------------------------------------");
+  console.log("💻 PORTAL 2: Software Development Tech Portal");
+  console.log("---------------------------------------------------------");
+
+  for (const deck of techDecks) {
+    console.log(`📌 Testing ${deck.name}...`);
+    const evalRes = validateTerminology(deck.text, deck.rules, deck.rubricId);
 
     console.log(`   Deductions: ${evalRes.deductions}`);
     evalRes.driftReport.forEach(r => {
@@ -68,7 +140,7 @@ function runWritingEvaluatorUnitTest() {
     process.exit(1);
   }
 
-  console.log("🎉 ALL 3 Testo Pharma Rubrics Unit Tests PASSED with 100% compliance!");
+  console.log("🎉 ALL 6 Rubrics across BOTH Portals (Testo & Tech) PASSED with 100% compliance!");
 }
 
 runWritingEvaluatorUnitTest();
