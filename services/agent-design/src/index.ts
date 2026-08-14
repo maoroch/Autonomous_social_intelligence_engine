@@ -601,18 +601,22 @@ Please generate the carousel slide deck design structure in JSON format.`;
     const illustrationsMap = new Map<string, string>(); // svg markup
     const pngIllustrationsMap = new Map<string, string>(); // base64 png content
 
-    if (!isNicheStyle) {
-      const illustrationsCol = db.collection(Collections.SVG_ILLUSTRATIONS);
-      const illustrationsList = await illustrationsCol.find({}).toArray();
-      for (const item of illustrationsList) {
-        illustrationsMap.set(item.name, item.svgContent);
-      }
-    } else {
-      const pngCol = db.collection(Collections.PNG_ILLUSTRATIONS);
-      const pngList = await pngCol.find({ templateSetId: style.key }).toArray();
-      for (const item of pngList) {
-        pngIllustrationsMap.set(item.name, item.base64Content);
-      }
+    const illustrationsCol = db.collection(Collections.SVG_ILLUSTRATIONS);
+    const illustrationsList = await illustrationsCol.find({}).toArray();
+    for (const item of illustrationsList) {
+      illustrationsMap.set(item.name, item.svgContent);
+    }
+
+    const pngCol = db.collection(Collections.PNG_ILLUSTRATIONS);
+    const pngList = await pngCol.find({
+      $or: [
+        { templateSetId: style.key },
+        { templateSetId: "industrial-measurement-equipment" },
+        { templateSetId: "testo" }
+      ]
+    }).toArray();
+    for (const item of pngList) {
+      pngIllustrationsMap.set(item.name, item.base64Content);
     }
 
     const usedIllustrations = new Set<string>();
@@ -785,11 +789,13 @@ Please generate the carousel slide deck design structure in JSON format.`;
       let titleText = escapeHtml(slide.title || "");
       let footerLeft = "";
       if (isTestoTenant || style.key.startsWith("testo-") || style.key === "industrial-measurement-equipment") {
-        const isDark = style.brand?.inkColor === "#FFFFFF" || style.brand?.paperColor === "#14171A" || style.key.includes("dark");
+        const isOverlayCover = isCover && style.key === "testo-pharma-compliance";
+        const isDark = isOverlayCover || style.brand?.inkColor === "#FFFFFF" || style.brand?.paperColor === "#14171A" || style.key.includes("dark");
         const logoUrl = isDark
           ? "https://azia-test.com/wp-content/uploads/2025/02/whitelogo.svg"
           : "https://azia-test.com/wp-content/uploads/2025/02/logo.svg";
-        footerLeft = `<img src="${logoUrl}" alt="Testo" style="height: 60px; max-height: 60px; width: auto; display: block; object-fit: contain;" />`;
+        const shadowStyle = isOverlayCover ? "filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));" : "";
+        footerLeft = `<img src="${logoUrl}" alt="Testo" style="height: 60px; max-height: 60px; width: auto; display: block; object-fit: contain; ${shadowStyle}" />`;
       } else {
         let footerLeftVal = slide.footer || customUsername;
         if (footerLeftVal === "@username" || footerLeftVal === "@maoroch") {
@@ -901,7 +907,9 @@ Please generate the carousel slide deck design structure in JSON format.`;
           if (illName && illName !== "none") {
             const base64Content = pngIllustrationsMap.get(illName);
             if (base64Content) {
-              svgContent = `<img src="data:image/png;base64,${base64Content}" alt="${escapeHtml(illName)}" style="height:100%;width:auto;object-fit:contain;" />`;
+              svgContent = `<img src="data:image/png;base64,${base64Content}" alt="${escapeHtml(illName)}" style="width:100%;height:100%;object-fit:cover;display:block;" />`;
+            } else if (illustrationsMap.has(illName)) {
+              svgContent = illustrationsMap.get(illName)!;
             }
           }
         } else {
@@ -985,7 +993,8 @@ Please generate the carousel slide deck design structure in JSON format.`;
           const targetTop = textBottom + gap;
           let targetHeight = targetIllustrationBottom - targetTop;
 
-          if (container) {
+          const isTopIllustration = container && headline && (container.offsetTop < headline.offsetTop);
+          if (container && !isTopIllustration) {
             if (targetHeight < 180) {
               container.style.display = "none";
             } else {

@@ -168,6 +168,7 @@ export function createApprovalRouter(logger: Logger): Router {
       slides.forEach((slide: any) => {
         render_data[slide.key] = {
           key: slide.key,
+          badge: slide.badge,
           title: slide.title,
           bullets: slide.bullets,
           footer: slide.footer,

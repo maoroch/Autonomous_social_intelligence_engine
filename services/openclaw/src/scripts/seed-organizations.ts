@@ -118,6 +118,7 @@ async function main() {
         "pharma-compliance-explained": ["21 CFR Part 11", "Audit Trail", "ERES"],
         "pharma-cold-chain-story": ["холодовая цепь", "GDP", "контроль"],
         "pharma-audit-ready": ["аудит", "инспекция", "чек-лист"],
+        "testo-device-breakdown": ["Testo", "точность", "характеристики", "B2B"],
       },
       forbiddenTerms: ["обычный градусник", "файл excel", "ручной журнал", "примерная температура"],
       preferredReplacements: {
