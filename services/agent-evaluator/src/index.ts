@@ -206,6 +206,44 @@ export function evaluateText(req: EvaluateRequest): { alignmentScore: number; dr
     driftReport.push(...termRes.driftReport);
   }
 
+  // 8. Bidirectional Cross-Tenant Hashtag Leak Validation
+  const isTesto = tenantId === "testo" || isPharmaRubric || pillarId === "testo-device-breakdown";
+  const isTech = tenantId === "software-development-default" || pillarId === "github-trending-repos" || pillarId === "pet-projects-showcase";
+
+  if (isTesto) {
+    const hasTechTags = /#(?:github|backend|softwareengineering|frontend|devops|typescript|python|code|repository|petprojects)\b/i.test(text);
+    if (hasTechTags) {
+      deductions += 40;
+      driftReport.push({
+        rule: "no_cross_tenant_hashtag_leak",
+        passed: false,
+        details: "Критическое отклонение: обнаружена утечка IT/GitHub хэштегов в фарм-портале Testo",
+      });
+    } else {
+      driftReport.push({
+        rule: "no_cross_tenant_hashtag_leak",
+        passed: true,
+        details: "Соблюдено: утечка сторонних IT-хэштегов в фарм-портал отсутствует",
+      });
+    }
+  } else if (isTech) {
+    const hasPharmaTags = /#(?:testo|gxp|pharma|комплаенс|холодоваяцепь|21cfrpart11|фармацевтика|фармпроизводство)\b/i.test(text);
+    if (hasPharmaTags) {
+      deductions += 40;
+      driftReport.push({
+        rule: "no_cross_tenant_hashtag_leak",
+        passed: false,
+        details: "Критическое отклонение: обнаружена утечка фарма/Testo хэштегов в IT-портале",
+      });
+    } else {
+      driftReport.push({
+        rule: "no_cross_tenant_hashtag_leak",
+        passed: true,
+        details: "Соблюдено: утечка сторонних фарм-хэштегов в IT-портал отсутствует",
+      });
+    }
+  }
+
   const alignmentScore = Math.max(0, 100 - deductions);
 
   return { alignmentScore, driftReport };

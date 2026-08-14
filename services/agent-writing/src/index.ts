@@ -316,6 +316,12 @@ ${industryProfile.glossary.map((g) => `- "${g.term}"${g.definition ? `: ${g.defi
 - Structure this post as a checklist debunking common myths about FDA/EMA audit readiness.
 - Contrast naive logging ("we record data") with true GxP compliance (Traceability, ERES compliance, immutable logs with Testo).
 - Use relevant audit hashtags ONLY (e.g., #audit #gxp #pharma #testo #инспекция). Do NOT use tech/GitHub hashtags.`;
+  } else if (contentPillarId === "testo-device-breakdown") {
+    rubricWritingInstruction = `\nSPECIFIC RUBRIC INSTRUCTION ("Разбор прибора Testo / Equipment Breakdown"):
+- Structure this post as an in-depth B2B device spotlight analyzing a specific Testo instrument (e.g. Testo Saveris Pharma, Testo 174T, Testo 883, Testo 440).
+- Highlight key physical specs: measurement range, accuracy tolerances, IP protection class, battery/power specs, and memory capacity.
+- Explain the precise B2B business problem solved: eliminating human paper log errors, automated alarm dispatch via SMS/Email, passing FDA/EMA audits without findings.
+- Use relevant device hashtags ONLY (e.g., #testo #testosaveris #testo174t #testo883 #измерительныеприборы #gxp). Do NOT use tech/GitHub hashtags.`;
   } else if (contentPillarId === "product-in-action" || contentPillarId === "before-after" || contentPillarId === "myths") {
     rubricWritingInstruction = `\nSPECIFIC RUBRIC INSTRUCTION ("Industrial Measurement & HVAC Calibration"):
 - Structure this post around real-world industrial measurement scenarios (HVAC/R, thermal imaging, calibration certificates).
@@ -488,8 +494,22 @@ Please write the post and return the JSON.`;
 
   const sanitized = sanitizeLlmOutput(parsedJson);
 
-  // Детерминированные (жестко прописанные) призывы к действию (CTA) по тенантам и рубрикам для экономии токенов
-  const PRESET_CTAS: Record<string, Record<string, string>> = {
+  // Detect text language to prevent mixed English/Russian CTAs
+  const isEnglishText = !/[а-яА-ЯёЁ]/.test(sanitized.text);
+
+  const PRESET_CTAS_EN: Record<string, Record<string, string>> = {
+    testo: {
+      default: "Contact the official Testo distributor for certified equipment and calibration.",
+    },
+    "software-development-default": {
+      "github-trending-repos": "Bookmark this roundup and share it with your dev colleagues!",
+      "pet-projects-showcase": "Save these project ideas for your GitHub portfolio!",
+      "tech-discussions-debates": "What approach do you use in your project? Share your thoughts in the comments!",
+      default: "Share your thoughts in the comments below!",
+    },
+  };
+
+  const PRESET_CTAS_RU: Record<string, Record<string, string>> = {
     testo: {
       "pharma-compliance-explained": "Заказывайте оригинальное оборудование Testo у официального дистрибьютора для полной гарантии, Госреестра СИ и калибровки.",
       "pharma-cold-chain-story": "Обращайтесь к официальному дистрибьютору Testo за решениями непрерывного температурного мониторинга холодовой цепи.",
@@ -504,7 +524,9 @@ Please write the post and return the JSON.`;
     },
   };
 
-  const presetCta = PRESET_CTAS[tenantId]?.[contentPillarId] || PRESET_CTAS[tenantId]?.["default"];
+  const ctaMap = isEnglishText ? PRESET_CTAS_EN : PRESET_CTAS_RU;
+  const presetCta = ctaMap[tenantId]?.[contentPillarId] || ctaMap[tenantId]?.["default"];
+
   if (presetCta) {
     sanitized.cta = presetCta;
     if (!sanitized.text.includes(presetCta)) {
@@ -579,6 +601,9 @@ Please write the post and return the JSON.`;
     }
   }
 
+  const cleaned = applyDeterministicPostProcessing(validated.text, "linkedin", [], isTestoTenant);
+  validated.text = cleaned.text;
+
   logger.info({ runId: job.runId }, "Post text generated successfully");
   return validated;
 }
@@ -593,7 +618,10 @@ export function applyDeterministicPostProcessing(
   let text = rawText.trim();
   if (isTesto) {
     // Strip accidental tech/github hashtags from Testo posts
-    text = text.replace(/#(?:github|backend|softwareengineering|frontend|devops|typescript|python|code|repository|petprojects)\b/gi, "").replace(/\s{2,}/g, " ").trim();
+    text = text.replace(/#(?:github|backend|softwareengineering|frontend|devops|typescript|python|code|repository|petprojects)\b/gi, "").replace(/[ \t]{2,}/g, " ").trim();
+  } else {
+    // Strip accidental pharma/Testo hashtags from Tech posts
+    text = text.replace(/#(?:testo|gxp|pharma|комплаенс|холодоваяцепь|21cfrpart11|фармацевтика|фармпроизводство)\b/gi, "").replace(/[ \t]{2,}/g, " ").trim();
   }
 
   const emojiRegex = /[\u{1F300}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
@@ -620,7 +648,7 @@ export function applyDeterministicPostProcessing(
           const lineEmojis = lineContent.match(emojiRegex);
           if (lineEmojis) {
             bodyEmojisStrippedCount += lineEmojis.length;
-            lines[i] = lineContent.replace(emojiRegex, "").replace(/\s{2,}/g, " ");
+            lines[i] = lineContent.replace(emojiRegex, "").replace(/[ \t]{2,}/g, " ");
           }
         }
       }
@@ -629,15 +657,28 @@ export function applyDeterministicPostProcessing(
 
   text = lines.join("\n").trim();
 
-  // Hashtags Sanitizer: Ensure hashtags block at bottom
+  // Hashtags Sanitizer: Extract hashtags, strip from body, and append clean hashtag block at the absolute bottom
   const hashtagRegex = /#[\wа-яА-ЯёЁ_-]+/g;
-  if (!text.match(hashtagRegex)) {
+  let matches = text.match(hashtagRegex) || [];
+  let hashtags = Array.from(new Set(matches));
+
+  if (isTesto) {
+    hashtags = hashtags.filter(t => !/#(?:github|backend|softwareengineering|frontend|devops|typescript|python|code|repository|petprojects)\b/i.test(t));
+  } else {
+    hashtags = hashtags.filter(t => !/#(?:testo|gxp|pharma|комплаенс|холодоваяцепь|21cfrpart11|фармацевтика|фармпроизводство)\b/i.test(t));
+  }
+
+  if (hashtags.length === 0) {
     const fallbackTags = isTesto
       ? ["#testo", "#gxp", "#pharma", "#комплаенс"]
       : ["#github", "#backend", "#softwareengineering"];
-    const tagsToAppend = defaultHashtags.length > 0 ? defaultHashtags : fallbackTags;
-    text = `${text}\n\n${tagsToAppend.join(" ")}`;
+    hashtags = defaultHashtags.length > 0 ? defaultHashtags : fallbackTags;
   }
+
+  // Remove hashtags from main body text so they are not duplicated in the middle
+  let cleanBody = text.replace(hashtagRegex, "").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+
+  text = `${cleanBody}\n\n${hashtags.join(" ")}`;
 
   return { text, headerEmojiUsed, bodyEmojisStrippedCount };
 }
@@ -650,8 +691,12 @@ const worker = createWorker<AgentJob>(
       const result = await processWritingJob(parsed);
       const writingResult = result as { text: string; hook?: string; cta?: string };
 
+      const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
+      const runDoc = await runsCol.findOne({ runId: parsed.runId });
+      const isTesto = runDoc?.tenantId === "testo" || (runDoc as any)?.templateSetId === "industrial-measurement-equipment" || (runDoc as any)?.contentPillarId?.startsWith("pharma-") || (runDoc as any)?.contentPillarId === "testo-device-breakdown";
+
       // Apply deterministic post-processing
-      const cleaned = applyDeterministicPostProcessing(writingResult.text, "linkedin");
+      const cleaned = applyDeterministicPostProcessing(writingResult.text, "linkedin", [], isTesto);
       writingResult.text = cleaned.text;
 
       // ─── Golden Dataset Validation & Self-Correction Loop ───────────────────

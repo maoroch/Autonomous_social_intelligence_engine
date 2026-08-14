@@ -106,6 +106,18 @@ ${JSON.stringify(ex.expected_output, null, 2)}
     logger.warn({ err }, "Failed to fetch golden SEO examples");
   }
 
+  const runsCol = getCollection(Collections.PIPELINE_RUNS);
+  const runDoc = await runsCol.findOne({ runId: job.runId });
+  const isTestoTenant = runDoc?.tenantId === "testo";
+
+  let tenantSeoGuidance = "";
+  if (isTestoTenant) {
+    tenantSeoGuidance = `\nSPECIAL TENANT INSTRUCTION (Testo Pharma B2B):
+- This post is for Russian/CIS B2B pharmaceutical engineering and GxP compliance.
+- Do NOT recommend adding English hashtags (e.g., #TemperatureControl, #Pharmaceutical). Recommend Russian/GxP hashtags only (e.g. #фармацевтика, #GxP, #21CFRPart11, #холодоваяцепь, #качество).
+- Focus recommendations strictly on B2B engineering clarity, GxP readability, and compliance accuracy.`;
+  }
+
   const systemPrompt = `You are a LinkedIn SEO and content optimization expert.
 Your job is to audit a drafted LinkedIn post and provide a rating (score) and a list of specific, actionable recommendations.
 Analyze the following aspects:
@@ -114,6 +126,7 @@ Analyze the following aspects:
 3. Keywords & HashTags: Are relevant keywords present? Should hashtags be added?
 4. CTA (Call to Action): Is there a clear, engaging call to action or question at the end?
 5. Formatting & Length: Does it fit LinkedIn's style (avoiding walls of text)?
+${tenantSeoGuidance}
 ${fewShotText}
 You must return a single, valid JSON object containing:
 - "score": A rating from 0 to 100 based on the quality and engagement potential of the post.

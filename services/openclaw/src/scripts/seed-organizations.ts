@@ -211,6 +211,7 @@ async function main() {
       { id: "pharma-cold-chain-story", label: "Холодовая цепь без слепых зон", description: "Визуализация пути партии лекарства и точек риска потери контроля температуры", weight: 0.5, preferredFormat: "reel-script" },
       { id: "pharma-audit-ready", label: "Готовы к инспекции?", description: "Чек-лист/мифы про подготовку к аудиту FDA/EMA", weight: 0.5, preferredFormat: "carousel" },
       { id: "pharma-case-story", label: "Кейс из фарм-индустрии", description: "Обезличенный кейс-стори по мотивам реальных внедрений (без брендов клиентов без разрешения)", weight: 0.4, preferredFormat: "carousel" },
+      { id: "testo-device-breakdown", label: "Разбор прибора Testo", description: "Детальный разбор конкретной модели оборудования Testo, технических параметров и окупаемости для B2B-предприятий", weight: 0.6, preferredFormat: "carousel" },
     ],
   });
 

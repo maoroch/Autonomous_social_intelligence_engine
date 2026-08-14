@@ -816,11 +816,11 @@ Please generate the carousel slide deck design structure in JSON format.`;
         const filtered = cleanBullets.filter((b: string) => !filterRegex.test(b.trim()) && !filterGithub.test(b.trim()));
 
         if (style.key === "cover-8" || style.key === "cover-9") {
-          bodyHtml = filtered.map((b: string) => escapeHtml(b)).join("<br/><br/>");
+          bodyHtml = filtered.map((b: string) => `<p style="margin: 0 0 10px 0; padding: 0; line-height: 1.4;">${escapeHtml(b)}</p>`).join("");
         } else {
           bodyHtml = filtered
-            .map((b: string) => `→ ${escapeHtml(b)}`)
-            .join("<br/>");
+            .map((b: string) => `<p style="margin: 0 0 8px 0; padding: 0; line-height: 1.4;">→ ${escapeHtml(b)}</p>`)
+            .join("");
         }
       }
 
