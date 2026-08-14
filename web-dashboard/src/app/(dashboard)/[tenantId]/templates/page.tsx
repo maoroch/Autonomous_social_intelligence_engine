@@ -16,17 +16,10 @@ interface DesignTemplate {
   updatedAt: string;
 }
 
-const PILLAR_LABELS: Record<string, { label: string; icon: string }> = {
-  "all": { label: "Все рубрики (Дефолты)", icon: "🌐" },
-  "github-trending-repos": { label: "GitHub Trending Repos", icon: "🐙" },
-  "pet-projects-showcase": { label: "Pet Projects Showcase", icon: "🛠️" },
-  "tech-trends-insights": { label: "Tech Trends & Insights", icon: "💡" },
-  "tech-battle-vs": { label: "Сравнение технологий Vs", icon: "⚡" },
-  "system-design-breakdown": { label: "Разбор архитектуры", icon: "🏗️" },
-  "clean-code-cheatsheets": { label: "Clean Code Шпаргалки", icon: "💡" },
-  "ai-tooling-agents": { label: "AI Инструменты & Агенты", icon: "🤖" },
-  "weekly-tech-digest": { label: "Еженедельный дайджест", icon: "📰" },
-};
+interface ContentPillar {
+  id: string;
+  label: string;
+}
 
 const DEFAULT_COVER_HTML = `<!DOCTYPE html>
 <html>
@@ -78,16 +71,38 @@ export default function TemplatesPage() {
   const [templates, setTemplates] = useState<DesignTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedFilterPillar, setSelectedFilterPillar] = useState<string>("all_filter");
+  // Рубрики контента — загружаются из tenant-info API динамически для изоляции Tech/Testo.
+  const [contentPillars, setContentPillars] = useState<ContentPillar[]>([]);
 
   // Form State
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [type, setType] = useState<"cover" | "card">("cover");
-  const [pillarId, setPillarId] = useState("github-trending-repos");
+  const [pillarId, setPillarId] = useState("");
   const [htmlTemplate, setHtmlTemplate] = useState("");
   const [cssContent, setCssContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const fetchTenantPillars = async () => {
+    try {
+      const res = await fetch(`/api/tenant-info?tenantId=${encodeURIComponent(tenantId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        const pillars: ContentPillar[] = (data.contentPillars ?? []).map((p: any) => ({
+          id: p.id,
+          label: p.label,
+        }));
+        setContentPillars(pillars);
+        // Устанавливаем дефолтный pillarId на первую рубрику.
+        if (pillars.length > 0 && !pillarId) {
+          setPillarId(pillars[0].id);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch tenant pillars:", err);
+    }
+  };
 
   const fetchTemplates = async () => {
     try {
@@ -105,6 +120,7 @@ export default function TemplatesPage() {
 
   useEffect(() => {
     fetchTemplates();
+    fetchTenantPillars();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId]);
 
@@ -112,7 +128,8 @@ export default function TemplatesPage() {
     setEditingId(null);
     setName(templateType === "cover" ? "Кастомный Шаблон Обложки" : "Кастомный Шаблон Карточки");
     setType(templateType);
-    setPillarId("github-trending-repos");
+    // Дефолтный pillarId — первая рубрика для этого tenant (не hardcoded Tech-рубрика).
+    setPillarId(contentPillars[0]?.id ?? "all");
     setHtmlTemplate(templateType === "cover" ? DEFAULT_COVER_HTML : DEFAULT_CARD_HTML);
     setCssContent("");
     setShowModal(true);
@@ -232,27 +249,45 @@ export default function TemplatesPage() {
         >
           🌐 Все шаблоны ({templates.length})
         </button>
-        {Object.entries(PILLAR_LABELS).map(([pid, info]) => {
-          const count = templates.filter(t => t.pillarId === pid).length;
+        {contentPillars.map((pillar) => {
+          const count = templates.filter(t => t.pillarId === pillar.id).length;
           return (
             <button
-              key={pid}
-              onClick={() => setSelectedFilterPillar(pid)}
+              key={pillar.id}
+              onClick={() => setSelectedFilterPillar(pillar.id)}
               style={{
                 padding: "8px 14px",
                 borderRadius: 8,
-                border: selectedFilterPillar === pid ? "2px solid #0969da" : "1px solid #d0d7de",
-                background: selectedFilterPillar === pid ? "#ddf4ff" : "#ffffff",
-                color: selectedFilterPillar === pid ? "#0969da" : "#24292f",
-                fontWeight: selectedFilterPillar === pid ? 700 : 500,
+                border: selectedFilterPillar === pillar.id ? "2px solid #0969da" : "1px solid #d0d7de",
+                background: selectedFilterPillar === pillar.id ? "#ddf4ff" : "#ffffff",
+                color: selectedFilterPillar === pillar.id ? "#0969da" : "#24292f",
+                fontWeight: selectedFilterPillar === pillar.id ? 700 : 500,
                 cursor: "pointer",
                 fontSize: 13,
               }}
             >
-              {info.icon} {info.label} ({count})
+              📌 {pillar.label} ({count})
             </button>
           );
         })}
+        {/* Отдельная кнопка для шаблонов типа "all" (дефолты для всех рубрик) */}
+        {templates.some(t => t.pillarId === "all") && (
+          <button
+            onClick={() => setSelectedFilterPillar("all")}
+            style={{
+              padding: "8px 14px",
+              borderRadius: 8,
+              border: selectedFilterPillar === "all" ? "2px solid #0969da" : "1px solid #d0d7de",
+              background: selectedFilterPillar === "all" ? "#ddf4ff" : "#ffffff",
+              color: selectedFilterPillar === "all" ? "#0969da" : "#24292f",
+              fontWeight: selectedFilterPillar === "all" ? 700 : 500,
+              cursor: "pointer",
+              fontSize: 13,
+            }}
+          >
+            🌐 Все рубрики — Дефолты ({templates.filter(t => t.pillarId === "all").length})
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -289,7 +324,9 @@ export default function TemplatesPage() {
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: 20 }}>
           {filteredTemplates.map((t) => {
-            const pillarInfo = PILLAR_LABELS[t.pillarId] || { label: t.pillarId, icon: "📌" };
+            // Ищем label в динамически загруженных рубриках.
+            const pillarInfo = contentPillars.find(p => p.id === t.pillarId)
+              ?? { id: t.pillarId, label: t.pillarId === "all" ? "Все рубрики (Дефолт)" : t.pillarId };
             return (
               <div
                 key={t._id}
@@ -320,7 +357,7 @@ export default function TemplatesPage() {
                       {t.type === "cover" ? "🖼️ Обложка (Cover)" : "🎴 Карточка (Card)"}
                     </span>
                     <span style={{ fontSize: 12, fontWeight: 600, color: "#57606a", background: "#f6f8fa", padding: "4px 8px", borderRadius: 6, border: "1px solid #eaeef2" }}>
-                      {pillarInfo.icon} {pillarInfo.label}
+                      📌 {pillarInfo.label}
                     </span>
                   </div>
                   <h3 style={{ margin: "0 0 8px 0", fontSize: 18, color: "#1f2328" }}>{t.name}</h3>
@@ -438,15 +475,12 @@ export default function TemplatesPage() {
                     onChange={(e) => setPillarId(e.target.value)}
                     style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid #d0d7de" }}
                   >
-                    <option value="github-trending-repos">🐙 GitHub Trending Repos</option>
-                    <option value="pet-projects-showcase">🛠️ Pet Projects Showcase</option>
-                    <option value="tech-trends-insights">💡 Tech Trends Insights</option>
-                    <option value="tech-battle-vs">⚡ Сравнение технологий Vs</option>
-                    <option value="system-design-breakdown">🏗️ Разбор архитектуры сервисов</option>
-                    <option value="clean-code-cheatsheets">💡 Шпаргалки и Бест-практики</option>
-                    <option value="ai-tooling-agents">🤖 AI Инструменты и Агенты</option>
-                    <option value="weekly-tech-digest">📰 Еженедельный дайджест</option>
+                    {/* Дефолт для всех рубрик */}
                     <option value="all">🌐 Все рубрики (Дефолт для всех)</option>
+                    {/* Динамические рубрики из IndustryProfile текущего tenant */}
+                    {contentPillars.map(p => (
+                      <option key={p.id} value={p.id}>📌 {p.label}</option>
+                    ))}
                   </select>
                 </div>
               </div>

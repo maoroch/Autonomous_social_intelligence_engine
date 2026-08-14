@@ -16,6 +16,9 @@
 - **Puppeteer Browser Pool (`agent-design`):** Для рендеринга каруселей используется единый переиспользуемый инстанс браузера `getSharedBrowser()`.
 - **Дрифт и Валидация (`agent-evaluator`):** Оценка `alignmentScore` по Golden Datasets. При `score < 85%` автоматически срабатывает Self-Correction loop.
 - **RAG Grounding (`FactChunkDoc`):** Для регулируемых ниш (Testo Pharma) числа и характеристики проверяются по базе фактов `fact_chunks`.
+- **Политика LLM Моделей (DEV vs PROD):**
+  - **PROD (`NODE_ENV === "production"`):** Используется исключительно **`llama-3.3-70b-versatile`** (Groq) для достижения наивысшего качества копирайтинга, точной структуры и высоких оценок `alignmentScore`.
+  - **DEV (`NODE_ENV !== "production"`):** Используются альтернативные/легкие модели (например, `llama-3.1-8b-instant`, OpenRouter, Gemini) для экономии квот и быстрого локального тестирования.
 
 ---
 

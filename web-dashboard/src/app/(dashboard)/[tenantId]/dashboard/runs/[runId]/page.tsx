@@ -10,11 +10,12 @@ interface PageProps {
 
 interface RunDoc {
   runId: string;
-  status: "running" | "awaiting_approval" | "approved" | "rejected" | "failed";
+  status: "running" | "awaiting_approval" | "human_approval_required" | "approved" | "rejected" | "failed";
   currentStage: string;
   topic: { title: string; summary: string };
   seoImprovementsCount?: number;
   needsComplianceReview?: boolean;
+  failedReason?: string;
   contentPillarId?: string;
   adaptations?: {
     telegram?: { text: string; hook?: string; hashtags?: string[]; length: "short" | "long"; alignmentScore?: number };
@@ -48,10 +49,13 @@ export default function RunDetailPage({ params }: PageProps) {
   const [cta, setCta] = useState("");
   const [slideDeck, setSlideDeck] = useState<any[]>([]);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("cover-2");
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [isReRendering, setIsReRendering] = useState(false);
   const isReRenderingRef = useRef(false);
   const prevPreviewIdRef = useRef<string | null>(null);
+  // templateSetId — загружается из tenant-info для фильтрации доступных шаблонов по tenant.
+  // "software-development" → cover-1..9, "industrial-measurement-equipment" → один шаблон.
+  const [templateSetId, setTemplateSetId] = useState<string>("software-development");
 
   // Main Tab Navigation State
   const [activeMainTab, setActiveMainTab] = useState<"editor" | "carousel" | "analytics">("editor");
@@ -120,12 +124,25 @@ export default function RunDetailPage({ params }: PageProps) {
     }
   };
 
+  // Загружаем templateSetId и соответствующие иллюстрации для текущего tenant.
   useEffect(() => {
-    fetch("/api/illustrations")
+    fetch(`/api/tenant-info?tenantId=${encodeURIComponent(tenantId)}`)
       .then(res => res.json())
-      .then(data => setAvailableIllustrations(data))
-      .catch(err => console.error("Failed to load illustrations", err));
-  }, []);
+      .then(data => {
+        const setId = data.templateSetId || "software-development";
+        setTemplateSetId(setId);
+
+        const illUrl = setId === "software-development"
+          ? "/api/illustrations"
+          : `/api/illustrations/png?templateSetId=${encodeURIComponent(setId)}`;
+
+        fetch(illUrl)
+          .then(r => r.json())
+          .then(ills => setAvailableIllustrations(Array.isArray(ills) ? ills : []))
+          .catch(err => console.error("Failed to load illustrations", err));
+      })
+      .catch(err => console.error("Failed to load tenant templateSetId", err));
+  }, [tenantId]);
 
   const fetchRunDetails = async () => {
     try {
@@ -147,8 +164,9 @@ export default function RunDetailPage({ params }: PageProps) {
           isReRenderingRef.current = false;
         }
 
+        const isAwaiting = data.run.status === "awaiting_approval" || data.run.status === "human_approval_required";
         // Populate editable states if awaiting_approval and not already edited
-        if (data.run.status === "awaiting_approval") {
+        if (isAwaiting) {
           const writingResult = stagesReversed.find((s: any) => s.stage === "writing")?.result;
           const designResult = designStage?.result;
 
@@ -158,6 +176,7 @@ export default function RunDetailPage({ params }: PageProps) {
           setSlideDeck(prev => prev.length > 0 ? prev : (designResult?.render_data
             ? Object.entries(designResult.render_data).map(([key, val]: [string, any]) => ({
               key,
+              badge: val.badge || "",
               title: val.title || "",
               bullets: Array.isArray(val.bullets) ? val.bullets : [],
               footer: val.footer || "",
@@ -247,7 +266,8 @@ export default function RunDetailPage({ params }: PageProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           postText: { hook, text: bodyText, cta },
-          slides: slideDeck
+          slides: slideDeck,
+          template_name: selectedTemplate,
         }),
       });
       if (res.ok) {
@@ -301,7 +321,27 @@ export default function RunDetailPage({ params }: PageProps) {
   const seoResult = stagesReversed.find((s) => s.stage === "seo")?.result;
 
   const accentColor = designResult?.accent_color || "var(--secondary)";
-  const isAwaitingApproval = run.status === "awaiting_approval";
+  const handleRestartRun = async () => {
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/runs/${runId}/restart?tenantId=${encodeURIComponent(tenantId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        fetchRunDetails();
+      } else {
+        alert("Не удалось перезапустить прогон");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Ошибка при перезапуске прогона");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const isAwaitingApproval = run.status === "awaiting_approval" || run.status === "human_approval_required";
 
   // Use slideDeck state if editing, otherwise fall back to database result
   const activeSlides = isAwaitingApproval && slideDeck.length > 0
@@ -309,6 +349,7 @@ export default function RunDetailPage({ params }: PageProps) {
     : (designResult?.render_data
       ? Object.entries(designResult.render_data).map(([key, val]: [string, any]) => ({
         key,
+        badge: val.badge || "",
         title: val.title || "",
         bullets: Array.isArray(val.bullets) ? val.bullets : [],
         footer: val.footer || "",
@@ -343,10 +384,25 @@ export default function RunDetailPage({ params }: PageProps) {
             <h1 style={{ margin: 0, fontSize: 28, color: "var(--text-main)" }}>
               {run.topic.title || "Генерация темы..."}
             </h1>
+            {run.failedReason && (
+              <div style={{ marginTop: 12, padding: "10px 14px", background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: 8, color: "var(--red)", fontSize: 13 }}>
+                <strong>Причина ошибки:</strong> {run.failedReason}
+              </div>
+            )}
           </div>
 
           {/* Action Panel */}
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            {run.status === "failed" && (
+              <button
+                disabled={actionLoading}
+                onClick={handleRestartRun}
+                className="btn btn-primary"
+                style={{ padding: "10px 20px" }}
+              >
+                {actionLoading ? "Перезапуск..." : "🔄 Перезапустить прогон (Retry)"}
+              </button>
+            )}
             {isAwaitingApproval && (
               <>
                 <button
@@ -794,15 +850,40 @@ export default function RunDetailPage({ params }: PageProps) {
               {/* Left Column: Interactive Slide Editor */}
               <div className="card" style={{ padding: 24 }}>
                 <h3 style={{ marginBottom: 20 }}>Слайды карусели</h3>
-                {(() => {
-                  const isLightTemplate = ["cover-1", "cover-6"].includes(selectedTemplate);
+                 {(() => {
+                  const testoTemplates = ["industrial-measurement-equipment", "testo-pharma-compliance", "testo-pharma-cold-chain", "testo-pharma-audit"];
+                  const isLightTemplate = ["cover-1", "cover-6", ...testoTemplates].includes(selectedTemplate);
+                  const currentAccentColor = selectedTemplate === "testo-pharma-compliance" ? "#3B82F6" : selectedTemplate === "testo-pharma-cold-chain" ? "#06B6D4" : selectedTemplate === "testo-pharma-audit" ? "#10B981" : selectedTemplate === "industrial-measurement-equipment" ? "#EE8432" : accentColor;
+
+                  const templateBadgeDefaults: Record<string, { cover: string; card: string }> = {
+                    "testo-pharma-compliance": { cover: "COMPLIANCE", card: "PART 11" },
+                    "testo-pharma-cold-chain": { cover: "LOGISTICS", card: "GDP" },
+                    "testo-pharma-audit": { cover: "QA", card: "AUDIT" },
+                    "industrial-measurement-equipment": { cover: "INSIGHT", card: "DETAILS" },
+                    "cover-1": { cover: "The fix", card: "Setup" },
+                    "cover-2": { cover: "AI Agents", card: "Setup" },
+                    "cover-3": { cover: "Terminal", card: "Code" },
+                    "cover-4": { cover: "Blueprint", card: "Spec" },
+                    "cover-5": { cover: "Glass", card: "Insight" },
+                    "cover-6": { cover: "Editorial", card: "Deep Dive" },
+                    "cover-7": { cover: "Matrix", card: "Syntax" },
+                    "cover-8": { cover: "GitHub Trending", card: "Open Source" },
+                    "cover-9": { cover: "Pet Project", card: "Portfolio" },
+                  };
+
+                  const currentDefaults = templateBadgeDefaults[selectedTemplate] || {
+                    cover: activeSlide === 0 ? "COMPLIANCE" : "INSIGHTS",
+                    card: activeSlide === 0 ? "PART 11" : "HIGHLIGHT",
+                  };
+                  const defaultBadgeText = activeSlide === 0 ? currentDefaults.cover : currentDefaults.card;
+
                   return (
                     <div style={{
                       aspectRatio: "1/1",
                       maxWidth: 420,
                       margin: "0 auto 20px auto",
                       background: isLightTemplate ? "#ffffff" : selectedTemplate === "cover-3" || selectedTemplate === "cover-8" ? "#0D1117" : selectedTemplate === "cover-4" || selectedTemplate === "cover-9" ? "#0F172A" : selectedTemplate === "cover-5" ? "#090D16" : selectedTemplate === "cover-7" ? "#030712" : "#1e293b",
-                      border: isLightTemplate ? "3px solid var(--green)" : `3px solid ${accentColor}`,
+                      border: `3px solid ${currentAccentColor}`,
                       borderRadius: 16,
                       padding: 24,
                       display: "flex",
@@ -814,6 +895,27 @@ export default function RunDetailPage({ params }: PageProps) {
                       <div>
                         {isAwaitingApproval ? (
                           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            <label style={{ fontSize: 11, color: isLightTemplate ? "#6b7280" : "rgba(255,255,255,0.6)", fontWeight: 600 }}>Бейдж / Метка слайда (badge)</label>
+                            <input
+                              type="text"
+                              value={
+                                (activeSlides[activeSlide]?.badge !== undefined && activeSlides[activeSlide]?.badge !== "")
+                                  ? activeSlides[activeSlide].badge
+                                  : defaultBadgeText
+                              }
+                              placeholder="Например: COMPLIANCE, PART 11, GXP"
+                              onChange={(e) => handleSlideChange(activeSlide, "badge", e.target.value)}
+                              style={{
+                                fontSize: 13,
+                                fontWeight: "600",
+                                background: isLightTemplate ? "#f9fafb" : "rgba(255,255,255,0.12)",
+                                color: isLightTemplate ? "#111827" : "#fff",
+                                border: isLightTemplate ? "1px solid #d1d5db" : "1px solid rgba(255,255,255,0.2)",
+                                width: "100%",
+                                padding: "6px 10px",
+                                borderRadius: "6px"
+                              }}
+                            />
                             <label style={{ fontSize: 11, color: isLightTemplate ? "#6b7280" : "rgba(255,255,255,0.6)", fontWeight: 600 }}>Заголовок слайда</label>
                             <input
                               type="text"
@@ -933,36 +1035,98 @@ export default function RunDetailPage({ params }: PageProps) {
 
                 {/* Template Style Toggle Selector */}
                 <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
-                  {[
-                    { key: "cover-1", label: "☀️ Светлая сетка", color: "#10B981" },
-                    { key: "cover-2", label: "🌙 Тёмный Purple", color: "#8b5cf6" },
-                    { key: "cover-3", label: "💻 Cyberpunk Terminal", color: "#00F5FF" },
-                    { key: "cover-4", label: "📐 Blueprint Spec", color: "#FACC15" },
-                    { key: "cover-5", label: "🔮 Obsidian Glass", color: "#EC4899" },
-                    { key: "cover-6", label: "📰 Warm Editorial", color: "#EA580C" },
-                    { key: "cover-7", label: "🟩 Matrix Emerald", color: "#10B981" },
-                    { key: "cover-8", label: "🐙 GitHub Repos", color: "#58A6FF" },
-                    { key: "cover-9", label: "🛠️ Pet Projects", color: "#38BDF8" },
-                  ].map((tmpl) => (
-                    <button
-                      key={tmpl.key}
-                      type="button"
-                      onClick={() => setSelectedTemplate(tmpl.key)}
-                      className="btn"
-                      style={{
-                        padding: "6px 12px",
-                        borderRadius: 8,
-                        fontSize: 12,
-                        background: selectedTemplate === tmpl.key ? tmpl.color : "#f3f4f6",
-                        color: selectedTemplate === tmpl.key ? (["#FACC15", "#00F5FF"].includes(tmpl.color) ? "#0F172A" : "#fff") : "#374151",
-                        border: selectedTemplate === tmpl.key ? `2px solid ${tmpl.color}` : "2px solid #e5e7eb",
-                        cursor: "pointer",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {tmpl.label}
-                    </button>
-                  ))}
+                    {designResult && (() => {
+                    // Строим список доступных шаблонов из rendered_styles — динамически.
+                    // Для software-dev: cover-1..9 (те что отрендерились).
+                    // Для Testo: industrial-measurement-equipment (один шаблон).
+                    const TEMPLATE_LABELS: Record<string, { label: string; color: string }> = {
+                      "cover-1": { label: "☀️ Светлая сетка", color: "#10B981" },
+                      "cover-2": { label: "🌙 Тёмный Purple", color: "#8b5cf6" },
+                      "cover-3": { label: "💻 Cyberpunk Terminal", color: "#00F5FF" },
+                      "cover-4": { label: "📐 Blueprint Spec", color: "#FACC15" },
+                      "cover-5": { label: "🔮 Obsidian Glass", color: "#EC4899" },
+                      "cover-6": { label: "📰 Warm Editorial", color: "#EA580C" },
+                      "cover-7": { label: "🟩 Matrix Emerald", color: "#10B981" },
+                      "cover-8": { label: "🐙 GitHub Repos", color: "#58A6FF" },
+                      "cover-9": { label: "🛠️ Pet Projects", color: "#38BDF8" },
+                      "industrial-measurement-equipment": { label: "🔶 Testo Brand (Default)", color: "#EE8432" },
+                      "testo-pharma-compliance": { label: "📘 Testo Pharma Compliance", color: "#3B82F6" },
+                      "testo-pharma-cold-chain": { label: "❄️ Testo Cold Chain", color: "#06B6D4" },
+                      "testo-pharma-audit": { label: "✅ Testo Audit Ready", color: "#10B981" },
+                    };
+                    const allRenderedKeys = Object.keys(designResult.rendered_styles ?? {});
+
+                    // Фильтруем ключи по templateSetId текущего tenant.
+                    // Это исправляет старые runs, у которых в rendered_styles записаны все 9 Tech-шаблонов,
+                    // но tenant — Testo (должен видеть только industrial-measurement-equipment).
+                    const filteredKeys = allRenderedKeys.filter(key => {
+                      if (templateSetId === "software-development") {
+                        return key.startsWith("cover-");
+                      }
+                      
+                      // For Testo portal: show Testo specific templates.
+                      // If the run is old and only has cover-*, we can fall back to showing them, 
+                      // or just show what's available if no Testo templates are found.
+                      const testoKeys = ["industrial-measurement-equipment", "testo-pharma-compliance", "testo-pharma-cold-chain", "testo-pharma-audit"];
+                      return testoKeys.includes(key);
+                    });
+
+                    // Fallback for old Testo runs that only have cover-* keys
+                    if (filteredKeys.length === 0 && allRenderedKeys.some(k => k.startsWith("cover-"))) {
+                      allRenderedKeys.filter(k => k.startsWith("cover-")).forEach(k => filteredKeys.push(k));
+                    }
+
+                    // Если после фильтрации нет ключей (например старый Testo run без нужного ключа),
+                    // показываем сообщение о необходимости перегенерации.
+                    const availableTemplates = filteredKeys.map((key) => ({
+                      key,
+                      label: TEMPLATE_LABELS[key]?.label ?? key,
+                      color: TEMPLATE_LABELS[key]?.color ?? "#6b7280",
+                    }));
+
+                    if (availableTemplates.length === 0) {
+                      const isNiche = templateSetId !== "software-development";
+                      return (
+                        <div style={{ padding: "12px 16px", background: "rgba(245, 158, 11, 0.1)", borderRadius: 8, color: "#d97706", fontSize: 13, textAlign: "center" }}>
+                          {isNiche
+                            ? `⚡ Шаблон «${templateSetId}» ещё не отрендерен для этого прогона. Нажмите «Сохранить правки» чтобы сгенерировать.`
+                            : "⚡ Шаблоны ещё не отрендерены. Дождитесь завершения генерации."}
+                        </div>
+                      );
+                    }
+
+                    // Авто-выбор: если selectedTemplate не входит в список доступных для данного tenant,
+                    // устанавливаем первый доступный (например при открытии старого Testo-run с cover-2).
+                    if (!availableTemplates.find(t => t.key === selectedTemplate) && availableTemplates.length > 0) {
+                      // Используем setTimeout чтобы не вызывать setState в рендере.
+                      setTimeout(() => setSelectedTemplate(availableTemplates[0].key), 0);
+                    }
+
+                    return (
+                      <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
+                        {availableTemplates.map((tmpl) => (
+                          <button
+                            key={tmpl.key}
+                            type="button"
+                            onClick={() => setSelectedTemplate(tmpl.key)}
+                            className="btn"
+                            style={{
+                              padding: "6px 12px",
+                              borderRadius: 8,
+                              fontSize: 12,
+                              background: selectedTemplate === tmpl.key ? tmpl.color : "#f3f4f6",
+                              color: selectedTemplate === tmpl.key ? (["#FACC15", "#00F5FF"].includes(tmpl.color) ? "#0F172A" : "#fff") : "#374151",
+                              border: selectedTemplate === tmpl.key ? `2px solid ${tmpl.color}` : "2px solid #e5e7eb",
+                              cursor: "pointer",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {tmpl.label}
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -972,11 +1136,20 @@ export default function RunDetailPage({ params }: PageProps) {
                   <h3 style={{ marginBottom: 16 }}>Предпросмотр всех слайдов</h3>
                   {designResult && (() => {
                     const styleData = designResult.rendered_styles?.[selectedTemplate];
-                    const currentZipId = styleData?.zipId ||
-                      (selectedTemplate === "cover-1" ? (designResult.zip_cover_1_id || designResult.imageId) :
-                       selectedTemplate === "cover-2" ? (designResult.zip_cover_2_id || designResult.imageId) : undefined);
+                    // Используем zipId конкретного выбранного шаблона — без тихого fallback на дефолтный imageId.
+                    const currentZipId = styleData?.zipId;
 
-                    return currentZipId ? (
+                    if (!currentZipId) {
+                      // Шаблон не найден в rendered_styles: либо ещё не отрендерен, либо не совпадает ключ.
+                      return (
+                        <div style={{ padding: 20, background: "rgba(245, 158, 11, 0.1)", borderRadius: 8, color: "#d97706", fontSize: 13, textAlign: "center" }}>
+                          {selectedTemplate
+                            ? `⚡ Шаблон «${selectedTemplate}» ещё не отрендерен. Нажмите «Сохранить правки» для рендера.`
+                            : "⚡ Выберите шаблон выше для предпросмотра."}
+                        </div>
+                      );
+                    }
+                    return (
                       <div>
                         <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 16, scrollSnapType: "x mandatory" }}>
                           {Array.from({ length: activeSlides.length || designResult.card_count || 5 }).map((_, index) => (
@@ -1001,10 +1174,6 @@ export default function RunDetailPage({ params }: PageProps) {
                             📦 Скачать ZIP Архив (Слайды PNG)
                           </a>
                         </div>
-                      </div>
-                    ) : (
-                      <div style={{ padding: 20, background: "rgba(245, 158, 11, 0.1)", borderRadius: 8, color: "#d97706", fontSize: 13, textAlign: "center" }}>
-                        ⚡ Слайды для шаблона {selectedTemplate} еще не отрендерены. Нажмите «Сохранить правки» выше.
                       </div>
                     );
                   })()}

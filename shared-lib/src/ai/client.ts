@@ -52,37 +52,46 @@ export class AiClient {
     const maxAttempts = 3;
     let delay = 3000;
 
-    const preferred = options.preferredProvider ?? (this.config.geminiApiKey ? "gemini" : this.config.groqApiKey ? "groq" : "openrouter");
+    const forcedProvider = (process.env.AI_PROVIDER || options.preferredProvider) as "gemini" | "groq" | "openrouter" | undefined;
+    const isProd = process.env.NODE_ENV === "production";
 
-    const providers: Array<{ name: "gemini" | "openrouter" | "groq"; key?: string; call: () => Promise<AiCompletionResult> }> = [
-      { name: "gemini", key: this.config.geminiApiKey, call: () => this.callGemini(messages, options) },
-      { name: "groq", key: this.config.groqApiKey, call: () => this.callGroq(messages, options) },
-      { name: "openrouter", key: this.config.openrouterApiKey, call: () => this.callOpenRouter(messages, options) },
-    ];
+    let defaultProvider: "gemini" | "groq" | "openrouter";
+    if (forcedProvider) {
+      defaultProvider = forcedProvider;
+    } else if (isProd) {
+      defaultProvider = this.config.geminiApiKey ? "gemini" : (this.config.groqApiKey ? "groq" : "openrouter");
+    } else {
+      defaultProvider = this.config.groqApiKey ? "groq" : (this.config.openrouterApiKey ? "openrouter" : "gemini");
+    }
 
-    const orderedProviders = [
-      ...providers.filter(p => p.name === preferred),
-      ...providers.filter(p => p.name !== preferred),
-    ];
+    const preferred = forcedProvider ?? defaultProvider;
+
+    const providers: Record<"gemini" | "openrouter" | "groq", { key?: string; call: () => Promise<AiCompletionResult> }> = {
+      gemini: { key: this.config.geminiApiKey, call: () => this.callGemini(messages, options) },
+      groq: { key: this.config.groqApiKey, call: () => this.callGroq(messages, options) },
+      openrouter: { key: this.config.openrouterApiKey, call: () => this.callOpenRouter(messages, options) },
+    };
+
+    const targetProvider = providers[preferred];
+    if (!targetProvider || !targetProvider.key) {
+      throw new Error(`AI Provider '${preferred}' is requested but not configured or missing API key.`);
+    }
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      for (const p of orderedProviders) {
-        if (!p.key) continue;
-        try {
-          return await p.call();
-        } catch (err) {
-          console.warn(`Provider (${p.name}) failed (attempt ${attempt}/${maxAttempts}). Error:`, err);
+      try {
+        return await targetProvider.call();
+      } catch (err: any) {
+        const errMsg = err?.message || String(err);
+        console.warn(`Provider '${preferred}' failed (attempt ${attempt}/${maxAttempts}). Error: ${errMsg}`);
+        if (attempt < maxAttempts) {
+          console.warn(`Retrying '${preferred}' in ${delay / 1000}s...`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          delay += 3000;
         }
-      }
-
-      if (attempt < maxAttempts) {
-        console.warn(`All available providers failed. Retrying in ${delay / 1000}s...`);
-        await new Promise((resolve) => setTimeout(resolve, delay));
-        delay += 3000;
       }
     }
 
-    throw new Error("All AI providers failed after multiple attempts.");
+    throw new Error(`AI Provider '${preferred}' failed after ${maxAttempts} attempts.`);
   }
 
   private async checkRateLimit(provider: "gemini" | "openrouter" | "groq"): Promise<boolean> {
@@ -138,7 +147,7 @@ export class AiClient {
     messages: ChatMessage[],
     options: AiCompletionOptions,
   ): Promise<AiCompletionResult> {
-    const model = options.model ?? this.config.geminiModel ?? DEFAULT_GEMINI_MODEL;
+    const model = options.model ?? this.config.geminiModel ?? process.env.GEMINI_MODEL ?? DEFAULT_GEMINI_MODEL;
     await this.acquireToken("gemini");
 
     const systemMsg = messages.find((m) => m.role === "system");
@@ -216,7 +225,9 @@ export class AiClient {
   }
 
   private async callGroq(messages: ChatMessage[], options: AiCompletionOptions): Promise<AiCompletionResult> {
-    let model = options.model ?? this.config.groqModel ?? DEFAULT_GROQ_MODEL;
+    const isProd = process.env.NODE_ENV === "production";
+    const defaultGroqModel = isProd ? "llama-3.3-70b-versatile" : "llama-3.1-8b-instant";
+    let model = options.model ?? this.config.groqModel ?? defaultGroqModel;
 
     await this.acquireToken("groq");
 

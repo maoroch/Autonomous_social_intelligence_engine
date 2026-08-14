@@ -229,5 +229,12 @@ export const DEFAULT_SOFTWARE_DEV_INDUSTRY_PROFILE: Omit<IndustryProfile, "creat
       weight: 0.8,
       preferredFormat: "carousel",
     },
+    {
+      id: "tech-discussions-debates",
+      label: "Обсуждения и споры вокруг технологий",
+      description: "Горячие дискуссии, баттлы архитектурных подходов, плюсы и минусы техстеков и спорные решения",
+      weight: 0.85,
+      preferredFormat: "carousel",
+    },
   ],
 };

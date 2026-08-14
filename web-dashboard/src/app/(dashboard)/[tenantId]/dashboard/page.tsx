@@ -34,16 +34,9 @@ export default function DashboardPage() {
   const [profileId, setProfileId] = useState("");
   const [profiles, setProfiles] = useState<any[]>([]);
   const [targetPillarId, setTargetPillarId] = useState<string>("auto");
-  const [pillars, setPillars] = useState<any[]>([
-    { id: "github-trending-repos", label: "🐙 Подборка GitHub репозиториев" },
-    { id: "pet-projects-showcase", label: "🛠️ Подборка Pet-проектов для GitHub" },
-    { id: "tech-trends-insights", label: "💡 Тренды и Архитектура" },
-    { id: "tech-battle-vs", label: "⚡ Сравнение технологий Vs" },
-    { id: "system-design-breakdown", label: "🏗️ Разбор архитектуры сервисов" },
-    { id: "clean-code-cheatsheets", label: "💡 Шпаргалки и Бест-практики" },
-    { id: "ai-tooling-agents", label: "🤖 AI Инструменты и Агенты" },
-    { id: "weekly-tech-digest", label: "📰 Еженедельный дайджест" },
-  ]);
+  // Инициализируем пустым массивом — заполняется через tenant-info API (изолированно для каждого tenant).
+  // Это предотвращает мелькание Tech-рубрик для Testo-портала до загрузки данных из БД.
+  const [pillars, setPillars] = useState<any[]>([]);
 
   // Filters & Status
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -98,9 +91,12 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId]);
 
+  const [formError, setFormError] = useState<string | null>(null);
+
   const handleStartRun = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    setFormError(null);
     try {
       const res = await fetch(`/api/runs?tenantId=${encodeURIComponent(tenantId)}`, {
         method: "POST",
@@ -119,11 +115,32 @@ export default function DashboardPage() {
         setTitle("");
         setSummary("");
         fetchRuns();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setFormError(data.error || "Не удалось запустить пайплайн");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to start run:", err);
+      setFormError(err.message || " Ошибка сети при запуске пайплайна");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleRestartRun = async (runId: string) => {
+    try {
+      const res = await fetch(`/api/runs/${runId}/restart?tenantId=${encodeURIComponent(tenantId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        fetchRuns();
+      } else {
+        alert("Не удалось перезапустить прогон");
+      }
+    } catch (err) {
+      console.error("Failed to restart run:", err);
+      alert("Ошибка при перезапуске прогона");
     }
   };
 
@@ -236,7 +253,17 @@ export default function DashboardPage() {
                       </span>
                     )}
                   </div>
-                  <div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    {run.status === "failed" && (
+                      <button
+                        type="button"
+                        onClick={() => handleRestartRun(run.runId)}
+                        className="btn btn-secondary"
+                        style={{ padding: "8px 14px", fontSize: 13, borderRadius: 6, color: "var(--red)", borderColor: "rgba(239, 68, 68, 0.4)" }}
+                      >
+                        🔄 Перезапустить
+                      </button>
+                    )}
                     <Link
                       href={`/${tenantId}/dashboard/runs/${run.runId}`}
                       className="btn btn-secondary"
@@ -256,6 +283,11 @@ export default function DashboardPage() {
           {/* Create Run Form */}
           <div className="card">
             <h3 style={{ marginBottom: 16, fontSize: 18 }}>Запустить новый пайплайн</h3>
+            {formError && (
+              <div style={{ padding: "10px 14px", background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: 8, color: "var(--red)", fontSize: 13, marginBottom: 16 }}>
+                ⚠️ {formError}
+              </div>
+            )}
             <form onSubmit={handleStartRun} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Профиль автора</label>
@@ -272,12 +304,21 @@ export default function DashboardPage() {
                     <option key={p.id} value={p.id}>{p.label}</option>
                   ))}
                 </select>
+                {(() => {
+                  const currentPillar = pillars.find(p => p.id === targetPillarId);
+                  if (!currentPillar) return null;
+                  return (
+                    <div style={{ padding: "8px 12px", background: "rgba(59, 130, 246, 0.08)", border: "1px solid rgba(59, 130, 246, 0.2)", borderRadius: 6, fontSize: 12, color: "#1d4ed8", marginTop: 4 }}>
+                      ℹ️ <strong>{currentPillar.label}:</strong> {currentPillar.description}
+                    </div>
+                  );
+                })()}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Тема (опционально)</label>
                 <input
                   type="text"
-                  placeholder="Например: Переход на Node.js 22"
+                  placeholder={tenantId === "testo" ? "Например: Разбор системы Testo Saveris Pharma" : "Например: Переход на Node.js 22"}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
@@ -286,7 +327,7 @@ export default function DashboardPage() {
                 <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Краткое описание / Заметки</label>
                 <textarea
                   rows={3}
-                  placeholder="Дополнительные ключевые слова или контекст..."
+                  placeholder={tenantId === "testo" ? "Дополнительные модели (Testo 174T, 883), требования B2B..." : "Дополнительные ключевые слова или контекст..."}
                   value={summary}
                   onChange={(e) => setSummary(e.target.value)}
                   style={{ resize: "none" }}
