@@ -2,6 +2,8 @@
 
 > **An autonomous, multi-tenant B2B content generation & publishing platform powered by microservice AI agents, RAG fact-grounding, and regulatory compliance validation.**
 
+![LinkedIn & Multi-Platform AI Content Pipeline Banner](docs/banner.jpg)
+
 [![Node.js](https://img.shields.io/badge/Node.js-v20+-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 [![Next.js 15](https://img.shields.io/badge/Next.js-15.0+-black.svg)](https://nextjs.org/)
