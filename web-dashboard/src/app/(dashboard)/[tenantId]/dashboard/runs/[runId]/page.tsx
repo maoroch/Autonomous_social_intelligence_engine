@@ -69,6 +69,8 @@ export default function RunDetailPage({ params }: PageProps) {
   // States for reprocessing
   const [isReprocessModalOpen, setIsReprocessModalOpen] = useState(false);
   const [reprocessNotes, setReprocessNotes] = useState("");
+  const [isRedesignModalOpen, setIsRedesignModalOpen] = useState(false);
+  const [redesignNotes, setRedesignNotes] = useState("");
 
   // Carousel slider state
   const [activeSlide, setActiveSlide] = useState(0);
@@ -100,6 +102,28 @@ export default function RunDetailPage({ params }: PageProps) {
     navigator.clipboard.writeText(textToCopy);
     setCopySuccess(label);
     setTimeout(() => setCopySuccess(null), 2500);
+  };
+
+    const handleRedesign = async () => {
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/runs/${runId}/redesign?tenantId=${encodeURIComponent(tenantId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: redesignNotes, template_name: selectedTemplate }),
+      });
+      if (res.ok) {
+        setIsRedesignModalOpen(false);
+        setRedesignNotes("");
+        fetchRunDetails();
+      } else {
+        alert("Не удалось перегенерировать дизайн.");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleReprocess = async () => {
@@ -407,19 +431,37 @@ export default function RunDetailPage({ params }: PageProps) {
               <>
                 <button
                   disabled={actionLoading}
+                  onClick={() => setIsRedesignModalOpen(true)}
+                  className="btn"
+                  style={{
+                    padding: "10px 16px",
+                    background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)",
+                    color: "#1d4ed8",
+                    border: "1px solid #bfdbfe",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    fontSize: 13,
+                  }}
+                >
+                  🎨 Переделать только дизайн
+                </button>
+                <button
+                  disabled={actionLoading}
                   onClick={() => setIsReprocessModalOpen(true)}
                   className="btn"
                   style={{
-                    padding: "10px 20px",
+                    padding: "10px 16px",
                     background: "#f3f4f6",
                     color: "#374151",
                     border: "1px solid #d1d5db",
                     borderRadius: 8,
                     cursor: "pointer",
                     fontWeight: 600,
+                    fontSize: 13,
                   }}
                 >
-                  🔄 Переделать пост
+                  🔄 Переписать весь пост
                 </button>
                 <button
                   disabled={actionLoading || saveStatus === "saving"}
@@ -1426,6 +1468,65 @@ export default function RunDetailPage({ params }: PageProps) {
                 style={{ padding: "8px 16px", borderRadius: 6, fontSize: 13 }}
               >
                 {actionLoading ? "Отправка..." : "Запустить перегенерацию 🚀"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Redesign Dialog Modal */}
+      {isRedesignModalOpen && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.4)",
+          backdropFilter: "blur(4px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 9999,
+        }}>
+          <div className="card" style={{ width: "100%", maxWidth: 500, padding: 24, boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)" }}>
+            <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 18 }}>🎨 Переделать дизайн карусели</h3>
+            <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>
+              Текст поста сохранится без изменений. Опишите ваши пожелания к визуальному оформлению слайдов (например: "Сделай акцент на показателях точности" или "Сделай темную тему").
+            </p>
+            <textarea
+              rows={4}
+              value={redesignNotes}
+              onChange={(e) => setRedesignNotes(e.target.value)}
+              placeholder="Введите ваши инструкции для ИИ-дизайнера..."
+              style={{
+                width: "100%",
+                padding: 12,
+                borderRadius: 8,
+                border: "1px solid var(--border)",
+                fontSize: 14,
+                marginBottom: 20,
+                resize: "none",
+                fontFamily: "inherit",
+              }}
+            />
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRedesignModalOpen(false);
+                  setRedesignNotes("");
+                }}
+                className="btn btn-secondary"
+                style={{ padding: "8px 16px", borderRadius: 6, fontSize: 13 }}
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleRedesign}
+                disabled={actionLoading}
+                className="btn btn-primary"
+                style={{ padding: "8px 16px", borderRadius: 6, fontSize: 13, background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)" }}
+              >
+                {actionLoading ? "Генерация..." : "🎨 Запустить перегенерацию дизайна"}
               </button>
             </div>
           </div>

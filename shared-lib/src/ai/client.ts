@@ -37,7 +37,7 @@ export interface AiProviderConfig {
 
 const DEFAULT_GEMINI_MODEL = "gemini-2.0-flash";
 const DEFAULT_OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct";
-const DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile";
+const DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b";
 
 export class AiClient {
   private redis?: Redis;
@@ -49,9 +49,6 @@ export class AiClient {
   }
 
   async complete(messages: ChatMessage[], options: AiCompletionOptions = {}): Promise<AiCompletionResult> {
-    const maxAttempts = 3;
-    let delay = 3000;
-
     const forcedProvider = (process.env.AI_PROVIDER || options.preferredProvider) as "gemini" | "groq" | "openrouter" | undefined;
     const isProd = process.env.NODE_ENV === "production";
 
@@ -77,16 +74,22 @@ export class AiClient {
       throw new Error(`AI Provider '${preferred}' is requested but not configured or missing API key.`);
     }
 
+    const maxAttempts = 5;
+    let delay = 5000;
+
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         return await targetProvider.call();
       } catch (err: any) {
         const errMsg = err?.message || String(err);
+        const isRateLimit = err?.status === 429 || errMsg.includes("429") || errMsg.includes("rate_limit_exceeded");
+        const backoffMs = isRateLimit ? 15000 : delay;
+
         console.warn(`Provider '${preferred}' failed (attempt ${attempt}/${maxAttempts}). Error: ${errMsg}`);
         if (attempt < maxAttempts) {
-          console.warn(`Retrying '${preferred}' in ${delay / 1000}s...`);
-          await new Promise((resolve) => setTimeout(resolve, delay));
-          delay += 3000;
+          console.warn(`Retrying '${preferred}' in ${backoffMs / 1000}s...`);
+          await new Promise((resolve) => setTimeout(resolve, backoffMs));
+          delay += 5000;
         }
       }
     }
@@ -166,7 +169,7 @@ export class AiClient {
       contents,
       generationConfig: {
         temperature: options.temperature ?? 0.7,
-        maxOutputTokens: options.maxTokens ?? 2000,
+        maxOutputTokens: options.maxTokens ?? 4000,
       },
     };
 
@@ -212,7 +215,7 @@ export class AiClient {
         model,
         messages,
         temperature: options.temperature ?? 0.7,
-        max_tokens: options.maxTokens ?? 2000,
+        max_tokens: options.maxTokens ?? 4000,
       }),
     });
 
@@ -225,35 +228,23 @@ export class AiClient {
   }
 
   private async callGroq(messages: ChatMessage[], options: AiCompletionOptions): Promise<AiCompletionResult> {
-    const isProd = process.env.NODE_ENV === "production";
-    const defaultGroqModel = isProd ? "llama-3.3-70b-versatile" : "llama-3.1-8b-instant";
-    let model = options.model ?? this.config.groqModel ?? defaultGroqModel;
+    const model = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 
     await this.acquireToken("groq");
 
-    const makeRequest = async (selectedModel: string) => {
-      return await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.config.groqApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages,
-          temperature: options.temperature ?? 0.7,
-          max_tokens: options.maxTokens ?? 2000,
-        }),
-      });
-    };
-
-    let res = await makeRequest(model);
-
-    if (!res.ok && res.status === 429 && model !== "llama-3.1-8b-instant") {
-      console.warn("Groq rate limited on primary model. Trying fallback llama-3.1-8b-instant...");
-      res = await makeRequest("llama-3.1-8b-instant");
-      model = "llama-3.1-8b-instant";
-    }
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.config.groqApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: options.temperature ?? 0.7,
+        max_tokens: options.maxTokens ?? 4000,
+      }),
+    });
 
     if (!res.ok) {
       throw new ProviderError("groq", res.status, await safeText(res));

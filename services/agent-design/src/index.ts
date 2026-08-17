@@ -472,10 +472,13 @@ ${job.extraInstructions ? `Additional instructions: ${job.extraInstructions}` : 
 
 Please generate the carousel slide deck design structure in JSON format.`;
 
-    const response = await aiClient.complete([
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ]);
+    const response = await aiClient.complete(
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      { maxTokens: 4000 }
+    );
 
     logger.info({ runId: job.runId, provider: response.provider, model: response.model }, "Design LLM generation complete");
 

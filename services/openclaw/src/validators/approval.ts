@@ -364,5 +364,68 @@ export function createApprovalRouter(logger: Logger): Router {
     }
   });
 
+  
+  router.post("/runs/:runId/redesign", async (req, res) => {
+    const { runId } = req.params;
+    const { notes, tenantId, template_name } = req.body;
+
+    logger.info({ runId, notes, template_name }, "requested redesign of run");
+
+    try {
+      const run = await runs().findOne({ runId });
+      if (!run) {
+        return res.status(404).json({ error: "run not found" });
+      }
+      if (!assertTenantOwnership(run, tenantId)) {
+        return res.status(404).json({ error: "run not found" });
+      }
+
+      const writingDoc = await stageResults().findOne({ runId, stage: PipelineStage.WRITING });
+      if (!writingDoc || !writingDoc.result) {
+        return res.status(400).json({ error: "Writing result not found for this run" });
+      }
+
+      await stageResults().deleteMany({
+        runId,
+        stage: { "$in": [PipelineStage.DESIGN, PipelineStage.SEO] }
+      });
+
+      await runs().updateOne(
+        { runId },
+        {
+          "$set": {
+            status: PipelineRunStatus.RUNNING,
+            currentStage: PipelineStage.DESIGN,
+            updatedAt: new Date(),
+          },
+          "$unset": { failedReason: "" }
+        }
+      );
+
+      const queues: AgentQueues = {
+        [PipelineStage.TREND]: createQueue<AgentJob>(QueueName.TREND, process.env.REDIS_URL ?? "redis://localhost:6379"),
+        [PipelineStage.POSITIONING]: createQueue<AgentJob>(QueueName.POSITIONING, process.env.REDIS_URL ?? "redis://localhost:6379"),
+        [PipelineStage.STRATEGY]: createQueue<AgentJob>(QueueName.STRATEGY, process.env.REDIS_URL ?? "redis://localhost:6379"),
+        [PipelineStage.WRITING]: createQueue<AgentJob>(QueueName.WRITING, process.env.REDIS_URL ?? "redis://localhost:6379"),
+        [PipelineStage.DESIGN]: createQueue<AgentJob>(QueueName.DESIGN, process.env.REDIS_URL ?? "redis://localhost:6379"),
+        [PipelineStage.SEO]: createQueue<AgentJob>(QueueName.SEO, process.env.REDIS_URL ?? "redis://localhost:6379"),
+      };
+
+      const { enqueueStage } = await import("../pipeline/runner.js");
+      const writingPayload = {
+        ...(writingDoc.result as Record<string, unknown>),
+        ...(template_name ? { template_name } : {}),
+      };
+      const extraInstructions = notes ? `Инструкции от пользователя по переделке дизайна: ${notes}` : undefined;
+      await enqueueStage(queues, runId, PipelineStage.DESIGN, writingPayload, extraInstructions);
+
+      logger.info({ runId }, "queued design re-generation for run");
+      res.json({ ok: true });
+    } catch (err: any) {
+      logger.error({ err, runId }, "failed to trigger redesign");
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return router;
 }
