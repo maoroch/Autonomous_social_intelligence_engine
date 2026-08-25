@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Testo Brand Orange Cover</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@600;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --testo-orange-light: #FF9838;
+      --testo-orange: #FF7900;
+      --testo-orange-deep: #E65A00;
+      --testo-dark: #111827;
+      --testo-charcoal: #1E293B;
+      --testo-text-dark: #2B1500;
+      --testo-white: #FFFFFF;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 1080px;
+      height: 1350px;
+      background: #E5E7EB;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .slide {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background: linear-gradient(145deg, #FF8A00 0%, #FF7300 45%, #E55800 100%);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 60px 70px 54px 70px;
+    }
+
+    /* Ambient lighting & technical blueprint grid */
+    .bg-glow {
+      position: absolute;
+      top: -100px;
+      right: -100px;
+      width: 700px;
+      height: 700px;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 70%);
+      pointer-events: none;
+    }
+
+    .bg-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+      background-size: 72px 72px;
+      pointer-events: none;
+    }
+
+    /* Top Navigation Header with Official Azia-Test & Testo Logo */
+    .header {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand-container {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: #FFFFFF;
+      padding: 10px 24px 10px 18px;
+      border-radius: 999px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+    }
+
+    /* Official Azia-Test Logo SVG */
+    .aziatest-logo-svg {
+      height: 38px;
+      width: auto;
+      display: block;
+    }
+
+    .brand-divider {
+      width: 1.5px;
+      height: 24px;
+      background: #E2E8F0;
+    }
+
+    .testo-badge-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .testo-pill-tag {
+      background: #FF7900;
+      color: #FFFFFF;
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      padding: 4px 12px;
+      border-radius: 6px;
+      text-transform: lowercase;
+    }
+
+    .distributor-tag {
+      font-size: 12px;
+      font-weight: 800;
+      color: #153E49;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      line-height: 1.25;
+    }
+
+    .page-counter-pill {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 18px;
+      font-weight: 700;
+      color: #111827;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 10px 24px;
+      border-radius: 999px;
+      border: 1.5px solid rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+    }
+
+    /* Hero Graphic Frame (Architectural curved shape from Testo brand reference) */
+    .hero-graphic-mask {
+      position: absolute;
+      top: 170px;
+      right: -50px;
+      width: 500px;
+      height: 620px;
+      border-radius: 250px 0 0 250px;
+      background: rgba(255, 255, 255, 0.14);
+      border: 2.5px solid rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-left: 50px;
+      box-shadow: -24px 24px 60px rgba(180, 50, 0, 0.22);
+    }
+
+    .hero-inner-circle {
+      width: 330px;
+      height: 330px;
+      border-radius: 50%;
+      background: #FFFFFF;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+      border: 4px solid rgba(255, 121, 0, 0.15);
+      position: relative;
+    }
+
+    .hero-icon-svg {
+      width: 180px;
+      height: 180px;
+    }
+
+    .hero-device-label {
+      position: absolute;
+      bottom: 28px;
+      background: #0F172A;
+      color: #FFFFFF;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 6px 16px;
+      border-radius: 999px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Main Hero Content */
+    .content-container {
+      position: relative;
+      z-index: 10;
+      max-width: 820px;
+      margin-top: 30px;
+    }
+
+    .category-badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: #0F172A;
+      color: #FFFFFF;
+      padding: 10px 24px;
+      border-radius: 999px;
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+      margin-bottom: 28px;
+    }
+
+    .category-badge-pill .pulse-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #FF8A00;
+      box-shadow: 0 0 10px #FF8A00;
+    }
+
+    .headline {
+      font-size: 62px;
+      font-weight: 900;
+      line-height: 1.12;
+      letter-spacing: -0.03em;
+      color: #0F172A;
+      margin: 0 0 28px 0;
+      text-wrap: balance;
+    }
+
+    .sub-lead-box {
+      background: rgba(255, 255, 255, 0.94);
+      border-radius: 24px;
+      padding: 28px 34px;
+      border: 1.5px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 16px 40px rgba(180, 50, 0, 0.12);
+      margin-bottom: 20px;
+    }
+
+    .sub-lead-text {
+      font-size: 27px;
+      font-weight: 600;
+      line-height: 1.45;
+      color: #1E293B;
+      margin: 0;
+    }
+
+    /* Bottom Action Bar */
+    .footer-bar {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1.5px solid rgba(255, 255, 255, 0.35);
+      padding-top: 28px;
+    }
+
+    .cta-pill-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 16px;
+      background: #FFFFFF;
+      color: #0F172A;
+      font-size: 22px;
+      font-weight: 800;
+      padding: 18px 42px;
+      border-radius: 999px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+      letter-spacing: -0.01em;
+    }
+
+    .cta-arrow-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #0F172A;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cta-arrow-circle svg {
+      width: 18px;
+      height: 18px;
+      stroke: #FFFFFF;
+      stroke-width: 2.5;
+      fill: none;
+    }
+
+    .distributor-info {
+      text-align: right;
+    }
+
+    .distributor-name {
+      font-size: 21px;
+      font-weight: 800;
+      color: #0F172A;
+      letter-spacing: 0.04em;
+    }
+
+    .distributor-sub {
+      font-size: 15px;
+      font-weight: 600;
+      color: rgba(15, 23, 42, 0.8);
+      margin-top: 4px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="slide post">
+    <div class="bg-glow"></div>
+    <div class="bg-grid"></div>
+
+    <!-- Semicircular Technical Hero Mask (Right side brand aesthetic) -->
+    <div class="hero-graphic-mask">
+      <div class="hero-inner-circle">
+        <!-- SVG Technical Flue Gas Analyzer Precision Icon -->
+        <svg class="hero-icon-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="44" stroke="#FF7900" stroke-width="4" stroke-dasharray="6 6" />
+          <path d="M50 18V28M50 72V82M18 50H28M72 50H82" stroke="#FF7900" stroke-width="4" stroke-linecap="round" />
+          <path d="M36 64C36 54 44 48 50 36C56 48 64 54 64 64C64 71.732 57.732 78 50 78C42.268 78 36 71.732 36 64Z"
+            fill="url(#flame_grad)" stroke="#E55800" stroke-width="3" />
+          <circle cx="50" cy="62" r="5" fill="#FFFFFF" />
+          <defs>
+            <linearGradient id="flame_grad" x1="50" y1="36" x2="50" y2="78" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#FF9838" />
+              <stop offset="1" stop-color="#E55800" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="hero-device-label">Testo Precision</div>
+      </div>
+    </div>
+
+    <!-- Top Navigation Header with Official Azia-Test & Testo Logo -->
+    <div class="header">
+      <div class="brand-container">
+        <!-- Official AZIA-TEST Logo Vector -->
+        <svg class="aziatest-logo-svg" viewBox="0 0 85 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="21" cy="21" r="21" fill="url(#aziatest_grad)"></circle>
+          <path
+            d="M2.804 26L7.13 16.2H9.86L14.2 26H11.316L7.928 17.558H9.02L5.632 26H2.804ZM5.17 24.096L5.884 22.052H10.672L11.386 24.096H5.17ZM14.4959 26V24.264L20.2639 17.418L20.5999 18.398H14.6219V16.2H23.0639V17.936L17.2959 24.782L16.9599 23.802H23.2739V26H14.4959ZM24.4878 26V16.2H27.2598V26H24.4878ZM28.056 26L32.382 16.2H35.112L39.452 26H36.568L33.18 17.558H34.272L30.884 26H28.056ZM30.422 24.096L31.136 22.052H35.924L36.638 24.096H30.422Z"
+            fill="white"></path>
+          <path
+            d="M58.5679 40V30.2H61.3399V37.802H66.0159V40H58.5679ZM67.1128 40V30.2H69.8848V37.802H74.5608V40H67.1128ZM75.6577 40V30.2H80.1377C81.0337 30.2 81.8037 30.3447 82.4477 30.634C83.1011 30.9233 83.6051 31.3433 83.9597 31.894C84.3144 32.4353 84.4917 33.0793 84.4917 33.826C84.4917 34.5633 84.3144 35.2027 83.9597 35.744C83.6051 36.2853 83.1011 36.7053 82.4477 37.004C81.8037 37.2933 81.0337 37.438 80.1377 37.438H77.1977L78.4297 36.234V40H75.6577ZM78.4297 36.528L77.1977 35.254H79.9697C80.5484 35.254 80.9777 35.128 81.2577 34.876C81.5471 34.624 81.6917 34.274 81.6917 33.826C81.6917 33.3687 81.5471 33.014 81.2577 32.762C80.9777 32.51 80.5484 32.384 79.9697 32.384H77.1977L78.4297 31.11V36.528Z"
+            fill="#153E49"></path>
+          <path
+            d="M44.67 23.032V20.988H48.758V23.032H44.67ZM51.9586 26V18.398H48.9486V16.2H57.7266V18.398H54.7306V26H51.9586ZM61.3073 19.994H65.8573V22.066H61.3073V19.994ZM61.5033 23.858H66.6273V26H58.7593V16.2H66.4453V18.342H61.5033V23.858ZM71.6095 26.196C70.8069 26.196 70.0322 26.098 69.2855 25.902C68.5482 25.6967 67.9462 25.4353 67.4795 25.118L68.3895 23.074C68.8282 23.354 69.3322 23.5873 69.9015 23.774C70.4802 23.9513 71.0542 24.04 71.6235 24.04C72.0062 24.04 72.3142 24.0073 72.5475 23.942C72.7809 23.8673 72.9489 23.774 73.0515 23.662C73.1635 23.5407 73.2195 23.4007 73.2195 23.242C73.2195 23.018 73.1169 22.8407 72.9115 22.71C72.7062 22.5793 72.4402 22.472 72.1135 22.388C71.7869 22.304 71.4229 22.22 71.0215 22.136C70.6295 22.052 70.2329 21.9447 69.8315 21.814C69.4395 21.6833 69.0802 21.5153 68.7535 21.31C68.4269 21.0953 68.1609 20.82 67.9555 20.484C67.7502 20.1387 67.6475 19.7047 67.6475 19.182C67.6475 18.594 67.8062 18.062 68.1235 17.586C68.4502 17.11 68.9355 16.7273 69.5795 16.438C70.2235 16.1487 71.0262 16.004 71.9875 16.004C72.6315 16.004 73.2615 16.0787 73.8775 16.228C74.5029 16.368 75.0582 16.578 75.5435 16.858L74.6895 18.916C74.2229 18.664 73.7609 18.4773 73.3035 18.356C72.8462 18.2253 72.4029 18.16 71.9735 18.16C71.5909 18.16 71.2829 18.202 71.0495 18.286C70.8162 18.3607 70.6482 18.4633 70.5455 18.594C70.4429 18.7247 70.3915 18.874 70.3915 19.042C70.3915 19.2567 70.4895 19.4293 70.6855 19.56C70.8909 19.6813 71.1569 19.784 71.4835 19.868C71.8195 19.9427 72.1835 20.022 72.5755 20.106C72.9769 20.19 73.3735 20.2973 73.7655 20.428C74.1669 20.5493 74.5309 20.7173 74.8575 20.932C75.1842 21.1373 75.4455 21.4127 75.6415 21.758C75.8469 22.094 75.9495 22.5187 75.9495 23.032C75.9495 23.6013 75.7862 24.1287 75.4595 24.614C75.1422 25.09 74.6615 25.4727 74.0175 25.762C73.3829 26.0513 72.5802 26.196 71.6095 26.196ZM79.1793 26V18.398H76.1693V16.2H84.9473V18.398H81.9513V26H79.1793Z"
+            fill="#153E49"></path>
+          <defs>
+            <radialGradient id="aziatest_grad" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"
+              gradientTransform="translate(11.2683 8.19512) rotate(47.7263) scale(38.0716)">
+              <stop stop-color="#FFDCB3" stop-opacity="0.8"></stop>
+              <stop offset="0.155528" stop-color="#FFC580"></stop>
+              <stop offset="0.652268" stop-color="#FF9212"></stop>
+              <stop offset="1" stop-color="#DF3F00"></stop>
+            </radialGradient>
+          </defs>
+        </svg>
+
+        <div class="brand-divider"></div>
+
+        <div class="testo-badge-group">
+          <span class="distributor-tag">Testo дистрибьютор в РК</span>
+        </div>
+      </div>
+
+      <div class="page-counter-pill">{{PAGE_TEXT}}</div>
+    </div>
+
+    <!-- Main Hero Content -->
+    <div class="content-container">
+      <div class="category-badge-pill">
+        <span class="pulse-dot"></span>
+        <span>{{BADGE}}</span>
+      </div>
+
+      <h1 class="headline">{{TITLE}}</h1>
+
+      <div class="sub-lead-box" style="{{BODY_STYLE}}">
+        <p class="sub-lead-text">{{BODY}}</p>
+      </div>
+    </div>
+
+    <!-- Bottom Action Bar -->
+    <div class="footer-bar">
+      <div class="cta-pill-button">
+        <span>Листайте карусель</span>
+        <div class="cta-arrow-circle">
+          <svg viewBox="0 0 24 24">
+            <path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </div>
+      </div>
+
+      <div class="distributor-info">
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

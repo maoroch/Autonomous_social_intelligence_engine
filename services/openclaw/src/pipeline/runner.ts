@@ -41,7 +41,7 @@ function nextAgentStage(current: PipelineStage): PipelineStage | null {
   return AGENT_STAGES[idx + 1] ?? null;
 }
 
-/** Создаёт новый прогон пайплайна для темы и сразу ставит первую (TREND) задачу в очередь. */
+/** Создаёт новый прогон пайплайна для темы и сразу ставит первую задачу в очередь. */
 export async function startPipelineRun(
   queues: AgentQueues,
   logger: Logger,
@@ -52,11 +52,12 @@ export async function startPipelineRun(
 ): Promise<string> {
   const runId = nanoid();
   const now = new Date();
+  const isManualTopic = !!(initialTopic && initialTopic.title && initialTopic.title.trim().length > 0);
 
   const run: PipelineRunDoc = {
     runId,
     status: PipelineRunStatus.RUNNING,
-    currentStage: PipelineStage.TREND,
+    currentStage: isManualTopic ? PipelineStage.STRATEGY : PipelineStage.TREND,
     topic: initialTopic,
     profileId,
     tenantId,
@@ -68,8 +69,30 @@ export async function startPipelineRun(
 
   await getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS).insertOne(run);
 
-  await enqueueStage(queues, runId, PipelineStage.TREND, { profileId, targetPillarId });
-  logger.info({ runId, tenantId, targetPillarId }, "pipeline run started");
+  if (isManualTopic) {
+    // If the user provided an explicit topic title, record it as the chosen trend & proceed directly to STRATEGY
+    await getCollection<StageResultDoc>(Collections.STAGE_RESULTS).insertOne({
+      runId,
+      stage: PipelineStage.TREND,
+      attempt: 1,
+      result: {
+        items: [{ title: initialTopic.title, summary: initialTopic.summary, score: 100, keywords: [], sources: [] }]
+      },
+      createdAt: now,
+    });
+    await getCollection<StageResultDoc>(Collections.STAGE_RESULTS).insertOne({
+      runId,
+      stage: PipelineStage.POSITIONING,
+      attempt: 1,
+      result: { relevance: 100, reason: "Manual user specified topic", accepted: true },
+      createdAt: now,
+    });
+    await enqueueStage(queues, runId, PipelineStage.STRATEGY, { profileId, targetPillarId });
+    logger.info({ runId, tenantId, targetPillarId, topic: initialTopic.title }, "manual topic pipeline run started at STRATEGY stage");
+  } else {
+    await enqueueStage(queues, runId, PipelineStage.TREND, { profileId, targetPillarId });
+    logger.info({ runId, tenantId, targetPillarId }, "automated trend discovery pipeline run started");
+  }
 
   return runId;
 }

@@ -47,6 +47,9 @@ export async function POST(
     });
     const tgData = await tgRes.json();
 
+    // Pause for 15s to allow Groq rate limit TPM bucket to recover
+    await new Promise((resolve) => setTimeout(resolve, 15000));
+
     // Call agent-writing /adapt for Threads
     const thRes = await fetch(`${AGENT_WRITING_URL}/adapt`, {
       method: "POST",

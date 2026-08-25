@@ -188,6 +188,8 @@ ${gp.cta ? `CTA: ${gp.cta}` : ""}
   }
 
   // ---------- Мультиарендная адаптация стиля письма (TZ_v3_instagram_testo_portal.md, раздел 2.2) ----------
+  const rawTargetPillar = (job.payload as any)?.targetPillarId || (run as any)?.targetPillarId || (strategy as any)?.content_pillar_id || run?.contentPillarId || "";
+  const topicTitle = (topic?.title as string) || (run?.topic?.title as string) || "";
 
   let styleRulesBlock = "";
   let complianceBlock = "";
@@ -231,7 +233,7 @@ ${rules.forbiddenPhrases.length > 0 ? `Additionally forbidden phrases (marketing
       try {
         const factChunksCol = getCollection<FactChunkDoc>(Collections.FACT_CHUNKS);
         const allChunks = await factChunksCol.find({ tenantId }).toArray();
-        const query = `${topic.title} ${topic.summary} ${strategy.core_idea ?? ""}`;
+        const query = `${topic.title} ${topic.summary} ${strategy.core_idea ?? ""} ${rawTargetPillar}`;
         retrievedFacts = retrieveRelevantChunks(query, allChunks, 3);
       } catch (err) {
         logger.warn({ err, tenantId }, "Failed to retrieve fact chunks for RAG grounding");
@@ -249,8 +251,15 @@ ${formatFactsForPrompt(retrievedFacts)}
     }
 
     if (industryProfile.glossary.length > 0) {
+      let filteredGlossary = industryProfile.glossary;
+      const isGasTopic = rawTargetPillar.startsWith("gas-") || /газоанализатор|выброс|пелтье|testo\s*350|testo\s*300|testo\s*340|testo\s*310|котельн/i.test(`${topic.title} ${topic.summary}`);
+      if (isGasTopic) {
+        filteredGlossary = industryProfile.glossary.filter(g => !/21\s*CFR|GxP|холодов|лиофилиз/i.test(g.term));
+      } else if (rawTargetPillar.startsWith("pharma-")) {
+        filteredGlossary = industryProfile.glossary.filter(g => !/избытка\s*воздуха|Пельтье|qA|расширение\s*диапазона/i.test(g.term));
+      }
       glossaryBlock = `\nINDUSTRY GLOSSARY (use these terms precisely):
-${industryProfile.glossary.map((g) => `- "${g.term}"${g.definition ? `: ${g.definition}` : ""}`).join("\n")}\n`;
+${filteredGlossary.map((g) => `- "${g.term}"${g.definition ? `: ${g.definition}` : ""}`).join("\n")}\n`;
     }
 
     if (adaptation) {
@@ -342,8 +351,6 @@ ${industryProfile.glossary.map((g) => `- "${g.term}"${g.definition ? `: ${g.defi
     return "";
   };
 
-  const rawTargetPillar = (job.payload as any)?.targetPillarId || (run as any)?.targetPillarId || (strategy as any)?.content_pillar_id || run?.contentPillarId || "";
-  const topicTitle = (topic?.title as string) || (run?.topic?.title as string) || "";
   const isGithubShowcase = !isTestoTenant && (rawTargetPillar === "github-trending-repos" || rawTargetPillar === "pet-projects-showcase" || (tenantId === "software-development-default" && /github/i.test(topicTitle)));
 
   const trendItemsList: { title: string; summary: string; url: string }[] = [];
@@ -381,10 +388,19 @@ DO NOT REPEAT THE SAME REPOSITORY OR THE SAME URL MULTIPLE TIMES. EVERY REPOSITO
   }
 
   const isRussianTenant = tenantId === "testo" || (industryProfile?.language?.includes("ru") ?? false);
+  const isGasAnalyzerTopic = rawTargetPillar.startsWith("gas-") || /газоанализатор|выброс|пелтье|testo\s*350|testo\s*300|testo\s*340|testo\s*310|котельн|горелк/i.test(`${topicTitle} ${topic?.summary || ""}`);
+
+  let productValueProp = "In every post, you MUST explicitly demonstrate how Testo measurement equipment solves industry challenges.";
+  if (isGasAnalyzerTopic) {
+    productValueProp = "In every post, you MUST explicitly demonstrate how Testo Gas Analyzers (Testo 350, Testo 300, Testo 340, Testo 310 II, Testo 316) solve industrial emissions monitoring, boiler/burner tuning, Peltier gas sample preparation (+3°C), and gas safety in Kazakhstan.";
+  } else if (isTestoTenant) {
+    productValueProp = "In every post, you MUST explicitly demonstrate how Testo measurement equipment (Testo Saveris Pharma, thermal imagers, data loggers, smart probes) solves pharmaceutical compliance challenges (automating 21 CFR Part 11, preventing batch loss in cold chain, audit readiness).";
+  }
+
   const languageInstruction = isRussianTenant
     ? `\nCRITICAL LANGUAGE & TESTO BRAND REQUIREMENTS:
 1. Language: The target audience for this portal (${tenantId}) is EXCLUSIVELY RUSSIAN-SPEAKING. You MUST write ALL fields ("text", "hook", "cta", and "ru_post") STRICTLY IN HIGH-QUALITY RUSSIAN. Do NOT write any English text.
-2. Product Value Proposition: In every post, you MUST explicitly demonstrate how Testo measurement equipment (Testo Saveris Pharma, thermal imagers, data loggers, smart probes) solves pharmaceutical compliance challenges (automating 21 CFR Part 11, preventing batch loss in cold chain, audit readiness).`
+2. Product Value Proposition: ${productValueProp}`
     : `\nLanguage: Write "text" in English for LinkedIn, and provide "ru_post" in Russian.`;
 
   let systemPrompt = "";

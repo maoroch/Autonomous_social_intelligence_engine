@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use, useRef } from "react";
+import React, { useEffect, useState, use, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -53,6 +53,7 @@ export default function RunDetailPage({ params }: PageProps) {
   const [isReRendering, setIsReRendering] = useState(false);
   const isReRenderingRef = useRef(false);
   const prevPreviewIdRef = useRef<string | null>(null);
+  const hasLoadedRef = useRef(false);
   // templateSetId — загружается из tenant-info для фильтрации доступных шаблонов по tenant.
   // "software-development" → cover-1..9, "industrial-measurement-equipment" → один шаблон.
   const [templateSetId, setTemplateSetId] = useState<string>("software-development");
@@ -85,6 +86,10 @@ export default function RunDetailPage({ params }: PageProps) {
         body: JSON.stringify({ textLength: adaptLength }),
       });
       if (res.ok) {
+        const data = await res.json();
+        if (data.adaptations) {
+          setRun(prev => prev ? { ...prev, adaptations: data.adaptations } : prev);
+        }
         await fetchRunDetails();
         setActivePlatformTab("telegram");
       } else {
@@ -104,7 +109,7 @@ export default function RunDetailPage({ params }: PageProps) {
     setTimeout(() => setCopySuccess(null), 2500);
   };
 
-    const handleRedesign = async () => {
+  const handleRedesign = async () => {
     setActionLoading(true);
     try {
       const res = await fetch(`/api/runs/${runId}/redesign?tenantId=${encodeURIComponent(tenantId)}`, {
@@ -189,15 +194,15 @@ export default function RunDetailPage({ params }: PageProps) {
         }
 
         const isAwaiting = data.run.status === "awaiting_approval" || data.run.status === "human_approval_required";
-        // Populate editable states if awaiting_approval and not already edited
-        if (isAwaiting) {
+        // Populate editable states on first load
+        if (isAwaiting && !hasLoadedRef.current) {
           const writingResult = stagesReversed.find((s: any) => s.stage === "writing")?.result;
           const designResult = designStage?.result;
 
-          setHook(prev => prev || writingResult?.hook || "");
-          setBodyText(prev => prev || writingResult?.text || "");
-          setCta(prev => prev || writingResult?.cta || "");
-          setSlideDeck(prev => prev.length > 0 ? prev : (designResult?.render_data
+          setHook(writingResult?.hook || "");
+          setBodyText(writingResult?.text || "");
+          setCta(writingResult?.cta || "");
+          setSlideDeck(designResult?.render_data
             ? Object.entries(designResult.render_data).map(([key, val]: [string, any]) => ({
               key,
               badge: val.badge || "",
@@ -207,7 +212,8 @@ export default function RunDetailPage({ params }: PageProps) {
               illustration: val.illustration || "none",
             }))
             : []
-          ));
+          );
+          hasLoadedRef.current = true;
         }
       } else {
         setError("Прогон не найден или произошла ошибка.");
@@ -221,6 +227,7 @@ export default function RunDetailPage({ params }: PageProps) {
   };
 
   useEffect(() => {
+    hasLoadedRef.current = false;
     fetchRunDetails();
 
     // Poll run details while running or re-rendering
@@ -298,6 +305,13 @@ export default function RunDetailPage({ params }: PageProps) {
         setSaveStatus("success");
         setIsReRendering(true);
         isReRenderingRef.current = true;
+        // Keep stages in sync with newly saved writing text immediately
+        setStages(prev => prev.map(s => {
+          if (s.stage === "writing") {
+            return { ...s, result: { ...s.result, hook, text: bodyText, cta } };
+          }
+          return s;
+        }));
         setTimeout(() => setSaveStatus("idle"), 3000);
       } else {
         setSaveStatus("error");
@@ -365,7 +379,7 @@ export default function RunDetailPage({ params }: PageProps) {
     }
   };
 
-  const isAwaitingApproval = run.status === "awaiting_approval" || run.status === "human_approval_required";
+  const isAwaitingApproval = run.status === "awaiting_approval" || run.status === "human_approval_required" || isReRendering || saveStatus === "saving";
 
   // Use slideDeck state if editing, otherwise fall back to database result
   const activeSlides = isAwaitingApproval && slideDeck.length > 0
@@ -787,7 +801,7 @@ export default function RunDetailPage({ params }: PageProps) {
 
               {activePlatformTab === "telegram" && (
                 <div>
-                  {run.adaptations?.telegram ? (
+                  {run.adaptations?.telegram?.text && run.adaptations.telegram.text.trim().length > 0 ? (
                     <div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                         <span style={{ fontSize: 12, fontWeight: 700, background: "#dcfce7", color: "#166534", padding: "4px 10px", borderRadius: 12 }}>
@@ -805,8 +819,31 @@ export default function RunDetailPage({ params }: PageProps) {
                       </div>
                     </div>
                   ) : (
-                    <div style={{ textAlign: "center", padding: 24, color: "#6e7681" }}>
-                      Нажмите кнопку «🚀 Адаптировать (TG & Threads)» выше для генерации.
+                    <div style={{ textAlign: "center", padding: 36, background: "#f8fafc", borderRadius: 12, border: "1px dashed #cbd5e1", color: "#64748b" }}>
+                      {isAdapting ? (
+                        <p style={{ margin: 0, fontWeight: 600 }}>⏳ Идет генерация постов для Telegram и Threads (около 15-20 сек)...</p>
+                      ) : (
+                        <>
+                          <p style={{ margin: "0 0 12px 0", fontWeight: 600, fontSize: 15, color: "#334155" }}>
+                            Пост для Telegram еще не адаптирован
+                          </p>
+                          <button
+                            onClick={handleAdapt}
+                            style={{
+                              padding: "10px 20px",
+                              borderRadius: 8,
+                              background: "linear-gradient(135deg, #0088cc, #24292e)",
+                              color: "#ffffff",
+                              border: "none",
+                              fontWeight: 700,
+                              fontSize: 14,
+                              cursor: "pointer"
+                            }}
+                          >
+                            🚀 Адаптировать (TG & Threads)
+                          </button>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -814,7 +851,7 @@ export default function RunDetailPage({ params }: PageProps) {
 
               {activePlatformTab === "threads" && (
                 <div>
-                  {run.adaptations?.threads ? (
+                  {run.adaptations?.threads?.text && run.adaptations.threads.text.trim().length > 0 ? (
                     <div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                         <span style={{ fontSize: 12, fontWeight: 700, background: "#dcfce7", color: "#166534", padding: "4px 10px", borderRadius: 12 }}>
@@ -832,8 +869,31 @@ export default function RunDetailPage({ params }: PageProps) {
                       </div>
                     </div>
                   ) : (
-                    <div style={{ textAlign: "center", padding: 24, color: "#6e7681" }}>
-                      Нажмите кнопку «🚀 Адаптировать (TG & Threads)» выше для генерации.
+                    <div style={{ textAlign: "center", padding: 36, background: "#f8fafc", borderRadius: 12, border: "1px dashed #cbd5e1", color: "#64748b" }}>
+                      {isAdapting ? (
+                        <p style={{ margin: 0, fontWeight: 600 }}>⏳ Идет генерация постов для Telegram и Threads (около 15-20 сек)...</p>
+                      ) : (
+                        <>
+                          <p style={{ margin: "0 0 12px 0", fontWeight: 600, fontSize: 15, color: "#334155" }}>
+                            Пост для Threads еще не адаптирован
+                          </p>
+                          <button
+                            onClick={handleAdapt}
+                            style={{
+                              padding: "10px 20px",
+                              borderRadius: 8,
+                              background: "linear-gradient(135deg, #0088cc, #24292e)",
+                              color: "#ffffff",
+                              border: "none",
+                              fontWeight: 700,
+                              fontSize: 14,
+                              cursor: "pointer"
+                            }}
+                          >
+                            🚀 Адаптировать (TG & Threads)
+                          </button>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -893,11 +953,12 @@ export default function RunDetailPage({ params }: PageProps) {
               <div className="card" style={{ padding: 24 }}>
                 <h3 style={{ marginBottom: 20 }}>Слайды карусели</h3>
                  {(() => {
-                  const testoTemplates = ["industrial-measurement-equipment", "testo-pharma-compliance", "testo-pharma-cold-chain", "testo-pharma-audit"];
+                  const testoTemplates = ["testo-brand-orange", "industrial-measurement-equipment", "testo-pharma-compliance", "testo-pharma-cold-chain", "testo-pharma-audit"];
                   const isLightTemplate = ["cover-1", "cover-6", ...testoTemplates].includes(selectedTemplate);
-                  const currentAccentColor = selectedTemplate === "testo-pharma-compliance" ? "#3B82F6" : selectedTemplate === "testo-pharma-cold-chain" ? "#06B6D4" : selectedTemplate === "testo-pharma-audit" ? "#10B981" : selectedTemplate === "industrial-measurement-equipment" ? "#EE8432" : accentColor;
+                  const currentAccentColor = selectedTemplate === "testo-brand-orange" ? "#FF7900" : selectedTemplate === "testo-pharma-compliance" ? "#3B82F6" : selectedTemplate === "testo-pharma-cold-chain" ? "#06B6D4" : selectedTemplate === "testo-pharma-audit" ? "#10B981" : selectedTemplate === "industrial-measurement-equipment" ? "#EE8432" : accentColor;
 
                   const templateBadgeDefaults: Record<string, { cover: string; card: string }> = {
+                    "testo-brand-orange": { cover: "TESTO ГАЗОАНАЛИЗАТОРЫ", card: "ПРЕИМУЩЕСТВА" },
                     "testo-pharma-compliance": { cover: "COMPLIANCE", card: "PART 11" },
                     "testo-pharma-cold-chain": { cover: "LOGISTICS", card: "GDP" },
                     "testo-pharma-audit": { cover: "QA", card: "AUDIT" },
@@ -1016,12 +1077,22 @@ export default function RunDetailPage({ params }: PageProps) {
                         ) : (
                           <>
                             <h4 style={{ fontSize: 22, marginBottom: 16, color: isLightTemplate ? "#111827" : "#fff", lineHeight: 1.3 }}>
-                              {activeSlides[activeSlide].title}
+                              {(activeSlides[activeSlide].title || "").split(/<br\s*\/?>/gi).map((part: string, pIdx: number) => (
+                                <React.Fragment key={pIdx}>
+                                  {pIdx > 0 && <br />}
+                                  {part}
+                                </React.Fragment>
+                              ))}
                             </h4>
                             <ul style={{ paddingLeft: 20, margin: 0 }}>
                               {activeSlides[activeSlide].bullets.map((b: string, i: number) => (
                                 <li key={i} style={{ fontSize: 14, color: isLightTemplate ? "#374151" : "#cbd5e1", marginBottom: 10, lineHeight: 1.4 }}>
-                                  {b}
+                                  {(b || "").split(/<br\s*\/?>/gi).map((part: string, pIdx: number) => (
+                                    <React.Fragment key={pIdx}>
+                                      {pIdx > 0 && <br />}
+                                      {part}
+                                    </React.Fragment>
+                                  ))}
                                 </li>
                               ))}
                             </ul>
@@ -1092,34 +1163,25 @@ export default function RunDetailPage({ params }: PageProps) {
                       "cover-8": { label: "🐙 GitHub Repos", color: "#58A6FF" },
                       "cover-9": { label: "🛠️ Pet Projects", color: "#38BDF8" },
                       "industrial-measurement-equipment": { label: "🔶 Testo Brand (Default)", color: "#EE8432" },
+                      "testo-brand-orange": { label: "🔥 Testo Brand Orange (Фирменный)", color: "#FF7900" },
                       "testo-pharma-compliance": { label: "📘 Testo Pharma Compliance", color: "#3B82F6" },
                       "testo-pharma-cold-chain": { label: "❄️ Testo Cold Chain", color: "#06B6D4" },
                       "testo-pharma-audit": { label: "✅ Testo Audit Ready", color: "#10B981" },
                     };
                     const allRenderedKeys = Object.keys(designResult.rendered_styles ?? {});
 
-                    // Фильтруем ключи по templateSetId текущего tenant.
-                    // Это исправляет старые runs, у которых в rendered_styles записаны все 9 Tech-шаблонов,
-                    // но tenant — Testo (должен видеть только industrial-measurement-equipment).
-                    const filteredKeys = allRenderedKeys.filter(key => {
+                    // Always show all available template buttons for the tenant so the user can switch to any style
+                    const tenantTemplateKeys = templateSetId === "software-development"
+                      ? ["cover-1", "cover-2", "cover-3", "cover-4", "cover-5", "cover-6", "cover-7", "cover-8", "cover-9"]
+                      : ["testo-brand-orange", "testo-pharma-compliance", "testo-pharma-cold-chain", "testo-pharma-audit", "industrial-measurement-equipment"];
+
+                    const filteredKeys = tenantTemplateKeys.filter(key => {
                       if (templateSetId === "software-development") {
                         return key.startsWith("cover-");
                       }
-                      
-                      // For Testo portal: show Testo specific templates.
-                      // If the run is old and only has cover-*, we can fall back to showing them, 
-                      // or just show what's available if no Testo templates are found.
-                      const testoKeys = ["industrial-measurement-equipment", "testo-pharma-compliance", "testo-pharma-cold-chain", "testo-pharma-audit"];
-                      return testoKeys.includes(key);
+                      return ["testo-brand-orange", "industrial-measurement-equipment", "testo-pharma-compliance", "testo-pharma-cold-chain", "testo-pharma-audit"].includes(key);
                     });
 
-                    // Fallback for old Testo runs that only have cover-* keys
-                    if (filteredKeys.length === 0 && allRenderedKeys.some(k => k.startsWith("cover-"))) {
-                      allRenderedKeys.filter(k => k.startsWith("cover-")).forEach(k => filteredKeys.push(k));
-                    }
-
-                    // Если после фильтрации нет ключей (например старый Testo run без нужного ключа),
-                    // показываем сообщение о необходимости перегенерации.
                     const availableTemplates = filteredKeys.map((key) => ({
                       key,
                       label: TEMPLATE_LABELS[key]?.label ?? key,

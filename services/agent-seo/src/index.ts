@@ -112,10 +112,19 @@ ${JSON.stringify(ex.expected_output, null, 2)}
 
   let tenantSeoGuidance = "";
   if (isTestoTenant) {
-    tenantSeoGuidance = `\nSPECIAL TENANT INSTRUCTION (Testo Pharma B2B):
+    const targetPillar = (job.payload as any)?.targetPillarId || (job.payload as any)?.contentPillarId || "";
+    const isGas = typeof targetPillar === "string" && (targetPillar.startsWith("gas-") || targetPillar.includes("gas") || targetPillar.includes("boiler") || targetPillar.includes("emission"));
+    if (isGas) {
+      tenantSeoGuidance = `\nSPECIAL TENANT INSTRUCTION (Testo Gas Analyzers B2B):
+- This post is for Russian/CIS B2B industrial engineering, flue gas analysis, boiler tuning, and emissions monitoring.
+- Recommend Russian engineering hashtags (e.g. #газоанализатор, #Testo350, #экологическийконтроль, #промышленность, #котельные, #выбросы).
+- Focus recommendations on B2B engineering clarity, industrial accuracy, and instrument advantages.`;
+    } else {
+      tenantSeoGuidance = `\nSPECIAL TENANT INSTRUCTION (Testo Pharma B2B):
 - This post is for Russian/CIS B2B pharmaceutical engineering and GxP compliance.
 - Do NOT recommend adding English hashtags (e.g., #TemperatureControl, #Pharmaceutical). Recommend Russian/GxP hashtags only (e.g. #фармацевтика, #GxP, #21CFRPart11, #холодоваяцепь, #качество).
 - Focus recommendations strictly on B2B engineering clarity, GxP readability, and compliance accuracy.`;
+    }
   }
 
   const systemPrompt = `You are a LinkedIn SEO and content optimization expert.

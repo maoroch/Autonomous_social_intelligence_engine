@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Testo Brand Orange Card</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@600;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --testo-orange-light: #FF9838;
+      --testo-orange: #FF7900;
+      --testo-orange-deep: #E65A00;
+      --testo-dark: #0F172A;
+      --testo-charcoal: #1E293B;
+      --testo-muted: #64748B;
+      --testo-white: #FFFFFF;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 1080px;
+      height: 1350px;
+      background: #E5E7EB;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .slide {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background: linear-gradient(145deg, #FF8A00 0%, #FF7300 45%, #E55800 100%);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      padding: 60px 70px 60px 70px;
+    }
+
+    .bg-glow {
+      position: absolute;
+      top: -100px;
+      right: -100px;
+      width: 650px;
+      height: 650px;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 70%);
+      pointer-events: none;
+    }
+
+    .bg-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+      background-size: 72px 72px;
+      pointer-events: none;
+    }
+
+    /* Top Navigation Header with Official Azia-Test & Testo Logo */
+    .header {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand-container {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: #FFFFFF;
+      padding: 10px 24px 10px 18px;
+      border-radius: 999px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+    }
+
+    .aziatest-logo-svg {
+      height: 38px;
+      width: auto;
+      display: block;
+    }
+
+    .brand-divider {
+      width: 1.5px;
+      height: 24px;
+      background: #E2E8F0;
+    }
+
+    .testo-badge-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .testo-pill-tag {
+      background: #FF7900;
+      color: #FFFFFF;
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      padding: 4px 12px;
+      border-radius: 6px;
+      text-transform: lowercase;
+    }
+
+    .distributor-tag {
+      font-size: 12px;
+      font-weight: 800;
+      color: #153E49;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      line-height: 1.25;
+    }
+
+    .page-counter-pill {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 18px;
+      font-weight: 700;
+      color: #111827;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 10px 24px;
+      border-radius: 999px;
+      border: 1.5px solid rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+    }
+
+    /* Main Floating White Content Card */
+    .card-container {
+      position: relative;
+      z-index: 10;
+      background: #FFFFFF;
+      border-radius: 32px;
+      padding: 56px 60px;
+      box-shadow: 0 24px 60px rgba(180, 50, 0, 0.22);
+      border: 1.5px solid rgba(255, 255, 255, 0.9);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      flex: 1;
+      margin-top: 36px;
+    }
+
+    .badge-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .step-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: #FFF3E6;
+      color: #D94800;
+      border: 1.5px solid #FFD8A8;
+      padding: 8px 22px;
+      border-radius: 999px;
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .card-headline {
+      font-size: 46px;
+      font-weight: 900;
+      line-height: 1.18;
+      letter-spacing: -0.025em;
+      color: #0F172A;
+      margin: 0 0 32px 0;
+    }
+
+    .bullets-list {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .bullet-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+      background: #F8FAFC;
+      border-radius: 20px;
+      padding: 22px 26px;
+      border: 1px solid #E2E8F0;
+    }
+
+    .bullet-icon-box {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #FF9838 0%, #FF7300 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 6px 16px rgba(255, 115, 0, 0.28);
+    }
+
+    .bullet-icon-box svg {
+      width: 22px;
+      height: 22px;
+      stroke: #FFFFFF;
+      stroke-width: 3;
+      fill: none;
+    }
+
+    .bullet-text {
+      font-size: 25px;
+      font-weight: 600;
+      line-height: 1.45;
+      color: #1E293B;
+      margin: 0;
+    }
+
+    /* Bottom Action Bar */
+    .footer-bar {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1.5px solid rgba(255, 255, 255, 0.35);
+      padding-top: 24px;
+    }
+
+    .footer-left-label {
+      font-size: 21px;
+      font-weight: 800;
+      color: #0F172A;
+      letter-spacing: 0.04em;
+    }
+
+    .footer-right-tip {
+      font-size: 16px;
+      font-weight: 700;
+      color: rgba(15, 23, 42, 0.85);
+      background: rgba(255, 255, 255, 0.6);
+      padding: 8px 22px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="slide post">
+    <div class="bg-glow"></div>
+    <div class="bg-grid"></div>
+
+    <!-- Top Navigation Header with Official Azia-Test & Testo Logo -->
+    <div class="header">
+      <div class="brand-container">
+        <!-- Official AZIA-TEST Logo Vector -->
+        <svg class="aziatest-logo-svg" viewBox="0 0 85 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="21" cy="21" r="21" fill="url(#aziatest_grad_c)"></circle>
+          <path
+            d="M2.804 26L7.13 16.2H9.86L14.2 26H11.316L7.928 17.558H9.02L5.632 26H2.804ZM5.17 24.096L5.884 22.052H10.672L11.386 24.096H5.17ZM14.4959 26V24.264L20.2639 17.418L20.5999 18.398H14.6219V16.2H23.0639V17.936L17.2959 24.782L16.9599 23.802H23.2739V26H14.4959ZM24.4878 26V16.2H27.2598V26H24.4878ZM28.056 26L32.382 16.2H35.112L39.452 26H36.568L33.18 17.558H34.272L30.884 26H28.056ZM30.422 24.096L31.136 22.052H35.924L36.638 24.096H30.422Z"
+            fill="white"></path>
+          <path
+            d="M58.5679 40V30.2H61.3399V37.802H66.0159V40H58.5679ZM67.1128 40V30.2H69.8848V37.802H74.5608V40H67.1128ZM75.6577 40V30.2H80.1377C81.0337 30.2 81.8037 30.3447 82.4477 30.634C83.1011 30.9233 83.6051 31.3433 83.9597 31.894C84.3144 32.4353 84.4917 33.0793 84.4917 33.826C84.4917 34.5633 84.3144 35.2027 83.9597 35.744C83.6051 36.2853 83.1011 36.7053 82.4477 37.004C81.8037 37.2933 81.0337 37.438 80.1377 37.438H77.1977L78.4297 36.234V40H75.6577ZM78.4297 36.528L77.1977 35.254H79.9697C80.5484 35.254 80.9777 35.128 81.2577 34.876C81.5471 34.624 81.6917 34.274 81.6917 33.826C81.6917 33.3687 81.5471 33.014 81.2577 32.762C80.9777 32.51 80.5484 32.384 79.9697 32.384H77.1977L78.4297 31.11V36.528Z"
+            fill="#153E49"></path>
+          <path
+            d="M44.67 23.032V20.988H48.758V23.032H44.67ZM51.9586 26V18.398H48.9486V16.2H57.7266V18.398H54.7306V26H51.9586ZM61.3073 19.994H65.8573V22.066H61.3073V19.994ZM61.5033 23.858H66.6273V26H58.7593V16.2H66.4453V18.342H61.5033V23.858ZM71.6095 26.196C70.8069 26.196 70.0322 26.098 69.2855 25.902C68.5482 25.6967 67.9462 25.4353 67.4795 25.118L68.3895 23.074C68.8282 23.354 69.3322 23.5873 69.9015 23.774C70.4802 23.9513 71.0542 24.04 71.6235 24.04C72.0062 24.04 72.3142 24.0073 72.5475 23.942C72.7809 23.8673 72.9489 23.774 73.0515 23.662C73.1635 23.5407 73.2195 23.4007 73.2195 23.242C73.2195 23.018 73.1169 22.8407 72.9115 22.71C72.7062 22.5793 72.4402 22.472 72.1135 22.388C71.7869 22.304 71.4229 22.22 71.0215 22.136C70.6295 22.052 70.2329 21.9447 69.8315 21.814C69.4395 21.6833 69.0802 21.5153 68.7535 21.31C68.4269 21.0953 68.1609 20.82 67.9555 20.484C67.7502 20.1387 67.6475 19.7047 67.6475 19.182C67.6475 18.594 67.8062 18.062 68.1235 17.586C68.4502 17.11 68.9355 16.7273 69.5795 16.438C70.2235 16.1487 71.0262 16.004 71.9875 16.004C72.6315 16.004 73.2615 16.0787 73.8775 16.228C74.5029 16.368 75.0582 16.578 75.5435 16.858L74.6895 18.916C74.2229 18.664 73.7609 18.4773 73.3035 18.356C72.8462 18.2253 72.4029 18.16 71.9735 18.16C71.5909 18.16 71.2829 18.202 71.0495 18.286C70.8162 18.3607 70.6482 18.4633 70.5455 18.594C70.4429 18.7247 70.3915 18.874 70.3915 19.042C70.3915 19.2567 70.4895 19.4293 70.6855 19.56C70.8909 19.6813 71.1569 19.784 71.4835 19.868C71.8195 19.9427 72.1835 20.022 72.5755 20.106C72.9769 20.19 73.3735 20.2973 73.7655 20.428C74.1669 20.5493 74.5309 20.7173 74.8575 20.932C75.1842 21.1373 75.4455 21.4127 75.6415 21.758C75.8469 22.094 75.9495 22.5187 75.9495 23.032C75.9495 23.6013 75.7862 24.1287 75.4595 24.614C75.1422 25.09 74.6615 25.4727 74.0175 25.762C73.3829 26.0513 72.5802 26.196 71.6095 26.196ZM79.1793 26V18.398H76.1693V16.2H84.9473V18.398H81.9513V26H79.1793Z"
+            fill="#153E49"></path>
+          <defs>
+            <radialGradient id="aziatest_grad_c" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"
+              gradientTransform="translate(11.2683 8.19512) rotate(47.7263) scale(38.0716)">
+              <stop stop-color="#FFDCB3" stop-opacity="0.8"></stop>
+              <stop offset="0.155528" stop-color="#FFC580"></stop>
+              <stop offset="0.652268" stop-color="#FF9212"></stop>
+              <stop offset="1" stop-color="#DF3F00"></stop>
+            </radialGradient>
+          </defs>
+        </svg>
+
+        <div class="brand-divider"></div>
+
+        <div class="testo-badge-group">
+          <span class="distributor-tag">Testo дистрибьютор в РК</span>
+        </div>
+      </div>
+
+      <div class="page-counter-pill">{{PAGE_TEXT}}</div>
+    </div>
+
+    <!-- Main Content Card -->
+    <div class="card-container">
+      <div>
+        <div class="badge-row">
+          <div class="step-badge">{{BADGE}}</div>
+        </div>
+
+        <h2 class="card-headline">{{TITLE}}</h2>
+
+        <div class="bullets-list">
+          {{BODY}}
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

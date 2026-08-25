@@ -74,7 +74,7 @@ export class AiClient {
       throw new Error(`AI Provider '${preferred}' is requested but not configured or missing API key.`);
     }
 
-    const maxAttempts = 5;
+    const maxAttempts = 10;
     let delay = 5000;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -83,11 +83,23 @@ export class AiClient {
       } catch (err: any) {
         const errMsg = err?.message || String(err);
         const isRateLimit = err?.status === 429 || errMsg.includes("429") || errMsg.includes("rate_limit_exceeded");
-        const backoffMs = isRateLimit ? 15000 : delay;
+        
+        let backoffMs = delay;
+        if (isRateLimit) {
+          const matchSeconds = errMsg.match(/try again in ([\d\.]+)s/i);
+          const matchMs = errMsg.match(/try again in ([\d\.]+)ms/i);
+          if (matchSeconds && matchSeconds[1]) {
+            backoffMs = Math.ceil(parseFloat(matchSeconds[1]) * 1000) + 3000;
+          } else if (matchMs && matchMs[1]) {
+            backoffMs = Math.ceil(parseFloat(matchMs[1])) + 3000;
+          } else {
+            backoffMs = 25000 + (attempt * 2000);
+          }
+        }
 
         console.warn(`Provider '${preferred}' failed (attempt ${attempt}/${maxAttempts}). Error: ${errMsg}`);
         if (attempt < maxAttempts) {
-          console.warn(`Retrying '${preferred}' in ${backoffMs / 1000}s...`);
+          console.warn(`Retrying '${preferred}' in ${Math.round(backoffMs / 1000)}s...`);
           await new Promise((resolve) => setTimeout(resolve, backoffMs));
           delay += 5000;
         }

@@ -111,6 +111,31 @@ async function main() {
         synonyms: ["freeze-drying"],
         doNotConfuseWith: [],
       },
+      // ---------- Газоаналитический трек (см. docs/testo-gas-strategy.md) ----------
+      {
+        term: "коэффициент избытка воздуха (lambda)",
+        definition: "Отношение действительного количества воздуха к теоретически необходимому для полного сгорания топлива",
+        synonyms: ["лямбда", "air ratio"],
+        doNotConfuseWith: ["КПД котла"],
+      },
+      {
+        term: "потери тепла qA",
+        definition: "Потери тепла с уходящими дымовыми газами в атмосферу",
+        synonyms: ["потери с уходящими газами", "qA loss"],
+        doNotConfuseWith: ["потери на излучение"],
+      },
+      {
+        term: "блок осушки Пельтье",
+        definition: "Термоэлектрический охладитель для осушения газовой пробы до постоянной точки росы (+3°C), исключающий растворение NO2 и SO2",
+        synonyms: ["газоохладитель Пельтье", "Peltier gas cooler"],
+        doNotConfuseWith: ["обычный механический фильтр конденсата"],
+      },
+      {
+        term: "автоматическое расширение диапазона (х5)",
+        definition: "Разбавление пробы чистым воздухом для защиты сенсора CO/NO при пиковых концентрациях без остановки измерений",
+        synonyms: ["разбавление пробы", "range extension"],
+        doNotConfuseWith: [],
+      },
     ],
 
     terminologyRules: {
@@ -119,11 +144,15 @@ async function main() {
         "pharma-cold-chain-story": ["холодовая цепь", "GDP", "контроль"],
         "pharma-audit-ready": ["аудит", "инспекция", "чек-лист"],
         "testo-device-breakdown": ["Testo", "точность", "характеристики", "B2B"],
+        "gas-boiler-efficiency": ["КПД", "lambda", "testo", "настройка горения"],
+        "gas-industrial-emissions": ["выбросы", "ПДВ", "ТЭЦ", "сенсоры"],
+        "gas-safety-leak-detection": ["утечка", "метан", "течеискатель", "безопасность"],
       },
-      forbiddenTerms: ["обычный градусник", "файл excel", "ручной журнал", "примерная температура"],
+      forbiddenTerms: ["обычный градусник", "файл excel", "ручной журнал", "примерная температура", "кустарный замер"],
       preferredReplacements: {
         "история записей": "Audit Trail",
         "обычное хранение": "GDP комплаенс",
+        "на глаз": "режимная наладка",
       },
     },
 
@@ -162,6 +191,28 @@ async function main() {
         label: "Логист холодовой цепи (GDP)",
         description: "Обеспечивает непрерывный температурный контроль при перевозке фармпродукции",
         painPoints: ["потеря видимости температуры в пути", "штрафы за нарушение GDP", "претензии от фармклиента"],
+        toneOfVoice: "formal",
+      },
+      // ---------- Газоаналитический трек (см. docs/testo-gas-strategy.md) ----------
+      {
+        id: "boiler-service-engineer",
+        label: "Инженер по наладке и сервису котельных",
+        description: "Проводит режимно-наладочные испытания и сервис бытовых/промышленных газовых котлов",
+        painPoints: ["повышенный расход газа", "сложность составления отчетов на объекте", "перегрузка сенсоров по CO"],
+        toneOfVoice: "formal",
+      },
+      {
+        id: "industrial-energy-manager",
+        label: "Главный энергетик / Наладчик ТЭЦ",
+        description: "Отвечает за энергоэффективность технологических печей, турбин и котлов большой мощности",
+        painPoints: ["отравление сенсоров высокими концентрациями", "потери топлива", "экологические штрафы"],
+        toneOfVoice: "formal",
+      },
+      {
+        id: "environmental-inspector",
+        label: "Эколог промышленного предприятия",
+        description: "Контролирует соблюдение нормативов предельно допустимых выбросов (ПДВ) в атмосферу",
+        painPoints: ["погрешность замеров из-за конденсата", "требования инспекций к Госреестру СИ"],
         toneOfVoice: "formal",
       },
     ],
@@ -212,6 +263,10 @@ async function main() {
       { id: "pharma-audit-ready", label: "Готовы к инспекции?", description: "Чек-лист/мифы про подготовку к аудиту FDA/EMA", weight: 0.5, preferredFormat: "carousel" },
       { id: "pharma-case-story", label: "Кейс из фарм-индустрии", description: "Обезличенный кейс-стори по мотивам реальных внедрений (без брендов клиентов без разрешения)", weight: 0.4, preferredFormat: "carousel" },
       { id: "testo-device-breakdown", label: "Разбор прибора Testo", description: "Детальный разбор конкретной модели оборудования Testo, технических параметров и окупаемости для B2B-предприятий", weight: 0.6, preferredFormat: "carousel" },
+      // ---------- Газоаналитический трек (см. docs/testo-gas-strategy.md) ----------
+      { id: "gas-boiler-efficiency", label: "🔥 Наладка и КПД котельных", description: "Настройка соотношения газ/воздух (lambda), снижение расхода топлива и расчет потерь тепла qA (testo 300 / testo 310 II)", weight: 0.7, preferredFormat: "carousel" },
+      { id: "gas-industrial-emissions", label: "🏭 Промышленный эко-контроль и ТЭЦ", description: "Экологический мониторинг промышленных выбросов NOx, SO2, CO, защита сенсоров и блок Пельтье (testo 340 / testo 350)", weight: 0.7, preferredFormat: "carousel" },
+      { id: "gas-safety-leak-detection", label: "🛡️ Безопасность и поиск утечек газа", description: "Локализация микроутечек метана, пропана и водорода на газопроводах и арматуре (testo 316 / testo 310 II)", weight: 0.6, preferredFormat: "carousel" },
     ],
   });
 

@@ -197,7 +197,7 @@ export function createApprovalRouter(logger: Logger): Router {
           runId,
           stage: PipelineStage.DESIGN,
           attempt: 1,
-          payload: { template_name },
+          payload: { template_name, isInlineEdit: true },
         });
         logger.info({ runId, template_name }, "queued design re-rendering for inline edits");
       } catch (err) {

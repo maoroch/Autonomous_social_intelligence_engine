@@ -173,12 +173,9 @@ async function processStrategyJob(job: AgentJob): Promise<unknown> {
   try {
     const col = getCollection(Collections.GOLDEN_STRATEGY);
     const filter = targetPillarId
-      ? { $or: [{ pillarId: targetPillarId }, { pillarId: "all" }, { pillarId: { $exists: false } }] }
-      : {};
+      ? { tenantId, pillarId: targetPillarId }
+      : { tenantId };
     let examples = await col.find(filter).limit(2).toArray();
-    if (examples.length === 0) {
-      examples = await col.find({}).limit(2).toArray();
-    }
     if (examples.length > 0) {
       fewShotText = `\nSTYLE EXAMPLES (FEW-SHOT EXAMPLES):
 Here are examples of how to design a content strategy based on a topic and author profile:

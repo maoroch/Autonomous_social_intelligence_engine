@@ -5,7 +5,7 @@ services:
     image: redis:7-alpine
     command: redis-server --stop-writes-on-bgsave-error no
     ports:
-      - "6379:6379"
+      - "6389:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -18,7 +18,7 @@ services:
     image: mongo:6.0
     command: mongod --setParameter diagnosticDataCollectionEnabled=false --nojournal
     ports:
-      - "27017:27017"
+      - "27018:27017"
     volumes:
       - mongo_data:/data/db
     healthcheck:
@@ -221,7 +221,7 @@ services:
       context: .
       dockerfile: Dockerfile.dashboard
     ports:
-      - "3000:3000"
+      - "3005:3000"
     environment:
       OPENCLAW_URL: http://openclaw:4000
       MONGO_URI: mongodb://mongo:27017

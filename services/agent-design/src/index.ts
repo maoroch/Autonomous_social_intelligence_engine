@@ -80,6 +80,14 @@ function resolveStyleConfigs(industryProfile: IndustryProfile | undefined): Styl
   if (templateSetId === "industrial-measurement-equipment") {
     return [
       {
+        key: "testo-brand-orange",
+        coverTemplate: "testo-brand-orange/cover",
+        cardTemplate: "testo-brand-orange/card",
+        defaultCoverBadge: "TESTO ГАЗОАНАЛИЗАТОРЫ",
+        defaultCardBadge: "ПРЕИМУЩЕСТВА",
+        brand: { accentColor: "#FF7900", inkColor: "#111827", paperColor: "#FFFFFF" },
+      },
+      {
         key: "testo-pharma-compliance",
         coverTemplate: "testo-pharma-compliance/cover",
         cardTemplate: "testo-pharma-compliance/card",
@@ -346,19 +354,63 @@ async function processDesignJob(job: AgentJob): Promise<unknown> {
   const customCover = customTemplates.find(t => t.type === "cover" && (t.pillarId === targetPillar || t.pillarId === "all"));
   const customCard = customTemplates.find(t => t.type === "card" && (t.pillarId === targetPillar || t.pillarId === "all"));
   const existingDesignDoc = await stageResultsCol.findOne({ runId: job.runId, stage: "design" });
+  const writingStageDoc = await stageResultsCol.findOne({ runId: job.runId, stage: "writing" });
+  const writingResult = writingStageDoc?.result as any;
   let validated: any;
 
   // Targeted re-render mode: when the user selects a specific template in the UI and clicks
   // "Save Changes", only that one style needs to be rendered — not all styleConfigs.
-  // This is triggered when payload.template_name is set AND existing render_data exists.
   const requestedTemplateName = typeof (job.payload as any)?.template_name === "string"
     ? (job.payload as any).template_name as string
     : undefined;
+  const isInlineEdit = !!(job.payload as any)?.isInlineEdit;
   const isTargetedRerender = !!(requestedTemplateName && existingDesignDoc && (existingDesignDoc.result as any)?.render_data);
 
-  if (isTargetedRerender) {
-    logger.info({ runId: job.runId, requestedTemplateName }, "Targeted re-render mode: rendering only the requested style.");
-    validated = existingDesignDoc!.result;
+  if (isInlineEdit || isTargetedRerender || (existingDesignDoc && (existingDesignDoc.result as any)?.render_data)) {
+    logger.info({ runId: job.runId, requestedTemplateName, isInlineEdit }, "Inline edit / re-render mode: Bypassing LLM generation completely.");
+    if (existingDesignDoc && (existingDesignDoc.result as any)?.render_data) {
+      validated = existingDesignDoc.result;
+    } else if (writingResult) {
+      // Build render_data deterministically from writingResult without calling LLM!
+      const hookText = writingResult.hook || "Публикация";
+      const bodyText = writingResult.text || "";
+      const rawBullets = bodyText
+        .split("\n")
+        .map((l: string) => l.trim())
+        .filter((l: string) => l.length > 0 && !l.startsWith("#"));
+
+      const slidesObj: Record<string, any> = {
+        slide_1: {
+          key: "slide_1",
+          badge: tenantId === "testo" ? "TESTO PHARMA" : "TECH INSIGHT",
+          title: hookText,
+          bullets: [rawBullets[0] || "Ключевые детали в карточках"],
+          footer: tenantId === "testo" ? "@testo_kazakhstan" : "@username",
+          illustration: "gxp-shield"
+        }
+      };
+
+      const cardBullets = rawBullets.slice(1, 13);
+      let cardIdx = 2;
+      for (let i = 0; i < cardBullets.length; i += 2) {
+        const slideKey = `slide_${cardIdx}`;
+        slidesObj[slideKey] = {
+          key: slideKey,
+          badge: `КАРТОЧКА ${cardIdx - 1}`,
+          title: cardBullets[i] || `Тезис ${cardIdx - 1}`,
+          bullets: [cardBullets[i + 1] || cardBullets[i] || ""],
+          footer: tenantId === "testo" ? "@testo_kazakhstan" : "@username",
+          illustration: "digital-signature"
+        };
+        cardIdx++;
+      }
+
+      validated = {
+        template_name: requestedTemplateName || "cover-1",
+        render_data: slidesObj,
+        card_count: Object.keys(slidesObj).length
+      };
+    }
   } else if (existingDesignDoc && (existingDesignDoc.result as any)?.render_data) {
     logger.info({ runId: job.runId }, "Found existing design result. Bypassing LLM generation and using existing render_data.");
     validated = existingDesignDoc.result;
@@ -498,6 +550,8 @@ Please generate the carousel slide deck design structure in JSON format.`;
       } else {
         sanitized.template_name = "cover-8";
       }
+    } else if (typeof targetPillar === "string" && (targetPillar.startsWith("gas-") || targetPillar.includes("gas") || targetPillar.includes("boiler") || targetPillar.includes("emission"))) {
+      sanitized.template_name = "testo-brand-orange";
     }
 
     // Валидируем финальный результат Zod схемой
@@ -546,7 +600,7 @@ Please generate the carousel slide deck design structure in JSON format.`;
     return sharedBrowser;
   }
 
-  // Helper to escape HTML strings
+  // Helper to escape HTML strings while preserving <br> for line breaks/spacing
   function escapeHtml(text: string): string {
     if (typeof text !== "string") return "";
     return text
@@ -554,7 +608,8 @@ Please generate the carousel slide deck design structure in JSON format.`;
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+      .replace(/'/g, "&#039;")
+      .replace(/&lt;br\s*\/?&gt;/gi, "<br/>");
   }
 
   // Render a specific style config into a cover preview PNG + a ZIP of all slide PNGs
@@ -818,13 +873,30 @@ Please generate the carousel slide deck design structure in JSON format.`;
         
         const filtered = cleanBullets.filter((b: string) => !filterRegex.test(b.trim()) && !filterGithub.test(b.trim()));
 
-        if (style.key === "cover-8" || style.key === "cover-9") {
+        if (style.key === "testo-brand-orange") {
+          if (isCover) {
+            const desc = filtered[0] || (strategy as any)?.core_idea || (writingResult as any)?.hook || (topic?.summary as string) || (run?.topic?.summary as string) || "";
+            bodyHtml = desc ? escapeHtml(desc) : "";
+          } else {
+            bodyHtml = filtered.map((b: string) => `
+              <div class="bullet-item">
+                <div class="bullet-icon-box">
+                  <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+                </div>
+                <p class="bullet-text">${escapeHtml(b)}</p>
+              </div>
+            `).join("");
+          }
+        } else if (isCover || style.key === "cover-8" || style.key === "cover-9") {
           bodyHtml = filtered.map((b: string) => `<p style="margin: 0 0 10px 0; padding: 0; line-height: 1.4;">${escapeHtml(b)}</p>`).join("");
         } else {
           bodyHtml = filtered
             .map((b: string) => `<p style="margin: 0 0 8px 0; padding: 0; line-height: 1.4;">→ ${escapeHtml(b)}</p>`)
             .join("");
         }
+      } else if (isCover && style.key === "testo-brand-orange") {
+        const desc = (strategy as any)?.core_idea || (writingResult as any)?.hook || (topic?.summary as string) || (run?.topic?.summary as string) || "";
+        bodyHtml = desc ? escapeHtml(desc) : "";
       }
 
       const allRepoUrls = Array.from(postTextCombined.matchAll(/(?:https?:\/\/)?github\.com\/([a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+)/gi))
@@ -928,6 +1000,7 @@ Please generate the carousel slide deck design structure in JSON format.`;
         .replace("{{BADGE}}", badgeText)
         .replace("{{TITLE}}", titleText)
         .replace("{{BODY}}", bodyHtml)
+        .replace("{{BODY_STYLE}}", bodyHtml.trim() ? "" : "display: none;")
         .replace("{{FOOTER_LEFT}}", footerLeft)
         .replace("{{PAGE_NUMBER}}", pageText)
         .replace("{{PAGE_TEXT}}", pageText)
@@ -1012,10 +1085,10 @@ Please generate the carousel slide deck design structure in JSON format.`;
           }
         })()`);
 
-        // Take screenshot of the exact .post element to avoid border margins / cutoffs
-        const element = await page.$(".post");
+        // Take screenshot of the exact .post or .slide element to avoid border margins / cutoffs
+        const element = (await page.$(".post")) || (await page.$(".slide")) || (await page.$("body"));
         if (!element) {
-          throw new Error("Could not find .post element in template");
+          throw new Error("Could not find .post or .slide element in template");
         }
         
         const screenshotBuffer = await element.screenshot({ type: "png" });

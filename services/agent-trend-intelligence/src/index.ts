@@ -328,8 +328,8 @@ ${industryProfile.glossary
   const systemPrompt = `You are a professional trend spotter for the "${verticalLabel}" industry. You analyze ${domainDescription}.
 Your output must be a single, valid JSON object containing an "items" array of trend objects.
 Each trend object must contain:
-1. "title": Catchy, descriptive title of the trend.
-2. "summary": Detailed explanation of what the trend is, why it's popular, and key insights.
+1. "title": Catchy, descriptive title of the trend (${isNicheVertical ? "MUST BE IN RUSSIAN" : "in Russian or English depending on context"}).
+2. "summary": Detailed explanation of what the trend is, why it's popular, and key insights (${isNicheVertical ? "MUST BE IN RUSSIAN" : "in Russian or English"}).
 3. "score": An integer from 0 to 100 indicating popularity/urgency.
 4. "keywords": Array of 3-5 tags.
 5. "sources": Array of relevant source URLs from the inputs (use the EXACT URLs provided in the input, do not hallucinate URLs).

@@ -75,6 +75,75 @@ const PHARMA_FACT_CHUNKS: Array<Omit<FactChunkDoc, "_id" | "createdAt">> = [
   },
 ];
 
+const GAS_ANALYZER_FACT_CHUNKS: Array<Omit<FactChunkDoc, "_id" | "createdAt">> = [
+  // --- testo 300 ---
+  {
+    tenantId: "testo",
+    productName: "testo 300",
+    sourceLabel: "testo.com — testo 300 flue gas analyzer datasheet",
+    content: "testo 300 оснащен 5-дюймовым сенсорным дисплеем Smart-Touch с интуитивным управлением и мгновенным созданием отчетов в формате PDF прямо на месте замера.",
+  },
+  {
+    tenantId: "testo",
+    productName: "testo 300",
+    sourceLabel: "testo.com — testo 300 Longlife sensors",
+    content: "Сенсоры Longlife для testo 300 (O2, CO с компенсацией H2 до 8000 ppm, NO) рассчитаны на срок службы до 6 лет при интенсивной эксплуатации в котельных.",
+  },
+  {
+    tenantId: "testo",
+    productName: "testo 300",
+    sourceLabel: "testo.com — testo 300 efficiency calculation",
+    content: "Прибор автоматически рассчитывает КПД котла (eta), потери тепла с дымовыми газами (qA), неразбавленный CO и коэффициент избытка воздуха (lambda).",
+  },
+  // --- testo 310 II ---
+  {
+    tenantId: "testo",
+    productName: "testo 310 II",
+    sourceLabel: "testo.com — testo 310 II flue gas set",
+    content: "testo 310 II производит автоматическое обнуление датчиков газа и тяги всего за 30 секунд после включения.",
+  },
+  {
+    tenantId: "testo",
+    productName: "testo 310 II",
+    sourceLabel: "testo.com — testo 310 II Smart App integration",
+    content: "testo 310 II подключается по Bluetooth к бесплатному приложению Testo Smart App для беспроводного управления, построения графиков горения и экспорта данных.",
+  },
+  // --- testo 340 ---
+  {
+    tenantId: "testo",
+    productName: "testo 340",
+    sourceLabel: "testo.com — testo 340 industrial flue gas analyzer",
+    content: "testo 340 оснащен системой автоматического расширения диапазона измерения в 5 раз (фактор 5), защищающей сенсоры при неожиданных пиковых концентрациях CO до 50 000 ppm.",
+  },
+  {
+    tenantId: "testo",
+    productName: "testo 340",
+    sourceLabel: "testo.com — testo 340 modular sensors",
+    content: "testo 340 поддерживает до 4 сенсоров (O2 стандартно + сменные откалиброванные сенсоры CO, COlow, NO, NOlow, NO2, SO2) с заменой на объекте по принципу Plug and Play.",
+  },
+  // --- testo 350 ---
+  {
+    tenantId: "testo",
+    productName: "testo 350",
+    sourceLabel: "testo.com — testo 350 emission analyzer system",
+    content: "testo 350 оснащен встроенным термоэлектрическим охладителем пробы (блок Пельтье) для непрерывного осушения дымовых газов до точки росы +3°C, исключая потерю NO2 и SO2 в конденсате.",
+  },
+  {
+    tenantId: "testo",
+    productName: "testo 350",
+    sourceLabel: "testo.com — testo 350 power plant emissions",
+    content: "testo 350 измеряет до 6 газов одновременно (O2, CO, CO2 NDIR, NO, NO2, SO2, H2S, CxHy) и внесен в Госреестр СИ для официального экологического контроля промышленных выбросов ТЭЦ.",
+  },
+  // --- testo 316 ---
+  {
+    tenantId: "testo",
+    productName: "testo 316-4 / 316-1",
+    sourceLabel: "testo.com — testo 316 gas leak detector",
+    content: "Течеискатели серии testo 316 определяют микроутечки метана (CH4), пропана (C3H8) и водорода (H2) с высокой чувствительностью от 3 ppm и оснащены цветовой светофорной сигнализацией на гибком зонде.",
+  },
+];
+
+
 async function main() {
   await connectMongo(MONGO_URI, MONGO_DB_NAME);
   console.log("Connected to MongoDB");
@@ -94,9 +163,11 @@ async function main() {
 
   await seedGroup("DEMO placeholder", DEMO_FACT_CHUNKS);
   await seedGroup("PHARMA real facts", PHARMA_FACT_CHUNKS);
+  await seedGroup("GAS ANALYZER real facts", GAS_ANALYZER_FACT_CHUNKS);
 
   console.log("REMINDER: DEMO_FACT_CHUNKS are placeholder data for testing RAG retrieval — replace with real datasheet before production.");
   console.log("REMINDER: PHARMA_FACT_CHUNKS are real but marketing-sourced — verify with Testo contact before publishing specific claims.");
+  console.log("REMINDER: GAS_ANALYZER_FACT_CHUNKS are real verified specs from Testo datasheets.");
 
   await disconnectMongo();
 }
