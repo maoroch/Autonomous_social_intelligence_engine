@@ -282,6 +282,180 @@ async function main() {
   );
   console.log(`Upserted Organization + IndustryProfile: ${testoOrg.tenantId} (ЧЕРНОВИК — требует подтверждения заказчиком)`);
 
+  // ---------- 3. Кино и Marvel Медиа (cinema-media) ----------
+
+  const cinemaOrg = OrganizationSchema.parse({
+    tenantId: "cinema-media",
+    name: "Кино и Marvel Медиа",
+    publishingTargets: ["telegram"],
+  });
+
+  const cinemaProfile = IndustryProfileSchema.parse({
+    tenantId: "cinema-media",
+    verticalName: "cinema-media",
+    language: ["ru"],
+
+    trendSources: [
+      { type: "rss", url: "https://variety.com/feed/", label: "Variety News", weight: 0.9 },
+      { type: "rss", url: "https://www.hollywoodreporter.com/feed/", label: "The Hollywood Reporter", weight: 0.9 },
+      { type: "rss", url: "https://deadline.com/feed/", label: "Deadline Hollywood", weight: 0.9 },
+      { type: "rss", url: "https://collider.com/feed/", label: "Collider", weight: 0.8 },
+      { type: "scrape", url: "https://www.reddit.com/r/marvelstudios/hot.json", label: "Reddit r/marvelstudios", weight: 0.9 },
+      { type: "scrape", url: "https://www.reddit.com/r/movies/hot.json", label: "Reddit r/movies", weight: 0.9 },
+      { type: "scrape", url: "https://www.reddit.com/r/boxoffice/hot.json", label: "Reddit r/boxoffice", weight: 0.8 },
+    ],
+
+    glossary: [
+      {
+        term: "MCU",
+        definition: "Киновселенная Marvel (Marvel Cinematic Universe)",
+        synonyms: ["Marvel Cinematic Universe", "киновселенная Марвел"],
+        doNotConfuseWith: ["DCEU"],
+      },
+      {
+        term: "камео",
+        definition: "Короткое эпизодическое появление известного персонажа или актера",
+        synonyms: ["cameo"],
+        doNotConfuseWith: ["главная роль"],
+      },
+      {
+        term: "посткредиты",
+        definition: "Сцена после титров фильма, тизерящая будущие проекты",
+        synonyms: ["post-credits scene", "сцена после титров"],
+        doNotConfuseWith: [],
+      },
+      {
+        term: "бокс-офис",
+        definition: "Кассовые сборы фильма в прокате",
+        synonyms: ["box office", "касса фильма"],
+        doNotConfuseWith: ["бюджет производства"],
+      },
+      {
+        term: "пасхалка",
+        definition: "Скрытая деталь, отсылка к комиксам или прошлым фильмам",
+        synonyms: ["easter egg"],
+        doNotConfuseWith: [],
+      },
+      {
+        term: "шоураннер",
+        definition: "Ключевой продюсер и сценарист сериала",
+        synonyms: ["showrunner"],
+        doNotConfuseWith: ["режиссер одного эпизода"],
+      },
+    ],
+
+    terminologyRules: {
+      mandatoryTerms: {
+        "marvel-mcu-lore": ["MCU", "Marvel", "комикс"],
+        "cinema-history-backstage": ["съемки", "кадр", "режиссер"],
+        "box-office-analytics": ["бокс-офис", "сборы", "бюджет"],
+        "daily-quick-recap": ["премьера", "анонс", "трейлер"],
+      },
+      forbiddenTerms: ["скучный фильм", "купите билет сейчас"],
+      preferredReplacements: {
+        "сцена после фильма": "посткредиты",
+        "кассовая выручка": "бокс-офис",
+      },
+    },
+
+    audiencePersonas: [
+      {
+        id: "marvel-fan",
+        label: "Фанат Marvel и комиксов",
+        description: "Смотрит все фильмы MCU, ищет пасхалки и теории",
+        painPoints: ["спойлеры", "задержки релизов", "недостоверные слухи"],
+        toneOfVoice: "engaging",
+      },
+      {
+        id: "cinema-enthusiast",
+        label: "Киноман и любитель закулисья",
+        description: "Интересуется историей кино, операторской работой и VFX",
+        painPoints: ["поверхностные обзоры", "отсутствие глубокого анализа"],
+        toneOfVoice: "engaging",
+      },
+      {
+        id: "industry-analyst",
+        label: "Аналитик киноиндустрии",
+        description: "Следит за кассовыми сборами, бюджетами и стримингами",
+        painPoints: ["неактуальная статистика сборов"],
+        toneOfVoice: "informational",
+      },
+    ],
+
+    contentStyleRules: {
+      maxEmojis: 5,
+      hashtagStrategy: "moderate",
+      formalityLevel: "casual",
+      forbiddenPhrases: ["купите билет", "подпишитесь немедленно"],
+      requiredDisclaimers: [],
+    },
+
+    brandGuidelines: {
+      colorPalette: ["#0D0E12", "#E23636", "#FFB800", "#00D2FF"],
+      templateSetId: "cinema-dark-neon",
+    },
+
+    complianceConfig: {
+      factCheckRequired: false,
+      factSourceType: "general",
+      regulatedIndustry: false,
+    },
+
+    platformAdaptation: [
+      {
+        platform: "telegram",
+        maxCaptionLength: 1000,
+        preferredFormats: ["carousel", "single-image"],
+        visualEmphasis: "visual-heavy",
+        hashtagCount: 5,
+        ctaStyle: "engaging",
+      },
+    ],
+
+    contentPillars: [
+      {
+        id: "marvel-mcu-lore",
+        label: "Marvel & Geek Lore",
+        description: "Разборы трейлеров по кадрам, скрытые пасхалки, теории фанатов, сравнение «Фильм vs Комикс», хронологии событий киновселенной.",
+        weight: 0.9,
+        preferredFormat: "carousel",
+      },
+      {
+        id: "cinema-history-backstage",
+        label: "История кино и Закулисье",
+        description: "«Как это снято»: культовые сцены без дублёров, революционные спецэффекты (VFX), актерские импровизации, режиссерские приёмы и конфликты на площадках.",
+        weight: 0.8,
+        preferredFormat: "carousel",
+      },
+      {
+        id: "box-office-analytics",
+        label: "Индустрия и Кассовые сборы",
+        description: "Аналитика сборов уикенда, рекорды и провалы, бюджеты блокбастеров, стратегии стримингов (Netflix, HBO Max, Disney+).",
+        weight: 0.7,
+        preferredFormat: "carousel",
+      },
+      {
+        id: "daily-quick-recap",
+        label: "Дайджест и Новости дня",
+        description: "Молнии, кастинги, анонсы дат премьер, свежие постеры и трейлеры дня (экспресс-дайджест за 60 секунд).",
+        weight: 0.8,
+        preferredFormat: "carousel",
+      },
+    ],
+  });
+
+  await orgsCol.updateOne(
+    { tenantId: cinemaOrg.tenantId },
+    { $set: cinemaOrg },
+    { upsert: true },
+  );
+  await profilesCol.updateOne(
+    { tenantId: cinemaProfile.tenantId },
+    { $set: cinemaProfile },
+    { upsert: true },
+  );
+  console.log(`Upserted Organization + IndustryProfile: ${cinemaOrg.tenantId}`);
+
   await disconnectMongo();
 }
 

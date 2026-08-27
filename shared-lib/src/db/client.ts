@@ -55,4 +55,5 @@ export const Collections = {
   GOLDEN_RU_THREADS: "golden_ru_threads",
   GOLDEN_EVALUATIONS: "golden_evaluations",
   GOLDEN_TESTO_PHARMA: "golden_testo_pharma",
+  GOLDEN_CINEMA_MEDIA: "golden_cinema_media",
 } as const;

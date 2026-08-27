@@ -331,6 +331,26 @@ ${filteredGlossary.map((g) => `- "${g.term}"${g.definition ? `: ${g.definition}`
 - Highlight key physical specs: measurement range, accuracy tolerances, IP protection class, battery/power specs, and memory capacity.
 - Explain the precise B2B business problem solved: eliminating human paper log errors, automated alarm dispatch via SMS/Email, passing FDA/EMA audits without findings.
 - Use relevant device hashtags ONLY (e.g., #testo #testosaveris #testo174t #testo883 #измерительныеприборы #gxp). Do NOT use tech/GitHub hashtags.`;
+  } else if (contentPillarId === "marvel-mcu-lore") {
+    rubricWritingInstruction = `\nSPECIFIC RUBRIC INSTRUCTION ("Marvel & Geek Lore"):
+- Structure this post as an exciting geek-breakdown of Marvel Cinematic Universe (MCU) news, trailers, fan theories, Easter eggs, or comic comparisons.
+- Tone: Engaging, enthusiastic geek journalism with intriguing hooks and discussion-provoking questions in CTA.
+- Use relevant Marvel/geek hashtags ONLY (e.g., #marvel #mcu #comics #geek #cinema).`;
+  } else if (contentPillarId === "cinema-history-backstage") {
+    rubricWritingInstruction = `\nSPECIFIC RUBRIC INSTRUCTION ("История кино и Закулисье"):
+- Structure this post as a captivating "How it was made" behind-the-scenes story of iconic film scenes, stunt work without double, revolutionary VFX, or director/actor improvisations.
+- Tone: Cinematic storytelling, fascinating production facts, and engaging tone.
+- Use relevant cinema hashtags ONLY (e.g., #cinema #backstage #filmmaking #vfx #hollywood).`;
+  } else if (contentPillarId === "box-office-analytics") {
+    rubricWritingInstruction = `\nSPECIFIC RUBRIC INSTRUCTION ("Индустрия и Кассовые сборы"):
+- Structure this post as an insightful box office & movie industry breakdown analyzing weekend grosses, blockbuster budgets, box office records/flops, or streaming strategies (Netflix, HBO Max, Disney+).
+- Tone: Analytical, sharp, engaging for film industry enthusiasts.
+- Use relevant industry hashtags ONLY (e.g., #boxoffice #cinema #hollywood #streaming #movieindustry).`;
+  } else if (contentPillarId === "daily-quick-recap") {
+    rubricWritingInstruction = `\nSPECIFIC RUBRIC INSTRUCTION ("Дайджест и Новости дня"):
+- Structure this post as a fast-paced 60-second express recap of major breaking movie news, castings, premiere date announcements, and fresh trailers.
+- Tone: Dynamic, concise, hype-driven news digest.
+- Use relevant movie news hashtags ONLY (e.g., #cinemanews #trailers #casting #premiere #movies).`;
   } else if (contentPillarId === "product-in-action" || contentPillarId === "before-after" || contentPillarId === "myths") {
     rubricWritingInstruction = `\nSPECIFIC RUBRIC INSTRUCTION ("Industrial Measurement & HVAC Calibration"):
 - Structure this post around real-world industrial measurement scenarios (HVAC/R, thermal imaging, calibration certificates).

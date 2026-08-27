@@ -35,6 +35,10 @@ export async function fetchReddit(profileTopics: string[] = [], limit = 10): Pro
     subreddits.push("typescript");
   }
 
+  if (topicLower.some((t) => t.includes("cinema") || t.includes("movie") || t.includes("marvel") || t.includes("mcu") || t.includes("film"))) {
+    subreddits.push("marvelstudios", "movies", "boxoffice", "television", "Marvel");
+  }
+
   const results: Array<{ title: string; url: string; score: number }> = [];
 
   for (const sub of subreddits) {

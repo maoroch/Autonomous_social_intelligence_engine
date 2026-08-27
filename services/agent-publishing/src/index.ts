@@ -8,6 +8,7 @@ import { GridFSBucket, ObjectId } from "mongodb";
 import AdmZip from "adm-zip";
 import { LinkedInPublisher } from "./publishers/linkedin.js";
 import { InstagramPublisher } from "./publishers/instagram.js";
+import { TelegramPublisher } from "./publishers/telegram.js";
 import type { PlatformPublisher, PublishCredentials } from "./publishers/types.js";
 
 const logger = createLogger("agent-publishing");
@@ -45,6 +46,7 @@ async function main() {
   const publishers: Partial<Record<PublishingPlatform, PlatformPublisher>> = {
     linkedin: new LinkedInPublisher(),
     instagram: new InstagramPublisher(uploadSlideAndGetPublicUrl),
+    telegram: new TelegramPublisher(),
   };
 
   /**

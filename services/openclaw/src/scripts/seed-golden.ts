@@ -36,6 +36,7 @@ async function main() {
     { file: "golden_ru_telegram.json", collection: Collections.GOLDEN_RU_TELEGRAM },
     { file: "golden_ru_threads.json", collection: Collections.GOLDEN_RU_THREADS },
     { file: "golden_testo_pharma.json", collection: Collections.GOLDEN_TESTO_PHARMA },
+    { file: "golden_cinema_media.json", collection: Collections.GOLDEN_CINEMA_MEDIA },
   ];
 
   for (const m of mappings) {

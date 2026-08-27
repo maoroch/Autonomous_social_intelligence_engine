@@ -73,9 +73,22 @@ function resolveStyleConfigs(industryProfile: IndustryProfile | undefined): Styl
     return SOFTWARE_DEV_STYLES;
   }
 
-  // Нишевые вертикали (Testo и будущие клиенты)
+  // Нишевые вертикали (Testo, cinema-media и будущие клиенты)
   const palette = industryProfile!.brandGuidelines.colorPalette;
-  
+
+  if (templateSetId === "cinema-dark-neon") {
+    return [
+      {
+        key: "cinema-dark-neon",
+        coverTemplate: "cinema-dark-neon/cover",
+        cardTemplate: "cinema-dark-neon/card",
+        defaultCoverBadge: "CINEMA HUB",
+        defaultCardBadge: "DETAILS",
+        brand: { accentColor: "#E23636", inkColor: "#FFFFFF", paperColor: "#0D0E12" },
+      },
+    ];
+  }
+
   // Create 3 specific styles for Testo Pharma
   if (templateSetId === "industrial-measurement-equipment") {
     return [
