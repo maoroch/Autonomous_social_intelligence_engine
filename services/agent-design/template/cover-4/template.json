@@ -1,0 +1,16 @@
+{
+  "id": "cover-4",
+  "name": "Blueprint / Spec (Sky)",
+  "tenants": [
+    "software-development-default"
+  ],
+  "cover": "cover.html",
+  "card": "card.html",
+  "defaultCoverBadge": "Blueprint",
+  "defaultCardBadge": "Spec",
+  "brand": {
+    "accentColor": "#0EA5E9",
+    "inkColor": "#FFFFFF",
+    "paperColor": "#0F172A"
+  }
+}

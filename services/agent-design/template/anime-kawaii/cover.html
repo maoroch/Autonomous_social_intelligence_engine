@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&family=M+PLUS+Rounded+1c:wght@700;800;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@700&display=swap');
+
+    * {
+      box-sizing: border-box;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 1080px;
+      height: 1350px;
+      background: #FFF5F8;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(255, 184, 0, 0.25) 0%, transparent 50%),
+        radial-gradient(circle at 90% 80%, rgba(255, 182, 193, 0.35) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(254, 240, 138, 0.3) 0%, transparent 60%);
+      color: #1E152A;
+      font-family: 'Inter', -apple-system, sans-serif;
+      overflow: hidden;
+      position: relative;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* Manga Screentone Dot Texture */
+    .manga-dots {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image: radial-gradient(rgba(255, 184, 0, 0.12) 1.5px, transparent 1.5px);
+      background-size: 24px 24px;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* Anime Visual Scene Backdrop */
+    .backdrop-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1080px;
+      height: 820px;
+      z-index: 1;
+      overflow: hidden;
+    }
+
+    .backdrop-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center 30%;
+      filter: saturate(1.15) brightness(1.02);
+      transform: scale(1.03);
+    }
+
+    .backdrop-gradient {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        180deg, 
+        rgba(255, 245, 248, 0.2) 0%, 
+        rgba(255, 245, 248, 0) 40%, 
+        rgba(255, 245, 248, 0.85) 75%, 
+        #FFF5F8 100%
+      );
+    }
+
+    .content-wrapper {
+      position: relative;
+      z-index: 3;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      justify-content: space-between;
+      padding: 60px 65px;
+    }
+
+    /* Header with Brand Pill and Gold Chip */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand-logo-pill {
+      display: flex;
+      align-items: center;
+      background: #0E1017;
+      border: 2px solid #FFB800;
+      padding: 8px 18px;
+      border-radius: 40px;
+      box-shadow: 0 8px 25px rgba(255, 184, 0, 0.25);
+    }
+
+    .brand-logo-pill img {
+      height: 32px;
+      width: auto;
+      display: block;
+    }
+
+    .slide-chip {
+      background: #FFFFFF;
+      border: 2px solid #FFB800;
+      color: #0E0D12;
+      font-family: 'Oswald', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 8px 22px;
+      border-radius: 30px;
+      box-shadow: 0 6px 20px rgba(255, 184, 0, 0.2);
+    }
+
+    /* Mid Sparkle Floating Callout */
+    .sparkle-callout {
+      align-self: flex-end;
+      margin-top: 180px;
+      background: rgba(255, 255, 255, 0.95);
+      border: 2px solid #FFB800;
+      border-radius: 16px;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 12px 35px rgba(255, 184, 0, 0.25);
+      backdrop-filter: blur(20px);
+    }
+
+    .callout-icon { font-size: 24px; }
+    .callout-text {
+      font-family: 'Oswald', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: #1E152A;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    /* Bottom Info Card */
+    .bottom-section {
+      background: rgba(255, 255, 255, 0.96);
+      border: 2px solid #FFE6A0;
+      border-left: 8px solid #FFB800;
+      border-radius: 28px;
+      padding: 38px 42px;
+      backdrop-filter: blur(30px);
+      box-shadow: 0 25px 60px rgba(255, 184, 0, 0.15), 0 10px 25px rgba(0, 0, 0, 0.05);
+    }
+
+    .category-strip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .cat-badge {
+      background: linear-gradient(135deg, #FFB800 0%, #FFA000 100%);
+      color: #08090C;
+      font-family: 'Oswald', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 6px 16px;
+      border-radius: 6px;
+      box-shadow: 0 4px 15px rgba(255, 184, 0, 0.3);
+    }
+
+    .jp-tag {
+      font-family: 'M PLUS Rounded 1c', sans-serif;
+      font-size: 15px;
+      color: #B45309;
+      font-weight: 800;
+    }
+
+    .headline {
+      font-family: 'Oswald', sans-serif;
+      font-size: 56px;
+      line-height: 1.12;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #1E152A;
+      margin-bottom: 18px;
+      letter-spacing: 1px;
+    }
+
+    .headline span.gold {
+      color: #D97706;
+      background: linear-gradient(90deg, #D97706 0%, #FFB800 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .summary-text {
+      font-size: 21px;
+      line-height: 1.55;
+      color: #4B4556;
+      font-weight: 400;
+      margin-bottom: 24px;
+    }
+
+    .footer-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 18px;
+      border-top: 1px solid #FEF3C7;
+    }
+
+    .swipe-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #FFB800 0%, #FFA000 100%);
+      color: #08090C;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      padding: 12px 28px;
+      border-radius: 30px;
+      box-shadow: 0 8px 25px rgba(255, 184, 0, 0.35);
+    }
+
+    .swipe-btn svg { width: 18px; height: 18px; fill: #08090C; }
+
+    .brand-footer {
+      background: #0E1017;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 184, 0, 0.4);
+    }
+
+    .brand-footer img {
+      height: 20px;
+      width: auto;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="manga-dots"></div>
+
+  <!-- Anime Visual Hero Backdrop -->
+  <div class="backdrop-container">
+    <img 
+      class="backdrop-image" 
+      src="https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=1200&auto=format&fit=crop" 
+      alt="Anime Scenic Visual"
+    />
+    <div class="backdrop-gradient"></div>
+  </div>
+
+  <div class="content-wrapper">
+    <!-- Header with SVG Logo -->
+    <div class="header">
+      <div class="brand-logo-pill">
+        <img src="assets/kinopeek-logo.svg" alt="KinoPeek">
+      </div>
+      <div class="slide-chip">1/5 🌸</div>
+    </div>
+
+    <!-- Mid Sparkle Hook Callout -->
+    <div class="sparkle-callout">
+      <div class="callout-icon">✨</div>
+      <div class="callout-text">ОФИЦИАЛЬНЫЙ АНОНС ФИНАЛА</div>
+    </div>
+
+    <!-- Bottom Kawaii Card -->
+    <div class="bottom-section">
+      <div class="category-strip">
+        <div class="cat-badge">ПРЕМЬЕРА СЕЗОНА</div>
+        <div class="jp-tag">✦ МАКСИМАЛЬНЫЙ РЕЙТИНГ</div>
+      </div>
+
+      <h1 class="headline">
+        ПОЧЕМУ НОВЫЙ СЕЗОН «КЛИНКА» <span class="gold">ВЗОРВАЛ МИРОВОЙ ТОП</span>
+      </h1>
+
+      <p class="summary-text">
+        Рекордные $30 000 000 бюджета на 3 финальных эпизода, революционная 2D+3D анимация от студии Ufotable и дата выхода полнометражной трилогии в кино.
+      </p>
+
+      <div class="footer-bar">
+        <div class="swipe-btn">
+          Смотреть разбор
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" stroke="#08090C" stroke-width="3" stroke-linecap="round"/></svg>
+        </div>
+        <div class="brand-footer">
+          <img src="assets/kinopeek-logo.svg" alt="KinoPeek">
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

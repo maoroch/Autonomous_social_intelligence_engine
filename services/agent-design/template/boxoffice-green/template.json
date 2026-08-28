@@ -1,0 +1,16 @@
+{
+  "id": "boxoffice-green",
+  "name": "Box Office Green (Кассовые сборы)",
+  "tenants": [
+    "cinema-media"
+  ],
+  "cover": "cover.html",
+  "card": "card.html",
+  "defaultCoverBadge": "КАССОВЫЕ СБОРЫ",
+  "defaultCardBadge": "РЕКОРДЫ",
+  "brand": {
+    "accentColor": "#00E676",
+    "inkColor": "#FFFFFF",
+    "paperColor": "#060A08"
+  }
+}

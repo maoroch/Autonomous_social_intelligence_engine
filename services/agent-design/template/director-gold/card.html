@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@700&display=swap');
+
+    * {
+      box-sizing: border-box;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 1080px;
+      height: 1350px;
+      background: #0A0A0E;
+      color: #FFFFFF;
+      font-family: 'Inter', -apple-system, sans-serif;
+      overflow: hidden;
+      position: relative;
+      padding: 55px 65px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .header, .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .tag-badge {
+      background: rgba(255, 184, 0, 0.15);
+      border: 1px solid #FFB800;
+      color: #FFB800;
+      font-family: 'Oswald', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      padding: 6px 16px;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+
+    .page-indicator {
+      font-size: 18px;
+      font-weight: 700;
+      color: #FFB800;
+      background: rgba(255, 184, 0, 0.12);
+      border: 1px solid rgba(255, 184, 0, 0.3);
+      padding: 6px 16px;
+      border-radius: 20px;
+    }
+
+    /* Scene Set Photo Box */
+    .scene-preview-box {
+      width: 100%;
+      height: 470px;
+      border-radius: 20px;
+      overflow: hidden;
+      position: relative;
+      border: 2px solid rgba(255, 184, 0, 0.4);
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8);
+      margin-top: 15px;
+      margin-bottom: 25px;
+    }
+
+    .scene-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: contrast(1.1);
+    }
+
+    .scene-badge-top {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(15, 14, 20, 0.9);
+      border: 1px solid #FFB800;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      color: #FFB800;
+    }
+
+    .scene-badge-bottom {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      background: rgba(0, 0, 0, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: #E2E8F0;
+    }
+
+    /* Analysis Content */
+    .content-box {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .headline {
+      font-family: 'Oswald', sans-serif;
+      font-size: 46px;
+      line-height: 1.15;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #FFFFFF;
+    }
+
+    .points-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .point-card {
+      background: rgba(22, 21, 28, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 18px 22px;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .point-card.quote {
+      border: 1px solid rgba(255, 184, 0, 0.4);
+      border-left: 5px solid #FFB800;
+      background: rgba(30, 26, 18, 0.9);
+    }
+
+    .point-icon {
+      flex-shrink: 0;
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      background: #FFB800;
+      color: #0E0D12;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+    }
+
+    .point-text {
+      font-size: 19px;
+      line-height: 1.45;
+      color: #D6D5E0;
+    }
+
+    .point-text strong {
+      color: #FFFFFF;
+      font-weight: 700;
+    }
+
+    .footer {
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .brand-footer img {
+      height: 24px;
+      width: auto;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Navigation -->
+  <div class="header">
+    <div class="tag-badge">ФАКТ №1 // СЦЕНА ВЗРЫВА</div>
+    <div class="page-indicator">2/5</div>
+  </div>
+
+  <!-- Film Set Live Photo Frame -->
+  <div class="scene-preview-box">
+    <img 
+      class="scene-img" 
+      src="https://images.unsplash.com/photo-1518676590629-3dcbd9c5a5c9?q=80&w=1000&auto=format&fit=crop" 
+      alt="Behind the scenes explosion"
+    />
+    <div class="scene-badge-top">
+      <span>● КАМЕРА: IMAX 15/70MM</span>
+    </div>
+    <div class="scene-badge-bottom">
+      ФОТО СО СЪЕМОЧНОЙ ПЛОЩАДКИ
+    </div>
+  </div>
+
+  <!-- Content Breakdown -->
+  <div class="content-box">
+    <h2 class="headline">
+      Леджер не вышел из образа при сбое детонатора
+    </h2>
+
+    <div class="points-list">
+      <div class="point-card quote">
+        <div class="point-icon">🎬</div>
+        <div class="point-text">
+          <strong>«Он начал нервно бить по пульту»:</strong> Часть пиротехники задержалась на 4 секунды. Вместо остановки сцены актер сымпровизировал и создал культовый момент.
+        </div>
+      </div>
+
+      <div class="point-card">
+        <div class="point-icon">💥</div>
+        <div class="point-text">
+          <strong>Настоящее здание фабрики в Чикаго:</strong> 400 кг взрывчатки разрушили реальное строение за $5 000 000 — права на ошибку не было.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer with KinoPeek Logo -->
+  <div class="footer">
+    <div style="font-family: 'JetBrains Mono'; font-size: 14px; color: #8C8A99; font-weight: 700;">
+      DIRECTOR: C. NOLAN // TAKE: 1
+    </div>
+    <div class="brand-footer">
+      <img src="assets/kinopeek-logo.svg" alt="KinoPeek">
+    </div>
+  </div>
+</body>
+</html>

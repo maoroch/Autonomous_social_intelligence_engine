@@ -1,0 +1,17 @@
+{
+  "id": "industrial-measurement-equipment",
+  "name": "🔶 Testo Brand (Default)",
+  "description": "Swiss Editorial Light layout with high-contrast typography and metric stats",
+  "tenants": ["testo"],
+  "cover": "cover.html",
+  "card": "card.html",
+  "defaultCoverBadge": "B2B CASE",
+  "defaultCardBadge": "TECHNICAL OVERVIEW",
+  "brand": {
+    "accentColor": "#FF7900",
+    "inkColor": "#09090B",
+    "paperColor": "#F8F8F5"
+  },
+  "bulletFormat": "card-box",
+  "tags": ["testo", "industrial", "editorial", "b2b", "instagram"]
+}

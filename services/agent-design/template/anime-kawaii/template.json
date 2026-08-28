@@ -1,0 +1,16 @@
+{
+  "id": "anime-kawaii",
+  "name": "Anime Kawaii Hub (Аниме релизы)",
+  "tenants": [
+    "cinema-media"
+  ],
+  "cover": "cover.html",
+  "card": "card.html",
+  "defaultCoverBadge": "ПРЕМЬЕРА СЕЗОНА",
+  "defaultCardBadge": "АНИМАЦИЯ",
+  "brand": {
+    "accentColor": "#FF4081",
+    "inkColor": "#FFFFFF",
+    "paperColor": "#0D0A14"
+  }
+}

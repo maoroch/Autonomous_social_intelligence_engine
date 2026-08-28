@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@700&display=swap');
+
+    * {
+      box-sizing: border-box;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 1080px;
+      height: 1350px;
+      background: #090A0F;
+      color: #FFFFFF;
+      font-family: 'Inter', -apple-system, sans-serif;
+      overflow: hidden;
+      position: relative;
+      padding: 55px 65px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* Top Frame: Actual Scene Screenshot */
+    .scene-preview-box {
+      width: 100%;
+      height: 480px;
+      border-radius: 20px;
+      overflow: hidden;
+      position: relative;
+      border: 2px solid rgba(255, 184, 0, 0.4);
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8);
+      margin-top: 15px;
+      margin-bottom: 25px;
+    }
+
+    .scene-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .scene-badge-top {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(10, 12, 18, 0.9);
+      border: 1px solid #FFB800;
+      backdrop-filter: blur(12px);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      color: #FFB800;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .zoom-highlight-circle {
+      position: absolute;
+      right: 120px;
+      top: 90px;
+      width: 130px;
+      height: 130px;
+      border: 3px dashed #FFB800;
+      border-radius: 50%;
+      box-shadow: 0 0 25px rgba(255, 184, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .zoom-pointer {
+      background: #FFB800;
+      color: #08090C;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 4px;
+      position: absolute;
+      bottom: -25px;
+      white-space: nowrap;
+    }
+
+    /* Content Area */
+    .content-box {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .headline {
+      font-family: 'Oswald', sans-serif;
+      font-size: 46px;
+      line-height: 1.15;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #FFFFFF;
+    }
+
+    .points-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .point-card {
+      background: rgba(18, 20, 31, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 18px 22px;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .point-card.featured {
+      border: 1px solid rgba(255, 184, 0, 0.5);
+      border-left: 5px solid #FFB800;
+      background: rgba(28, 22, 16, 0.9);
+    }
+
+    .point-num {
+      flex-shrink: 0;
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      background: #FFB800;
+      color: #08090C;
+      font-family: 'Oswald', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .point-text {
+      font-size: 19px;
+      line-height: 1.45;
+      color: #E2E8F0;
+    }
+
+    .point-text strong {
+      color: #FFFFFF;
+      font-weight: 700;
+    }
+
+    /* Header & Footer */
+    .header, .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .tag-badge {
+      background: rgba(255, 184, 0, 0.15);
+      border: 1px solid #FFB800;
+      color: #FFB800;
+      font-family: 'Oswald', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+
+    .page-indicator {
+      font-size: 18px;
+      font-weight: 700;
+      color: #FFB800;
+      background: rgba(255, 184, 0, 0.12);
+      border: 1px solid rgba(255, 184, 0, 0.3);
+      padding: 6px 16px;
+      border-radius: 20px;
+    }
+
+    .footer {
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .brand-footer img {
+      height: 24px;
+      width: auto;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Navigation -->
+  <div class="header">
+    <div class="tag-badge">ДЕТАЛЬ №1 // ОРУЖИЕ ДУМА</div>
+    <div class="page-indicator">2/6</div>
+  </div>
+
+  <!-- Scene Screenshot with Zoom Highlight -->
+  <div class="scene-preview-box">
+    <img 
+      class="scene-img" 
+      src="{{SCENE_IMAGE}}" 
+      alt="Scene Analysis"
+    />
+    <div class="scene-badge-top">
+      <span>● КАДР: 00:42:18</span>
+    </div>
+    <div class="zoom-highlight-circle">
+      <div class="zoom-pointer">ТЕМНЫЙ КЛИНОК</div>
+    </div>
+  </div>
+
+  <!-- Analysis Content -->
+  <div class="content-box">
+    <h2 class="headline">
+      Клинок Потустороннего в руках Доктора Дума
+    </h2>
+
+    <div class="points-list">
+      <div class="point-card featured">
+        <div class="point-num">01</div>
+        <div class="point-text">
+          <strong>Прямая связь с комиксом 2015 года:</strong> Рукоять меча светится тем же фиолетовым спектром, которым обладали Создатели Мультивселенной.
+        </div>
+      </div>
+
+      <div class="point-card">
+        <div class="point-num">02</div>
+        <div class="point-text">
+          <strong>Тайный союз:</strong> На заднем плане за троном Дума виден герб клана Асгарда, подтверждающий слух о предательстве Локи.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer with KinoPeek Logo -->
+  <div class="footer">
+    <div style="font-family: 'JetBrains Mono'; font-size: 15px; color: #FFB800; font-weight: 700;">
+      TIMELINE 616 // CONFIRMED
+    </div>
+    <div class="brand-footer">
+      <img src="assets/kinopeek-logo.svg" alt="KinoPeek">
+    </div>
+  </div>
+</body>
+</html>

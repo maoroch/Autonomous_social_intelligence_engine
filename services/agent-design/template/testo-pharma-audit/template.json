@@ -1,0 +1,17 @@
+{
+  "id": "testo-pharma-audit",
+  "name": "Testo Audit Green",
+  "description": "Quality Assurance & Audit Readiness Theme",
+  "tenants": ["testo"],
+  "cover": "cover.html",
+  "card": "card.html",
+  "defaultCoverBadge": "QA",
+  "defaultCardBadge": "AUDIT",
+  "brand": {
+    "accentColor": "#10B981",
+    "inkColor": "#14171A",
+    "paperColor": "#FAF9F6"
+  },
+  "bulletFormat": "card-box",
+  "tags": ["testo", "audit", "qa"]
+}

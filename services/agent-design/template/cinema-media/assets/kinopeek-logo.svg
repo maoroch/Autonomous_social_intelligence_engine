@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 54" width="280" height="54" fill="none">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@700&amp;display=swap');
+      .kino-txt {
+        font-family: 'Oswald', -apple-system, sans-serif;
+        font-weight: 700;
+        font-size: 30px;
+        fill: #FFFFFF;
+        text-transform: uppercase;
+        letter-spacing: 4px;
+      }
+      .peek-txt {
+        font-family: 'Oswald', -apple-system, sans-serif;
+        font-weight: 700;
+        font-size: 32px;
+        fill: #FFB800;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+      }
+    </style>
+  </defs>
+
+  <!-- KINO Box (Yellow Border, Rounded) -->
+  <g transform="translate(4, 4)">
+    <rect x="0" y="0" width="124" height="46" rx="10" stroke="#FFB800" stroke-width="3" fill="rgba(255,184,0,0.08)"/>
+    <text x="64" y="34" text-anchor="middle" class="kino-txt">KINO</text>
+  </g>
+
+  <!-- PEEK Text (No Star) -->
+  <g transform="translate(142, 4)">
+    <text x="0" y="35" class="peek-txt">PEEK</text>
+  </g>
+</svg>

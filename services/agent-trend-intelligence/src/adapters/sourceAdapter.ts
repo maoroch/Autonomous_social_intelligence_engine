@@ -17,38 +17,85 @@ async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Respons
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, { signal: controller.signal });
+    return await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "application/json, application/xml, text/xml, text/html, */*",
+      },
+    });
   } finally {
     clearTimeout(timeoutId);
   }
 }
 
-/** Минимальный RSS/Atom-парсер без внешних зависимостей — достаточно для title/link большинства фидов. */
-function parseRssItems(xml: string, limit: number): Array<{ title: string; url: string }> {
-  const items: Array<{ title: string; url: string }> = [];
+function cleanHtmlToText(rawHtml: string): string {
+  if (!rawHtml) return "";
+  return rawHtml
+    .replace(/<!\[CDATA\[|\]\]>/g, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<figcaption[\s\S]*?<\/figcaption>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;|&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Минимальный RSS/Atom-парсер с извлечением полного текста статей. */
+function parseRssItems(
+  xml: string,
+  limit: number
+): Array<{ title: string; url: string; fullText?: string; summary?: string }> {
+  const items: Array<{ title: string; url: string; fullText?: string; summary?: string }> = [];
   const itemBlocks = xml.match(/<item[\s\S]*?<\/item>/gi) ?? xml.match(/<entry[\s\S]*?<\/entry>/gi) ?? [];
 
   for (const block of itemBlocks.slice(0, limit)) {
     const titleMatch = block.match(/<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/i);
     const linkMatch =
       block.match(/<link(?:\s[^>]*)?>([\s\S]*?)<\/link>/i) ?? block.match(/<link[^>]*href=["']([^"']+)["']/i);
+    const contentMatch =
+      block.match(/<content:encoded(?:\s[^>]*)?>([\s\S]*?)<\/content:encoded>/i) ??
+      block.match(/<content(?:\s[^>]*)?>([\s\S]*?)<\/content>/i) ??
+      block.match(/<description(?:\s[^>]*)?>([\s\S]*?)<\/description>/i) ??
+      block.match(/<summary(?:\s[^>]*)?>([\s\S]*?)<\/summary>/i);
 
     const titleCaptured = titleMatch?.[1];
     if (!titleCaptured) continue;
 
-    const rawTitle = titleCaptured.replace(/<!\[CDATA\[|\]\]>/g, "").trim();
+    const rawTitle = cleanHtmlToText(titleCaptured);
     const rawUrl = (linkMatch?.[1] ?? "").replace(/<!\[CDATA\[|\]\]>/g, "").trim();
+    const rawContent = contentMatch?.[1] ? cleanHtmlToText(contentMatch[1]) : "";
 
     if (rawTitle && rawUrl) {
-      items.push({ title: rawTitle, url: rawUrl });
+      const fullText = rawContent.substring(0, 5000);
+      const summary = fullText.length > 250 ? `${fullText.substring(0, 250)}...` : fullText;
+      items.push({ title: rawTitle, url: rawUrl, fullText: fullText || rawTitle, summary: summary || rawTitle });
     }
   }
   return items;
 }
 
+export interface SourceAdapterResultItem {
+  title: string;
+  url: string;
+  score: number;
+  fullText?: string;
+  summary?: string;
+}
+
+export interface SourceAdapter {
+  fetch(config: TrendSourceConfig): Promise<SourceAdapterResultItem[]>;
+}
+
 /** RSS/Atom-фиды: пресс-центры производителей, отраслевые новостные ленты. */
 export class RssAdapter implements SourceAdapter {
-  async fetch(config: TrendSourceConfig): Promise<Array<{ title: string; url: string; score: number }>> {
+  async fetch(config: TrendSourceConfig): Promise<SourceAdapterResultItem[]> {
     try {
       const res = await fetchWithTimeout(config.url, 8000);
       if (!res.ok) {
@@ -57,8 +104,10 @@ export class RssAdapter implements SourceAdapter {
       }
       const xml = await res.text();
       const items = parseRssItems(xml, 15);
-      // score фиксированный, т.к. RSS-фиды обычно не дают метрику популярности — приоритет через config.weight.
-      return items.map((item) => ({ ...item, score: Math.round(config.weight * 100) }));
+      return items.map((item) => ({
+        ...item,
+        score: Math.round(config.weight * 100),
+      }));
     } catch (err) {
       logger.error({ err, url: config.url }, "RssAdapter fetch failed");
       return [];

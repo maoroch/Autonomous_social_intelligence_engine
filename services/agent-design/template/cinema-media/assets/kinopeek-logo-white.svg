@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 350 64" width="350" height="64" fill="none">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@700&amp;display=swap');
+      .kino-white-exact {
+        font-family: 'Oswald', -apple-system, sans-serif;
+        font-weight: 700;
+        font-size: 34px;
+        fill: #FFFFFF;
+        text-transform: uppercase;
+        text-anchor: middle;
+        dominant-baseline: central;
+      }
+      .peek-white-exact {
+        font-family: 'Oswald', -apple-system, sans-serif;
+        font-weight: 700;
+        font-size: 34px;
+        fill: #FFFFFF;
+        text-transform: uppercase;
+        dominant-baseline: central;
+      }
+    </style>
+  </defs>
+
+  <g id="kino-box-group">
+    <rect x="6" y="7" width="136" height="50" rx="8" stroke="#FFFFFF" stroke-width="3" fill="rgba(255,255,255,0.06)"/>
+    <text x="74" y="32" class="kino-white-exact"><tspan dx="-4">K</tspan><tspan dx="5">I</tspan><tspan dx="5">N</tspan><tspan dx="5">O</tspan></text>
+  </g>
+
+  <g id="peek-group" transform="translate(160, 0)">
+    <text x="0" y="32" class="peek-white-exact"><tspan>P</tspan><tspan dx="3">E</tspan><tspan dx="3">E</tspan><tspan dx="3">K</tspan></text>
+    <path d="M 94 32 Q 104 32 104 22 Q 104 32 114 32 Q 104 32 104 42 Q 104 32 94 32 Z" fill="#FFFFFF"/>
+  </g>
+</svg>

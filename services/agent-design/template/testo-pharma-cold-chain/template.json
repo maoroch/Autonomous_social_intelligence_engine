@@ -1,0 +1,17 @@
+{
+  "id": "testo-pharma-cold-chain",
+  "name": "Testo Cold Chain Cyan",
+  "description": "Pharma Logistics & Cold Chain Temperature Monitoring",
+  "tenants": ["testo"],
+  "cover": "cover.html",
+  "card": "card.html",
+  "defaultCoverBadge": "LOGISTICS",
+  "defaultCardBadge": "GDP",
+  "brand": {
+    "accentColor": "#06B6D4",
+    "inkColor": "#14171A",
+    "paperColor": "#FAF9F6"
+  },
+  "bulletFormat": "card-box",
+  "tags": ["testo", "cold-chain", "logistics"]
+}

@@ -175,7 +175,7 @@ export async function handleAgentCompleted(
   await stageResultsCol.insertOne({
     runId,
     stage,
-    attempt: run.retries[stage] ?? 1,
+    attempt: run.retries?.[stage] ?? 1,
     result,
     createdAt: new Date(),
   });
@@ -229,6 +229,15 @@ export async function handleAgentCompleted(
       );
       return;
     }
+  }
+
+  if (stage === PipelineStage.WRITING && run.tenantId === "cinema-media") {
+    // Media portal (cinema-media) publishes text directly to Telegram without carousel design agent
+    const next = PipelineStage.SEO;
+    await runs.updateOne({ runId }, { $set: { currentStage: next, updatedAt: new Date() } });
+    await enqueueStage(queues, runId, next, result);
+    logger.info({ runId, from: stage, to: next }, "advanced directly from WRITING to SEO (skipping DESIGN for cinema-media)");
+    return;
   }
 
   const next = nextAgentStage(stage);

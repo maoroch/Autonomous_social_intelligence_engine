@@ -1,0 +1,16 @@
+{
+  "id": "cover-3",
+  "name": "Terminal / Code (Dark)",
+  "tenants": [
+    "software-development-default"
+  ],
+  "cover": "cover.html",
+  "card": "card.html",
+  "defaultCoverBadge": "Terminal",
+  "defaultCardBadge": "Code",
+  "brand": {
+    "accentColor": "#10B981",
+    "inkColor": "#FFFFFF",
+    "paperColor": "#0D1117"
+  }
+}

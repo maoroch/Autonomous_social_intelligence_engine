@@ -1,0 +1,16 @@
+{
+  "id": "cover-7",
+  "name": "Matrix Syntax (Teal)",
+  "tenants": [
+    "software-development-default"
+  ],
+  "cover": "cover.html",
+  "card": "card.html",
+  "defaultCoverBadge": "Matrix",
+  "defaultCardBadge": "Syntax",
+  "brand": {
+    "accentColor": "#059669",
+    "inkColor": "#FFFFFF",
+    "paperColor": "#030712"
+  }
+}

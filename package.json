@@ -17,7 +17,9 @@
     "dev:design": "npm run dev -w services/agent-design",
     "dev:seo": "npm run dev -w services/agent-seo",
     "dev:publishing": "npm run dev -w services/agent-publishing",
+    "dev:bot": "npm run dev -w services/telegram-bot",
     "dev:dashboard": "npm run dev -w web-dashboard",
+    "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },

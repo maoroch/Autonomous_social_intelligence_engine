@@ -1,0 +1,16 @@
+{
+  "id": "cover-2",
+  "name": "AI Agents (Indigo)",
+  "tenants": [
+    "software-development-default"
+  ],
+  "cover": "cover.html",
+  "card": "card.html",
+  "defaultCoverBadge": "AI Agents",
+  "defaultCardBadge": "Setup",
+  "brand": {
+    "accentColor": "#6366F1",
+    "inkColor": "#FFFFFF",
+    "paperColor": "#1E1B4B"
+  }
+}

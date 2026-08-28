@@ -216,6 +216,28 @@ services:
       redis:
         condition: service_healthy
 
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE_DIR: services/telegram-bot
+    ports:
+      - "4009:4009"
+    environment:
+      PORT: 4009
+      REDIS_URL: redis://redis:6379
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB_NAME: linkedin_pipeline
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_ADMIN_CHAT_ID: ${TELEGRAM_ADMIN_CHAT_ID:-}
+      OPENCLAW_PUBLIC_BASE_URL: http://openclaw:4000
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+
   web-dashboard:
     build:
       context: .

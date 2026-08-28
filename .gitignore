@@ -45,3 +45,6 @@ tmp/
 temp/
 coverage/
 .nyc_output/
+
+# Strategy & Internal Business Research
+docs/strategy/

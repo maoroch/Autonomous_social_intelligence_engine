@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@700&display=swap');
+
+    * {
+      box-sizing: border-box;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 1080px;
+      height: 1350px;
+      background: #08080B;
+      color: #FFFFFF;
+      font-family: 'Inter', -apple-system, sans-serif;
+      overflow: hidden;
+      position: relative;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* Celebrity/Actor Hero Backdrop Photo */
+    .backdrop-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1080px;
+      height: 850px;
+      z-index: 1;
+      overflow: hidden;
+    }
+
+    .backdrop-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center 20%;
+      filter: brightness(0.9) contrast(1.1);
+      transform: scale(1.04);
+    }
+
+    .backdrop-gradient {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        180deg, 
+        rgba(8, 8, 11, 0.4) 0%, 
+        rgba(8, 8, 11, 0) 30%, 
+        rgba(8, 8, 11, 0.75) 68%, 
+        #08080B 100%
+      );
+    }
+
+    .content-wrapper {
+      position: relative;
+      z-index: 3;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      justify-content: space-between;
+      padding: 60px 65px;
+    }
+
+    /* Header with SVG Logo */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand-logo-pill {
+      display: flex;
+      align-items: center;
+      background: rgba(12, 12, 16, 0.88);
+      border: 1px solid rgba(255, 230, 0, 0.4);
+      padding: 8px 18px;
+      border-radius: 40px;
+      backdrop-filter: blur(15px);
+    }
+
+    .brand-logo-pill img {
+      height: 32px;
+      width: auto;
+      display: block;
+    }
+
+    .read-time-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      color: #FFE600;
+      background: rgba(10, 10, 14, 0.85);
+      border: 1px solid rgba(255, 230, 0, 0.4);
+      padding: 8px 18px;
+      border-radius: 30px;
+      backdrop-filter: blur(15px);
+    }
+
+    /* Mid Casting Callout Anchor */
+    .casting-callout {
+      align-self: flex-start;
+      margin-top: 190px;
+      background: rgba(15, 14, 20, 0.92);
+      border: 2px solid #FFE600;
+      border-radius: 12px;
+      padding: 14px 22px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 10px 30px rgba(255, 230, 0, 0.4);
+      backdrop-filter: blur(20px);
+    }
+
+    .callout-icon { font-size: 22px; }
+    .callout-text {
+      font-family: 'Oswald', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      color: #FFFFFF;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    /* Bottom Info Card */
+    .bottom-section {
+      background: linear-gradient(180deg, rgba(20, 19, 26, 0.96) 0%, rgba(10, 9, 14, 0.98) 100%);
+      border: 1px solid rgba(255, 230, 0, 0.25);
+      border-left: 6px solid #FFE600;
+      border-radius: 24px;
+      padding: 38px 40px;
+      backdrop-filter: blur(30px);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9);
+    }
+
+    .category-strip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .cat-badge {
+      background: #FFE600;
+      color: #0E0C00;
+      font-family: 'Oswald', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 6px 14px;
+      border-radius: 6px;
+    }
+
+    .cat-meta {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      color: #CBD5E1;
+      font-weight: 700;
+    }
+
+    .headline {
+      font-family: 'Oswald', sans-serif;
+      font-size: 56px;
+      line-height: 1.12;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #FFFFFF;
+      margin-bottom: 20px;
+    }
+
+    .headline span.yellow {
+      color: #FFE600;
+      background: linear-gradient(90deg, #FFE600 0%, #FF9900 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .summary-text {
+      font-size: 21px;
+      line-height: 1.5;
+      color: #D8D6E2;
+      font-weight: 400;
+      margin-bottom: 26px;
+    }
+
+    .footer-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .swipe-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: #FFE600;
+      color: #0E0C00;
+      font-size: 18px;
+      font-weight: 800;
+      padding: 12px 26px;
+      border-radius: 30px;
+    }
+
+    .swipe-btn svg { width: 18px; height: 18px; fill: #0E0C00; }
+
+    .brand-footer img {
+      height: 24px;
+      width: auto;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <!-- Cast Photo Backdrop Scene -->
+  <div class="backdrop-container">
+    <img 
+      class="backdrop-image" 
+      src="https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=1200&auto=format&fit=crop" 
+      alt="Actor Spotlight Casting"
+    />
+    <div class="backdrop-gradient"></div>
+  </div>
+
+  <div class="content-wrapper">
+    <!-- Header with SVG Logo -->
+    <div class="header">
+      <div class="brand-logo-pill">
+        <img src="assets/kinopeek-logo.svg" alt="KinoPeek">
+      </div>
+      <div class="read-time-pill">⏱️ 60 СЕК ЧТЕНИЯ</div>
+    </div>
+
+    <!-- Live Callout -->
+    <div class="casting-callout">
+      <div class="callout-icon">🎭</div>
+      <div class="callout-text">ОФИЦИАЛЬНОЕ УТВЕРЖДЕНИЕ РОЛИ</div>
+    </div>
+
+    <!-- Bottom Eye-Catching Card -->
+    <div class="bottom-section">
+      <div class="category-strip">
+        <div class="cat-badge">ГЛАВНЫЙ АНОНС</div>
+        <div class="cat-meta">HBO MAX // 7 СЕЗОНОВ</div>
+      </div>
+
+      <h1 class="headline">
+        ОФИЦИАЛЬНО НАЗВАН <span class="yellow">АКТЕРСКИЙ СОСТАВ СЕРИАЛА</span> ПО «ГАРРИ ПОТТЕРУ»
+      </h1>
+
+      <p class="summary-text">
+        Кастинг завершен среди 30 000 претендентов: утверждены Золотое Трио, Дамблдор и Снейп. Съемки первого сезона стартуют в Ливсдене через 2 месяца.
+      </p>
+
+      <div class="footer-bar">
+        <div class="swipe-btn">
+          Смотреть фото каста
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" stroke="#0E0C00" stroke-width="2.5" stroke-linecap="round"/></svg>
+        </div>
+        <div class="brand-footer">
+          <img src="assets/kinopeek-logo.svg" alt="KinoPeek">
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

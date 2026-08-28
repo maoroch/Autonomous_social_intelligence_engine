@@ -217,6 +217,13 @@ async function main() {
       },
     ],
 
+    trendSources: [
+      { type: "rss", url: "https://www.plantengineering.com/feed/", label: "Plant Engineering (Industrial & Emissions)", weight: 1.0 },
+      { type: "rss", url: "https://www.pharmaceutical-technology.com/feed/", label: "Pharmaceutical Technology (GxP & Compliance)", weight: 1.0 },
+      { type: "rss", url: "https://www.worldpharmanews.com/index.php?format=feed&type=rss", label: "World Pharma News (Cold Chain & Quality)", weight: 0.9 },
+      { type: "rss", url: "https://www.processindustryforum.com/feed", label: "Process Industry Forum (Sensors & Measurement)", weight: 0.9 },
+    ],
+
     contentStyleRules: {
       maxEmojis: 0,
       hashtagStrategy: "moderate",
@@ -296,13 +303,10 @@ async function main() {
     language: ["ru"],
 
     trendSources: [
-      { type: "rss", url: "https://variety.com/feed/", label: "Variety News", weight: 0.9 },
-      { type: "rss", url: "https://www.hollywoodreporter.com/feed/", label: "The Hollywood Reporter", weight: 0.9 },
-      { type: "rss", url: "https://deadline.com/feed/", label: "Deadline Hollywood", weight: 0.9 },
-      { type: "rss", url: "https://collider.com/feed/", label: "Collider", weight: 0.8 },
-      { type: "scrape", url: "https://www.reddit.com/r/marvelstudios/hot.json", label: "Reddit r/marvelstudios", weight: 0.9 },
-      { type: "scrape", url: "https://www.reddit.com/r/movies/hot.json", label: "Reddit r/movies", weight: 0.9 },
-      { type: "scrape", url: "https://www.reddit.com/r/boxoffice/hot.json", label: "Reddit r/boxoffice", weight: 0.8 },
+      { type: "rss", url: "https://www.denofgeek.com/feed/", label: "Den of Geek (All)", weight: 1.0 },
+      { type: "rss", url: "https://www.denofgeek.com/movies/feed/", label: "Den of Geek (Movies)", weight: 1.0 },
+      { type: "rss", url: "https://www.denofgeek.com/tv/feed/", label: "Den of Geek (TV & Shows)", weight: 0.9 },
+      { type: "rss", url: "https://www.denofgeek.com/culture/feed/", label: "Den of Geek (Culture & Lore)", weight: 0.9 },
     ],
 
     glossary: [
@@ -364,40 +368,40 @@ async function main() {
         label: "Фанат Marvel и комиксов",
         description: "Смотрит все фильмы MCU, ищет пасхалки и теории",
         painPoints: ["спойлеры", "задержки релизов", "недостоверные слухи"],
-        toneOfVoice: "engaging",
+        toneOfVoice: "casual",
       },
       {
         id: "cinema-enthusiast",
         label: "Киноман и любитель закулисья",
         description: "Интересуется историей кино, операторской работой и VFX",
         painPoints: ["поверхностные обзоры", "отсутствие глубокого анализа"],
-        toneOfVoice: "engaging",
+        toneOfVoice: "casual",
       },
       {
         id: "industry-analyst",
         label: "Аналитик киноиндустрии",
         description: "Следит за кассовыми сборами, бюджетами и стримингами",
         painPoints: ["неактуальная статистика сборов"],
-        toneOfVoice: "informational",
+        toneOfVoice: "semi-formal",
       },
     ],
 
     contentStyleRules: {
       maxEmojis: 5,
       hashtagStrategy: "moderate",
-      formalityLevel: "casual",
+      formalityLevel: "relaxed",
       forbiddenPhrases: ["купите билет", "подпишитесь немедленно"],
       requiredDisclaimers: [],
     },
 
     brandGuidelines: {
-      colorPalette: ["#0D0E12", "#E23636", "#FFB800", "#00D2FF"],
-      templateSetId: "cinema-dark-neon",
+      colorPalette: ["#08090C", "#FFB800", "#FFFFFF", "#1E152A"],
+      templateSetId: "cinema-media",
     },
 
     complianceConfig: {
       factCheckRequired: false,
-      factSourceType: "general",
+      factSourceType: "none",
       regulatedIndustry: false,
     },
 
@@ -408,7 +412,7 @@ async function main() {
         preferredFormats: ["carousel", "single-image"],
         visualEmphasis: "visual-heavy",
         hashtagCount: 5,
-        ctaStyle: "engaging",
+        ctaStyle: "direct",
       },
     ],
 
@@ -438,6 +442,13 @@ async function main() {
         id: "daily-quick-recap",
         label: "Дайджест и Новости дня",
         description: "Молнии, кастинги, анонсы дат премьер, свежие постеры и трейлеры дня (экспресс-дайджест за 60 секунд).",
+        weight: 0.8,
+        preferredFormat: "carousel",
+      },
+      {
+        id: "anime-kawaii-hub",
+        label: "Аниме-культура и Релизы",
+        description: "Разборы главных аниме-сезонов, анимация Ufotable/Mappa, полнометражные трилогии, премьеры и рекорды японского проката.",
         weight: 0.8,
         preferredFormat: "carousel",
       },

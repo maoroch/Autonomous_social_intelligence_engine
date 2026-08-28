@@ -1,0 +1,16 @@
+{
+  "id": "cover-5",
+  "name": "Glass Insight (Purple)",
+  "tenants": [
+    "software-development-default"
+  ],
+  "cover": "cover.html",
+  "card": "card.html",
+  "defaultCoverBadge": "Glass",
+  "defaultCardBadge": "Insight",
+  "brand": {
+    "accentColor": "#8B5CF6",
+    "inkColor": "#FFFFFF",
+    "paperColor": "#090D16"
+  }
+}

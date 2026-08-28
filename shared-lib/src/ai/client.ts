@@ -69,44 +69,36 @@ export class AiClient {
       openrouter: { key: this.config.openrouterApiKey, call: () => this.callOpenRouter(messages, options) },
     };
 
-    const targetProvider = providers[preferred];
-    if (!targetProvider || !targetProvider.key) {
-      throw new Error(`AI Provider '${preferred}' is requested but not configured or missing API key.`);
-    }
-
-    const maxAttempts = 10;
-    let delay = 5000;
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        return await targetProvider.call();
-      } catch (err: any) {
-        const errMsg = err?.message || String(err);
-        const isRateLimit = err?.status === 429 || errMsg.includes("429") || errMsg.includes("rate_limit_exceeded");
-        
-        let backoffMs = delay;
-        if (isRateLimit) {
-          const matchSeconds = errMsg.match(/try again in ([\d\.]+)s/i);
-          const matchMs = errMsg.match(/try again in ([\d\.]+)ms/i);
-          if (matchSeconds && matchSeconds[1]) {
-            backoffMs = Math.ceil(parseFloat(matchSeconds[1]) * 1000) + 3000;
-          } else if (matchMs && matchMs[1]) {
-            backoffMs = Math.ceil(parseFloat(matchMs[1])) + 3000;
-          } else {
-            backoffMs = 25000 + (attempt * 2000);
-          }
-        }
-
-        console.warn(`Provider '${preferred}' failed (attempt ${attempt}/${maxAttempts}). Error: ${errMsg}`);
-        if (attempt < maxAttempts) {
-          console.warn(`Retrying '${preferred}' in ${Math.round(backoffMs / 1000)}s...`);
-          await new Promise((resolve) => setTimeout(resolve, backoffMs));
-          delay += 5000;
-        }
+    const candidateProviders: ("gemini" | "openrouter" | "groq")[] = [preferred];
+    for (const p of ["gemini", "openrouter", "groq"] as const) {
+      if (p !== preferred && providers[p]?.key) {
+        candidateProviders.push(p);
       }
     }
 
-    throw new Error(`AI Provider '${preferred}' failed after ${maxAttempts} attempts.`);
+    for (const activeProvider of candidateProviders) {
+      const targetProvider = providers[activeProvider];
+      if (!targetProvider || !targetProvider.key) continue;
+
+      const maxAttempts = 2;
+      let delay = 3000;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          return await targetProvider.call();
+        } catch (err: any) {
+          const errMsg = err?.message || String(err);
+          console.warn(`Provider '${activeProvider}' failed (attempt ${attempt}/${maxAttempts}). Error: ${errMsg}`);
+          if (attempt < maxAttempts) {
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            delay += 2000;
+          }
+        }
+      }
+      console.warn(`Falling back from provider '${activeProvider}' to next available candidate...`);
+    }
+
+    throw new Error(`All configured AI providers failed.`);
   }
 
   private async checkRateLimit(provider: "gemini" | "openrouter" | "groq"): Promise<boolean> {
@@ -240,30 +232,46 @@ export class AiClient {
   }
 
   private async callGroq(messages: ChatMessage[], options: AiCompletionOptions): Promise<AiCompletionResult> {
-    const model = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+    const candidateModels = [
+      process.env.GROQ_MODEL || "openai/gpt-oss-120b",
+      "openai/gpt-oss-20b",
+      "qwen/qwen3.8-27b",
+    ];
 
     await this.acquireToken("groq");
 
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.config.groqApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature: options.temperature ?? 0.7,
-        max_tokens: options.maxTokens ?? 4000,
-      }),
-    });
+    let lastError: Error | null = null;
+    for (const model of candidateModels) {
+      try {
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.config.groqApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature: options.temperature ?? 0.7,
+            max_tokens: options.maxTokens ?? 4000,
+          }),
+        });
 
-    if (!res.ok) {
-      throw new ProviderError("groq", res.status, await safeText(res));
+        if (res.ok) {
+          const data = (await res.json()) as { choices: { message: { content: string } }[] };
+          return { text: data.choices[0]?.message?.content ?? "", provider: "groq", model };
+        }
+
+        const errText = await safeText(res);
+        console.warn(`Groq model '${model}' failed with status ${res.status}: ${errText}. Trying next fallback model...`);
+        lastError = new ProviderError("groq", res.status, errText);
+      } catch (err: any) {
+        console.warn(`Groq model '${model}' request failed: ${err.message}. Trying next fallback model...`);
+        lastError = err;
+      }
     }
 
-    const data = (await res.json()) as { choices: { message: { content: string } }[] };
-    return { text: data.choices[0]?.message?.content ?? "", provider: "groq", model };
+    throw lastError || new Error("All Groq candidate models failed");
   }
 }
 

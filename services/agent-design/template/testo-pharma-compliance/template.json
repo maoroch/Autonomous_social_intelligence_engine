@@ -1,0 +1,17 @@
+{
+  "id": "testo-pharma-compliance",
+  "name": "Testo Pharma Blue",
+  "description": "GxP 21 CFR Part 11 Pharma Compliance Theme",
+  "tenants": ["testo"],
+  "cover": "cover.html",
+  "card": "card.html",
+  "defaultCoverBadge": "COMPLIANCE",
+  "defaultCardBadge": "PART 11",
+  "brand": {
+    "accentColor": "#3B82F6",
+    "inkColor": "#14171A",
+    "paperColor": "#FAF9F6"
+  },
+  "bulletFormat": "card-box",
+  "tags": ["testo", "pharma", "compliance", "gxp"]
+}

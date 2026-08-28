@@ -1,0 +1,16 @@
+{
+  "id": "cover-1",
+  "name": "The Fix (Blue)",
+  "tenants": [
+    "software-development-default"
+  ],
+  "cover": "cover.html",
+  "card": "card.html",
+  "defaultCoverBadge": "The fix",
+  "defaultCardBadge": "Setup",
+  "brand": {
+    "accentColor": "#2563EB",
+    "inkColor": "#111827",
+    "paperColor": "#FFFFFF"
+  }
+}

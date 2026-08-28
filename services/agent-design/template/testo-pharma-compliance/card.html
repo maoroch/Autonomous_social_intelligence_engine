@@ -6,7 +6,7 @@
   <title>Testo Pharma Compliance Card</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=IBM+Plex+Mono:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@600;700;800;900&family=JetBrains+Mono:wght@600;700;800&family=IBM+Plex+Mono:wght@600;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --compliance-blue: #2563EB;
@@ -15,13 +15,15 @@
       --compliance-border: #CBD5E1;
     }
 
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box;
+      word-break: break-word;
+      overflow-wrap: break-word; }
 
     html, body {
       margin: 0;
       padding: 0;
       background: #e9e9e9;
-      font-family: "Inter", sans-serif;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     .stage {
@@ -146,7 +148,7 @@
 
       <h2 class="headline">{{TITLE}}</h2>
 
-      <div class="body-text">{{BODY}}</div>
+      <div class="body-text">{{BODY_HTML}}</div>
 
       <div class="spacer"></div>
 

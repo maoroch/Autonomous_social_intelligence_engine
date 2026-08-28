@@ -1,0 +1,16 @@
+{
+  "id": "cover-6",
+  "name": "Swiss Editorial (Amber)",
+  "tenants": [
+    "software-development-default"
+  ],
+  "cover": "cover.html",
+  "card": "card.html",
+  "defaultCoverBadge": "Editorial",
+  "defaultCardBadge": "Deep Dive",
+  "brand": {
+    "accentColor": "#D97706",
+    "inkColor": "#111827",
+    "paperColor": "#FFFDF9"
+  }
+}

@@ -1,0 +1,61 @@
+export const TESTO_TEMPLATES = [
+  "industrial-measurement-equipment",
+  "testo-brand-orange",
+  "testo-pharma-compliance",
+  "testo-pharma-cold-chain",
+  "testo-pharma-audit",
+] as const;
+
+export const TEMPLATE_ACCENT_COLORS: Record<string, string> = {
+  "industrial-measurement-equipment": "#FF7900",
+  "testo-brand-orange": "#FF7900",
+  "testo-pharma-compliance": "#3B82F6",
+  "testo-pharma-cold-chain": "#06B6D4",
+  "testo-pharma-audit": "#10B981",
+  "cover-1": "#2563EB",
+  "cover-2": "#6366F1",
+  "cover-3": "#10B981",
+  "cover-4": "#0EA5E9",
+  "cover-5": "#8B5CF6",
+  "cover-6": "#D97706",
+  "cover-7": "#059669",
+  "cover-8": "#6366F1",
+  "cover-9": "#EC4899",
+  "marvel-red": "#EF4444",
+  "director-gold": "#F59E0B",
+  "boxoffice-green": "#10B981",
+  "flash-yellow": "#EAB308",
+  "anime-kawaii": "#EC4899",
+};
+
+export const TEMPLATE_BADGE_DEFAULTS: Record<string, { cover: string; card: string }> = {
+  "industrial-measurement-equipment": { cover: "B2B CASE", card: "TECHNICAL OVERVIEW" },
+  "testo-brand-orange": { cover: "TESTO ГАЗОАНАЛИЗАТОРЫ", card: "ПРЕИМУЩЕСТВА" },
+  "testo-pharma-compliance": { cover: "COMPLIANCE", card: "PART 11" },
+  "testo-pharma-cold-chain": { cover: "LOGISTICS", card: "GDP" },
+  "testo-pharma-audit": { cover: "QA", card: "AUDIT" },
+  "cover-1": { cover: "The fix", card: "Setup" },
+  "cover-2": { cover: "AI Agents", card: "Setup" },
+  "cover-3": { cover: "Terminal", card: "Code" },
+  "cover-4": { cover: "Blueprint", card: "Spec" },
+  "cover-5": { cover: "Glass", card: "Insight" },
+  "cover-6": { cover: "Editorial", card: "Deep Dive" },
+  "cover-7": { cover: "Matrix", card: "Syntax" },
+  "cover-8": { cover: "GitHub Trending", card: "Open Source" },
+  "cover-9": { cover: "Pet Project", card: "Portfolio" },
+  "marvel-red": { cover: "ПОКАДРОВЫЙ РАЗБОР", card: "ДЕТАЛИ" },
+  "director-gold": { cover: "ИСТОРИЯ КИНО", card: "СЕКРЕТЫ СЪЕМОК" },
+  "boxoffice-green": { cover: "КАССОВЫЕ СБОРЫ", card: "РЕКОРДЫ" },
+  "flash-yellow": { cover: "ГЛАВНЫЙ АНОНС", card: "КАСТИНГ" },
+  "anime-kawaii": { cover: "ПРЕМЬЕРА СЕЗОНА", card: "АНИМАЦИЯ" },
+};
+
+export const PIPELINE_STAGES = [
+  "trend",
+  "positioning",
+  "strategy",
+  "writing",
+  "design",
+  "seo",
+  "human_approval",
+] as const;

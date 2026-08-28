@@ -1,0 +1,16 @@
+{
+  "id": "cover-9",
+  "name": "Pet Project (Pink)",
+  "tenants": [
+    "software-development-default"
+  ],
+  "cover": "cover.html",
+  "card": "card.html",
+  "defaultCoverBadge": "Pet Project",
+  "defaultCardBadge": "Portfolio",
+  "brand": {
+    "accentColor": "#EC4899",
+    "inkColor": "#FFFFFF",
+    "paperColor": "#0F172A"
+  }
+}

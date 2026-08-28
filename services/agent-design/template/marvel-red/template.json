@@ -1,0 +1,16 @@
+{
+  "id": "marvel-red",
+  "name": "Marvel & MCU Lore (Red Neon)",
+  "tenants": [
+    "cinema-media"
+  ],
+  "cover": "cover.html",
+  "card": "card.html",
+  "defaultCoverBadge": "ПОКАДРОВЫЙ РАЗБОР",
+  "defaultCardBadge": "ДЕТАЛИ",
+  "brand": {
+    "accentColor": "#E62429",
+    "inkColor": "#FFFFFF",
+    "paperColor": "#08090C"
+  }
+}

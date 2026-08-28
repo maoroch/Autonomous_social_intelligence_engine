@@ -152,9 +152,12 @@ export function createApprovalRouter(logger: Logger): Router {
     logger.info({ runId, template_name }, "received inline edits from human");
 
     if (postText) {
+      const textVal = typeof postText === "string" ? postText : (postText.text || "");
+      const hookVal = typeof postText === "object" ? postText.hook : "";
+      const ctaVal = typeof postText === "object" ? postText.cta : "";
       await stageResults().updateOne(
         { runId, stage: "writing" },
-        { $set: { "result.hook": postText.hook, "result.text": postText.text, "result.cta": postText.cta } }
+        { $set: { "result.text": textVal, "result.hook": hookVal, "result.cta": ctaVal } }
       );
     }
 

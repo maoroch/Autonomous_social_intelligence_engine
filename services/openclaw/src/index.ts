@@ -13,7 +13,6 @@ import {
 } from "./pipeline/runner.js";
 import { createApprovalRouter } from "./validators/approval.js";
 import { illustrationsRouter } from "./validators/illustrations.js";
-import { TelegramBotService } from "./validators/telegram-bot.js";
 
 const logger = createLogger("openclaw");
 
@@ -55,20 +54,10 @@ async function main() {
       if (event.status === "completed") {
         await handleAgentCompleted(queues, logger, event.runId, stage, event.result ?? {});
 
-        // Уведомление в Telegram Bot при переходе в awaiting_approval
+        // Уведомление микросервиса telegram-bot через очередь событий
         if (stage === PipelineStage.SEO || stage === PipelineStage.DESIGN) {
-          const db = getDb();
-          const runsCol = db.collection("pipeline_runs");
-          const currentRun = await runsCol.findOne({ runId: event.runId });
-          if (currentRun?.status === "awaiting_approval") {
-            const stageResultsCol = db.collection("stage_results");
-            const docs = await stageResultsCol.find({ runId: event.runId }).toArray();
-            const stageResults: Record<string, any> = {};
-            for (const d of docs) stageResults[d.stage] = d.result;
-
-            const botService = new TelegramBotService(queues);
-            await botService.notifyAwaitingApproval(event.runId, currentRun as any, stageResults, process.env.OPENCLAW_PUBLIC_BASE_URL || "http://localhost:4000");
-          }
+          const telegramNotifierQueue = createQueue<PipelineEvent>("queue-telegram-approval-notifier", REDIS_URL);
+          await telegramNotifierQueue.add("approval-notify", event);
         }
       } else {
         await handleAgentFailed(queues, logger, event.runId, stage, event.error ?? "unknown error");
@@ -159,10 +148,6 @@ async function main() {
 
   app.use("/approval", createApprovalRouter(logger));
   app.use("/illustrations", illustrationsRouter());
-
-  // Инициализация Telegram Bot Polling (Human-in-the-Loop)
-  const telegramBotService = new TelegramBotService(queues);
-  telegramBotService.startPolling();
 
   app.listen(PORT, () => logger.info({ port: PORT }, "openclaw listening"));
 }

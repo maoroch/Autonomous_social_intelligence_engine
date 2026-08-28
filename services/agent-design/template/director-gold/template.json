@@ -1,0 +1,16 @@
+{
+  "id": "director-gold",
+  "name": "Director Gold (История кино)",
+  "tenants": [
+    "cinema-media"
+  ],
+  "cover": "cover.html",
+  "card": "card.html",
+  "defaultCoverBadge": "ИСТОРИЯ КИНО",
+  "defaultCardBadge": "СЕКРЕТЫ СЪЕМОК",
+  "brand": {
+    "accentColor": "#D4AF37",
+    "inkColor": "#FFFFFF",
+    "paperColor": "#09090D"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "id": "cover-8",
+  "name": "GitHub Trending (Octocat)",
+  "tenants": [
+    "software-development-default"
+  ],
+  "cover": "cover.html",
+  "card": "card.html",
+  "defaultCoverBadge": "GitHub Trending",
+  "defaultCardBadge": "Open Source",
+  "brand": {
+    "accentColor": "#6366F1",
+    "inkColor": "#FFFFFF",
+    "paperColor": "#0D1117"
+  }
+}

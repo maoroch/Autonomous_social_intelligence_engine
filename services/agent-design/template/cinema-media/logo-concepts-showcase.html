@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KinoPeek — Официальный Логотип & Бренд</title>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@700&display=swap');
+
+    * {
+      box-sizing: border-box;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #08090C;
+      color: #FFFFFF;
+      font-family: 'Inter', -apple-system, sans-serif;
+      padding: 60px 40px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(255, 184, 0, 0.12) 0%, transparent 45%),
+        radial-gradient(circle at 85% 85%, rgba(255, 184, 0, 0.08) 0%, transparent 45%);
+    }
+
+    .container {
+      max-width: 800px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .brand-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 184, 0, 0.12);
+      border: 1px solid #FFB800;
+      color: #FFB800;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      padding: 6px 16px;
+      border-radius: 20px;
+      margin-bottom: 18px;
+      text-transform: uppercase;
+    }
+
+    .main-title {
+      font-family: 'Oswald', sans-serif;
+      font-size: 44px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .main-title span {
+      color: #FFB800;
+      background: linear-gradient(90deg, #FFE600 0%, #FFB800 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .main-subtitle {
+      font-size: 16px;
+      color: #94A3B8;
+      max-width: 550px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+
+    .logo-card {
+      background: rgba(15, 17, 24, 0.9);
+      border: 1px solid rgba(255, 184, 0, 0.25);
+      border-radius: 24px;
+      padding: 50px 40px;
+      margin-top: 35px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 30px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 30px rgba(255, 184, 0, 0.08);
+      position: relative;
+    }
+
+    .logo-display {
+      padding: 26px 40px;
+      background: #08090C;
+      border: 1px dashed rgba(255, 184, 0, 0.3);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-img {
+      height: 52px;
+      width: auto;
+      display: block;
+    }
+
+    .btn-download {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #FFB800 0%, #FFA000 100%);
+      color: #08090C;
+      text-decoration: none;
+      font-size: 16px;
+      font-weight: 800;
+      padding: 14px 32px;
+      border-radius: 30px;
+      box-shadow: 0 6px 25px rgba(255, 184, 0, 0.35);
+      transition: all 0.2s ease;
+    }
+
+    .btn-download:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(255, 184, 0, 0.5);
+    }
+
+    .btn-download svg {
+      width: 20px;
+      height: 20px;
+      fill: #08090C;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="brand-chip">OFFICIAL BRAND IDENTITY</div>
+    <h1 class="main-title">Медиа-Бренд <span>KinoPeek</span></h1>
+    <p class="main-subtitle">
+      Единый золотой стиль кнопок, плашек и логотипа.
+    </p>
+
+    <div class="logo-card">
+      <div class="logo-display">
+        <img class="logo-img" src="assets/kinopeek-logo.svg" alt="KinoPeek Logo">
+      </div>
+
+      <a href="assets/kinopeek-logo.svg" download="kinopeek-logo.svg" class="btn-download">
+        <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+        Скачать Векторный SVG
+      </a>
+    </div>
+  </div>
+
+</body>
+</html>

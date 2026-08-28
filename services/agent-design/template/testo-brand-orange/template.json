@@ -1,0 +1,17 @@
+{
+  "id": "testo-brand-orange",
+  "name": "Testo Brand Orange",
+  "description": "Standard Testo Orange brand theme",
+  "tenants": ["testo"],
+  "cover": "cover.html",
+  "card": "card.html",
+  "defaultCoverBadge": "TESTO ГАЗОАНАЛИЗАТОРЫ",
+  "defaultCardBadge": "ПРЕИМУЩЕСТВА",
+  "brand": {
+    "accentColor": "#FF7900",
+    "inkColor": "#111827",
+    "paperColor": "#FFFFFF"
+  },
+  "bulletFormat": "card-box",
+  "tags": ["testo", "orange", "hardware"]
+}

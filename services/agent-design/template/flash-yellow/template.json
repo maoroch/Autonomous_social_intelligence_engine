@@ -1,0 +1,16 @@
+{
+  "id": "flash-yellow",
+  "name": "Flash Yellow (Дайджест новостей)",
+  "tenants": [
+    "cinema-media"
+  ],
+  "cover": "cover.html",
+  "card": "card.html",
+  "defaultCoverBadge": "ГЛАВНЫЙ АНОНС",
+  "defaultCardBadge": "КАСТИНГ",
+  "brand": {
+    "accentColor": "#FFD600",
+    "inkColor": "#000000",
+    "paperColor": "#0B0B0E"
+  }
+}
