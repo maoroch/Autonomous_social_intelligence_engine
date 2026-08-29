@@ -125,6 +125,18 @@ async function processDesignJob(job: AgentJob, notifyQueue = true): Promise<Reco
     });
   }
 
+  // Применяем реальный постер/кадр из статьи для обложки карусели
+  const topicImageUrl =
+    (runDoc?.topic as any)?.imageUrl ||
+    trendResult?.items?.[0]?.imageUrl ||
+    (payload as any)?.imageUrl;
+
+  if (topicImageUrl && slideDeck.slides.length > 0 && slideDeck.slides[0]) {
+    if (!slideDeck.slides[0].illustration || slideDeck.slides[0].illustration === "default" || tenantId === "cinema-media") {
+      slideDeck.slides[0].illustration = topicImageUrl;
+    }
+  }
+
   // 4. Подготовка логотипа организации
   const isTestoTenant =
     tenantId === "testo" ||

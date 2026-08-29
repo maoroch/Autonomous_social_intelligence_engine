@@ -54,7 +54,7 @@ function nextAgentStage(current: PipelineStage, tenantId?: string): PipelineStag
 export async function startPipelineRun(
   queues: AgentQueues,
   logger: Logger,
-  initialTopic: { title: string; summary: string; url?: string; fullArticleText?: string; batches?: string[] } = { title: "", summary: "" },
+  initialTopic: { title: string; summary: string; url?: string; imageUrl?: string; fullArticleText?: string; batches?: string[] } = { title: "", summary: "" },
   profileId?: string,
   tenantId?: string,
   targetPillarId?: string,
@@ -95,6 +95,7 @@ export async function startPipelineRun(
             title: initialTopic.title,
             summary: initialTopic.summary,
             url: initialTopic.url,
+            imageUrl: initialTopic.imageUrl,
             fullArticleText: initialTopic.fullArticleText,
             batches: initialTopic.batches,
             score: 100,

@@ -107,6 +107,13 @@ export function interpolateTemplate(
   const illustrationKey = slide.illustration || slide.illustration_name || matchIllustrationForSlide(slide);
   const illustrationTag = resolveIllustrationTag(illustrationKey, style.key);
 
+  const backdropImage =
+    slide.illustration && slide.illustration.startsWith("http")
+      ? slide.illustration
+      : fallbackCoverDesc && fallbackCoverDesc.startsWith("http")
+        ? fallbackCoverDesc
+        : "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1200&auto=format&fit=crop";
+
   const brand = style.brand || {
     accentColor: "#FF7900",
     inkColor: "#09090B",
@@ -131,6 +138,7 @@ export function interpolateTemplate(
     .replace(/\{\{PAGE_TEXT\}\}/g, `${index + 1}/${totalSlides}`)
     .replace(/\{\{FOOTER_LEFT\}\}/g, footerLeft)
     .replace(/\{\{ILLUSTRATION\}\}/g, illustrationTag)
+    .replace(/\{\{BACKDROP_IMAGE\}\}/g, backdropImage)
     .replace(
       /\{\{ILLUSTRATION_STYLE\}\}/g,
       illustrationTag ? "display: flex;" : "display: none;"

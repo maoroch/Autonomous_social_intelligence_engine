@@ -11,6 +11,7 @@ export interface CuratedArticle {
   summary: string;
   fullArticleText: string;
   batches?: string[];
+  imageUrl?: string;
   source: string;
   publishedAt?: string;
   pillarId: string;
@@ -176,12 +177,36 @@ export class CinemaCuratorService {
     const pillarId = this.detectPillar(rawTitle, fullText);
     const batches = this.batchArticleContent(fullText || summary);
 
+    // Авто-захват реального постера/кадра из метаданных RSS или HTML контента
+    const mediaContentMatch =
+      itemXml.match(/<media:content[^>]*url=["']([^"']+)["']/i) ??
+      itemXml.match(/<enclosure[^>]*url=["']([^"']+)["']/i) ??
+      itemXml.match(/<media:thumbnail[^>]*url=["']([^"']+)["']/i) ??
+      (contentMatch?.[1] ? contentMatch[1].match(/<img[^>]*src=["']([^"']+)["']/i) : null);
+
+    let imageUrl = mediaContentMatch?.[1] ? mediaContentMatch[1].trim() : undefined;
+
+    if (!imageUrl) {
+      if (pillarId === "marvel-mcu-lore" || /spider-man|avengers|mcu|marvel|deadpool/i.test(rawTitle)) {
+        imageUrl = "https://images.unsplash.com/photo-1635805737707-575885ab0820?q=80&w=1200&auto=format&fit=crop";
+      } else if (pillarId === "directors-screenplay-breakdowns" || /dune|nolan|director/i.test(rawTitle)) {
+        imageUrl = "https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=1200&auto=format&fit=crop";
+      } else if (pillarId === "anime-culture-adaptations" || /anime|demon slayer/i.test(rawTitle)) {
+        imageUrl = "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=1200&auto=format&fit=crop";
+      } else if (pillarId === "box-office-analytics" || /box office|billion/i.test(rawTitle)) {
+        imageUrl = "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=1200&auto=format&fit=crop";
+      } else {
+        imageUrl = "https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=1200&auto=format&fit=crop";
+      }
+    }
+
     return {
       title: rawTitle,
       url: rawUrl,
       summary: summary || rawTitle,
       fullArticleText: fullText || summary,
       batches,
+      imageUrl,
       source: "Den of Geek",
       publishedAt: pubDateMatch?.[1]?.trim(),
       pillarId,
@@ -284,6 +309,7 @@ export class CinemaCuratorService {
             "Режиссером картины выступит Дестин Дэниел Креттон, а съемки стартуют осенью 2026 года в Лондоне и Нью-Йорке.",
             "Сюжет вернет Питера Паркера к истокам уличного супергероя, где его союзницей станет Фелиция Харди (Черная Кошка).",
           ],
+          imageUrl: "https://images.unsplash.com/photo-1635805737707-575885ab0820?q=80&w=1200&auto=format&fit=crop",
           source: "Den of Geek",
           publishedAt: new Date().toUTCString(),
           pillarId: "marvel-mcu-lore",
@@ -298,6 +324,7 @@ export class CinemaCuratorService {
             "Стриминговый сервис Max и HBO официально закрыли открытый кастинг на главные роли в сериале по мотивам книг Джоан Роулинг.",
             "Создатели подчеркивают, что проект станет максимально дословной экранизацией всех семи книг, уделяя каждому роману по отдельному сезону.",
           ],
+          imageUrl: "https://images.unsplash.com/photo-1551269901-5c5e14c25df7?q=80&w=1200&auto=format&fit=crop",
           source: "Den of Geek",
           publishedAt: new Date().toUTCString(),
           pillarId: "cinema-history-curiosities",
@@ -312,6 +339,7 @@ export class CinemaCuratorService {
             "Анимационная студия ufotable подтвердила, что финальная арка «Бесконечный замок» выйдет в виде трех полнометражных фильмов.",
             "Первый фильм сфокусируется на битвах столпов против высших лун Кибуцудзи Мудзана.",
           ],
+          imageUrl: "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=1200&auto=format&fit=crop",
           source: "Den of Geek",
           publishedAt: new Date().toUTCString(),
           pillarId: "anime-culture-adaptations",
@@ -331,6 +359,7 @@ export class CinemaCuratorService {
           "Режиссер подчеркивает: цель фильма — передать предостережение Герберта против слепого следования харизматичным лидерам.",
           "Пол Атрейдес оказывается в ловушке собственной религиозной войны (Джихада).",
         ],
+        imageUrl: "https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=1200&auto=format&fit=crop",
         source: "Den of Geek",
         publishedAt: new Date().toUTCString(),
         pillarId: "directors-screenplay-breakdowns",
@@ -345,6 +374,7 @@ export class CinemaCuratorService {
           "Аналитики киноиндустрии составили прогноз главных кассовых хитов года.",
           "Лидерами по потенциалу кассовых сборов свыше 1 млрд долларов названы «Мстители: Секретные войны», новая «Дюна», и секретный проект Нолана.",
         ],
+        imageUrl: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=1200&auto=format&fit=crop",
         source: "Den of Geek",
         publishedAt: new Date().toUTCString(),
         pillarId: "box-office-analytics",
@@ -359,6 +389,7 @@ export class CinemaCuratorService {
           "Разбор первого тизера шестой части «Мстителей» раскрывает основы сюжета.",
           "Ключевые элементы: коллапс мультивселенной (Инкрузии) и создание единой реальности Battleworld под управлением Доктора Дума.",
         ],
+        imageUrl: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?q=80&w=1200&auto=format&fit=crop",
         source: "Den of Geek",
         publishedAt: new Date().toUTCString(),
         pillarId: "marvel-mcu-lore",
@@ -465,6 +496,7 @@ export class CinemaCuratorService {
       title: article.title,
       summary: article.summary,
       url: article.url,
+      imageUrl: article.imageUrl,
       fullArticleText: article.fullArticleText,
       batches,
       source: article.source,
@@ -488,7 +520,7 @@ export class CinemaCuratorService {
         const data = (await res.json()) as any;
         if (data.runId) {
           logger.info(
-            { runId: data.runId, tenantId, pillarId, title: article.title, batchCount: batches.length },
+            { runId: data.runId, tenantId, pillarId, title: article.title, batchCount: batches.length, imageUrl: article.imageUrl },
             "Started direct grounded cinema run via OpenClaw /runs API (skipping Strategy/Positioning)"
           );
           return data.runId;
@@ -526,6 +558,7 @@ export class CinemaCuratorService {
             title: article.title,
             summary: article.summary,
             url: article.url,
+            imageUrl: article.imageUrl,
             fullArticleText: article.fullArticleText,
             batches,
             source: article.source,
