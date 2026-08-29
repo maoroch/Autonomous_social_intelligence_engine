@@ -224,7 +224,7 @@ You must return a single, valid JSON object containing:
 - "ru_post": An object containing the high-quality Russian post adaptation for Telegram & Threads:
   - "hook": Russian header starting with a single emoji (e.g. "${exampleHook}")
   - "text": Full Russian post body, formatted into scanable paragraphs, ending with hashtags.
-  - "hashtags": Array of relevant hashtags (e.g. ${exampleHashtags})
+  - "hashtags": Array of 4-6 dynamic, topic-specific hashtags generated automatically and directly from the entities, franchise, actors, and topics in this post (e.g. ${exampleHashtags})
 
 Output format:
 {

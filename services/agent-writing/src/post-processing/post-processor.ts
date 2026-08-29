@@ -71,10 +71,14 @@ export function applyDeterministicPostProcessing(
 
   text = lines.join("\n").trim();
 
-  // Hashtags Sanitizer: Extract hashtags, strip from body, and append clean hashtag block at the absolute bottom
+  // Hashtags Sanitizer: Extract hashtags from both AI writer hashtags array and body text
   const hashtagRegex = /#[\wа-яА-ЯёЁ_-]+/g;
   const matches = text.match(hashtagRegex) || [];
-  let hashtags = Array.from(new Set(matches));
+  const normalizedDefaultTags = defaultHashtags
+    .filter((t) => typeof t === "string" && t.trim().length > 0)
+    .map((t) => (t.startsWith("#") ? t.trim() : `#${t.trim()}`));
+
+  let hashtags = Array.from(new Set([...normalizedDefaultTags, ...matches]));
 
   if (isTesto) {
     hashtags = hashtags.filter(
