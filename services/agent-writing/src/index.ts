@@ -155,23 +155,39 @@ async function processWritingJob(job: AgentJob): Promise<unknown> {
   generated.text = withCta.text;
   generated.cta = withCta.cta;
 
-  if (isTestoTenant && generated.ru_post && generated.ru_post.text) {
+  if (isGithubShowcase && verifiedSources.length > 0) {
+    generated.text = substituteGithubUrlsInText(generated.text, verifiedSources);
+  }
+
+  if ((isTestoTenant || tenantId === "cinema-media") && generated.ru_post && generated.ru_post.text) {
     generated.text = generated.ru_post.text;
     if (generated.ru_post.hook) {
       generated.hook = generated.ru_post.hook;
     }
   }
 
-  if (isGithubShowcase && verifiedSources.length > 0) {
-    generated.text = substituteGithubUrlsInText(generated.text, verifiedSources);
-  }
+  // 7. Пост-обработка основного текста (удаление коллизий хэштегов)
+  const cleanMain = applyDeterministicPostProcessing(
+    generated.text,
+    tenantId === "cinema-media" ? "telegram" : "linkedin",
+    generated.ru_post?.hashtags || [],
+    isTestoTenant,
+    tenantId
+  );
+  generated.text = cleanMain.text;
 
-  // 7. Валидация схемы
+  // 8. Валидация схемы
   const validated = WritingOutputSchema.parse(generated);
 
-  // 8. Автоматическое сохранение русской адаптации для Telegram & Threads
+  // 9. Автоматическое сохранение русской адаптации для Telegram & Threads
   if (generated.ru_post && generated.ru_post.text) {
-    const cleanRu = applyDeterministicPostProcessing(generated.ru_post.text, "telegram", generated.ru_post.hashtags || []);
+    const cleanRu = applyDeterministicPostProcessing(
+      generated.ru_post.text,
+      "telegram",
+      generated.ru_post.hashtags || [],
+      isTestoTenant,
+      tenantId
+    );
     const adaptationData = {
       text: cleanRu.text,
       hook: generated.ru_post.hook || "",

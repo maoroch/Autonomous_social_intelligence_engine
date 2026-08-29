@@ -215,7 +215,7 @@ export class TelegramBotApp {
   async sendMessage(chatId: number | string, text: string, replyMarkup?: any): Promise<number | undefined> {
     if (!BOT_TOKEN) return undefined;
     try {
-      const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      let res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -225,6 +225,20 @@ export class TelegramBotApp {
           reply_markup: replyMarkup,
         }),
       });
+
+      if (!res.ok) {
+        // Fallback: пробуем отправить без parse_mode, если в тексте были неэкранированные символы Markdown
+        res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text,
+            reply_markup: replyMarkup,
+          }),
+        });
+      }
+
       if (res.ok) {
         const data = (await res.json()) as any;
         return data.result?.message_id;

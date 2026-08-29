@@ -185,7 +185,27 @@ Output format:
 }
 
 Return ONLY valid raw JSON. Do NOT include markdown code blocks or conversational text.`;
-  } else {
+    const exampleHook =
+      tenantId === "cinema-media"
+        ? "🍿 Главные киноновости недели"
+        : isTestoTenant
+          ? "⚡ Требования GxP на фармпроизводстве"
+          : "⚡ 5 инструментов для оптимизации Node.js";
+
+    const exampleText =
+      tenantId === "cinema-media"
+        ? "🍿 Главные киноновости недели\\n\\nИнсайды со съемочной площадки..."
+        : isTestoTenant
+          ? "⚡ Требования GxP на фармпроизводстве\\n\\nКонтроль микроклимата..."
+          : "⚡ 5 инструментов для оптимизации Node.js\\n\\nОптимизация производительности...";
+
+    const exampleHashtags =
+      tenantId === "cinema-media"
+        ? '["#marvel", "#cinema", "#кино", "#фильмы"]'
+        : isTestoTenant
+          ? '["#фармацевтика", "#GxP", "#testo"]'
+          : '["#nodejs", "#performance"]';
+
     systemPrompt = `${writerDomain}
 Your job is to write an engaging, high-performing post based on the provided topic and content strategy.
 
@@ -198,23 +218,23 @@ Style Guidelines:
 6. Forbidden Words: Never use these words: ${authorProfile.forbidden_words.join(", ")}
 ${styleRulesBlock}${complianceBlock}${glossaryBlock}${platformBlock}${rubricWritingInstruction}${verifiedSourcesBlock}${fewShotText}${languageInstruction}
 You must return a single, valid JSON object containing:
-- "text": The complete text of the post (strictly in Russian for Testo portal).
+- "text": The complete text of the post (strictly in Russian for Testo and Cinema portals).
 - "hook": The first line (Hook) of the post.
 - "cta": The final Call to Action string.
 - "ru_post": An object containing the high-quality Russian post adaptation for Telegram & Threads:
-  - "hook": Russian header starting with a single emoji (e.g. "⚡ 5 инструментов...")
+  - "hook": Russian header starting with a single emoji (e.g. "${exampleHook}")
   - "text": Full Russian post body, formatted into scanable paragraphs, ending with hashtags.
-  - "hashtags": Array of relevant hashtags (e.g. ["#фармацевтика", "#GxP"])
+  - "hashtags": Array of relevant hashtags (e.g. ${exampleHashtags})
 
 Output format:
 {
-  "text": "Full text of the LinkedIn post...",
+  "text": "Full text of the post...",
   "hook": "Catchy first line...",
   "cta": "Engaging question at the end...",
   "ru_post": {
-    "hook": "⚡ 5 инструментов для оптимизации Node.js",
-    "text": "⚡ 5 инструментов для оптимизации Node.js\n\nОптимизация производительности...",
-    "hashtags": ["#nodejs", "#performance"]
+    "hook": "${exampleHook}",
+    "text": "${exampleText}",
+    "hashtags": ${exampleHashtags}
   }
 }
 

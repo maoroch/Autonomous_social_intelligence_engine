@@ -2,14 +2,26 @@ export function applyDeterministicPostProcessing(
   rawText: string,
   platform: "linkedin" | "telegram" | "threads",
   defaultHashtags: string[] = [],
-  isTesto: boolean = false
+  isTesto: boolean = false,
+  tenantId: string = "software-development-default"
 ): { text: string; headerEmojiUsed: boolean; bodyEmojisStrippedCount: number } {
   let text = rawText.trim();
+  const isCinema = tenantId === "cinema-media";
+
   if (isTesto) {
     // Strip accidental tech/github hashtags from Testo posts
     text = text
       .replace(
-        /#(?:github|backend|softwareengineering|frontend|devops|typescript|python|code|repository|petprojects)\b/gi,
+        /#(?:github|backend|softwareengineering|frontend|devops|typescript|python|code|repository|petprojects|nodejs|performance)\b/gi,
+        ""
+      )
+      .replace(/[ \t]{2,}/g, " ")
+      .trim();
+  } else if (isCinema) {
+    // Strip accidental tech AND pharma hashtags from Cinema posts
+    text = text
+      .replace(
+        /#(?:github|backend|softwareengineering|frontend|devops|typescript|python|code|repository|petprojects|nodejs|performance|testo|gxp|pharma|комплаенс|холодоваяцепь|21cfrpart11|фармацевтика|фармпроизводство)\b/gi,
         ""
       )
       .replace(/[ \t]{2,}/g, " ")
@@ -67,7 +79,14 @@ export function applyDeterministicPostProcessing(
   if (isTesto) {
     hashtags = hashtags.filter(
       (t) =>
-        !/#(?:github|backend|softwareengineering|frontend|devops|typescript|python|code|repository|petprojects)\b/i.test(
+        !/#(?:github|backend|softwareengineering|frontend|devops|typescript|python|code|repository|petprojects|nodejs|performance)\b/i.test(
+          t
+        )
+    );
+  } else if (isCinema) {
+    hashtags = hashtags.filter(
+      (t) =>
+        !/#(?:github|backend|softwareengineering|frontend|devops|typescript|python|code|repository|petprojects|nodejs|performance|testo|gxp|pharma|комплаенс|холодоваяцепь|21cfrpart11|фармацевтика|фармпроизводство)\b/i.test(
           t
         )
     );
@@ -84,6 +103,8 @@ export function applyDeterministicPostProcessing(
     let fallbackTags = ["#github", "#backend", "#softwareengineering"];
     if (isTesto) {
       fallbackTags = ["#testo", "#gxp", "#pharma", "#комплаенс"];
+    } else if (isCinema) {
+      fallbackTags = ["#кино", "#фильмы", "#cinema", "#marvel", "#киноновости"];
     } else if (defaultHashtags.length > 0) {
       fallbackTags = defaultHashtags;
     }
