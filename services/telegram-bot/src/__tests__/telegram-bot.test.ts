@@ -22,6 +22,11 @@ describe("Telegram Bot Unit Tests", () => {
     assert.ok(row2);
     assert.strictEqual(row2[0]?.callback_data, `view_carousel:${runId}`);
 
+    // Row 3: View full text
+    const row3 = keyboard.inline_keyboard[2];
+    assert.ok(row3);
+    assert.strictEqual(row3[0]?.callback_data, `view_full_text:${runId}`);
+
     // Last row: View run logs
     const lastRow = keyboard.inline_keyboard[keyboard.inline_keyboard.length - 1];
     assert.ok(lastRow);

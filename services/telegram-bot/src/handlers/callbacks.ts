@@ -5,9 +5,10 @@ import { GridFSBucket, ObjectId } from "mongodb";
 import AdmZip from "adm-zip";
 import type { BotQueues, TestRunnerService } from "../services/test-runner.js";
 import type { LogViewerService } from "../services/log-viewer.js";
+import type { CinemaCuratorService } from "../services/cinema-curator.js";
 import type { TextEditorHandler } from "./text-editor.js";
 import type { PhotoHandler } from "./photo-handler.js";
-import { buildApprovalKeyboard } from "../keyboards/inline.js";
+import { buildApprovalKeyboard, buildMainMenuKeyboard } from "../keyboards/inline.js";
 
 const logger = createLogger("telegram-bot:callbacks");
 
@@ -21,6 +22,8 @@ export class CallbackHandler {
     private photoHandler: PhotoHandler,
     private testRunner: TestRunnerService,
     private logViewer: LogViewerService,
+    private cinemaCurator: CinemaCuratorService,
+    private openclawUrl: string,
     private sendMessage: (chatId: number | string, text: string, replyMarkup?: any) => Promise<any>,
     private editMessageCaption?: (chatId: number | string, messageId: number, caption: string, replyMarkup?: any) => Promise<void>,
     private editMessageReplyMarkup?: (chatId: number | string, messageId: number, replyMarkup?: any) => Promise<void>
@@ -199,6 +202,22 @@ export class CallbackHandler {
           logger.error({ err, runId }, "Failed to send carousel media group");
           await this.sendMessage(chatId, `❌ Не удалось загрузить слайды: ${err.message}`);
         }
+      } else if (action === "view_full_text") {
+        await this.answerCallback(cb.id, "📝 Загружаю полный текст...");
+        if (chatId) {
+          const stageResultsCol = getCollection<StageResultDoc>(Collections.STAGE_RESULTS);
+          const writingDoc = await stageResultsCol.findOne({ runId, stage: PipelineStage.WRITING });
+          const postText = (writingDoc?.result as any)?.text || "Текст не найден";
+          const hook = (writingDoc?.result as any)?.hook;
+          const cta = (writingDoc?.result as any)?.cta;
+
+          let fullMessage = `📝 *ПОЛНЫЙ ТЕКСТ ПОСТА* (\`${runId.substring(0, 8)}\`):\n\n${postText}`;
+          if (cta && !postText.includes(cta)) {
+            fullMessage += `\n\n_${cta}_`;
+          }
+
+          await this.sendMessage(chatId, fullMessage);
+        }
       } else if (action === "view_logs") {
         await this.answerCallback(cb.id, "📜 Открываю журнал логов...");
         if (chatId) {
@@ -249,68 +268,119 @@ export class CallbackHandler {
             `🎨 *Запущена перегенерация слайдов KinoPeek для \`${runId.substring(0, 8)}\`...*`
           );
         }
-      } else if (action === "trend_pick") {
-        await this.answerCallback(cb.id, "🎬 Запуск генерации...");
-        const trendMap: Record<string, { title: string; summary: string; pillar: string }> = {
-          spider_man_4: {
-            title: "Человек-Паук 4: дата съемок, возвращение Черной Кошки и новый костюм",
-            summary: "Инсайды о съемках новой части Человека-Паука с Томом Холландом и уличной арке в Нью-Йорке",
-            pillar: "marvel-mcu-lore",
-          },
-          harry_potter: {
-            title: "Гарри Поттер от HBO: утвержден актерский состав золотого трио",
-            summary: "Разбор официального кастинга нового сериала и деталей первого сезона",
-            pillar: "cinema-history-curiosities",
-          },
-          dune_3: {
-            title: "Дюна 3 Мессия: как Дени Вильнев покажет падение Пола Атрейдеса",
-            summary: "Анализ сценария третьей части Дюны и подготовка масштабных съемок",
-            pillar: "directors-screenplay-breakdowns",
-          },
-          demon_slayer: {
-            title: "Клинок, рассекающий демонов: Финальная битва в Бесконечном замке",
-            summary: "Разбор анимации ufotable, спецэффекты и дата выхода трилогии в кинотеатрах",
-            pillar: "anime-culture-adaptations",
-          },
-          box_office_1b: {
-            title: "Бокс-офис 2026: 5 фильмов, которые пробьют отметку в 1 миллиард долларов",
-            summary: "Аналитика кинопроката, предварительные сборы IMAX и кассовые рекорды года",
-            pillar: "box-office-analytics",
-          },
-        };
+      }
 
-        const picked = (param && trendMap[param]) ? trendMap[param]! : {
-          title: "Человек-Паук 4: возвращение Черной Кошки",
-          summary: "Инсайды о съемках",
-          pillar: "marvel-mcu-lore",
-        };
+      // ==========================================
+      // Интерактивный куратор тем KinoPeek (Cinema Curator)
+      // ==========================================
+      else if (action === "cinema_mode") {
+        if (!chatId) return;
 
-        const newRunId = await this.testRunner.triggerPipelineTest("cinema-media", picked.pillar, {
-          title: picked.title,
-          summary: picked.summary,
-        });
-
-        if (chatId) {
+        if (param === "menu") {
+          await this.answerCallback(cb.id);
           await this.sendMessage(
             chatId,
-            `🎬 *Запущен генератор контента по тренду!*\n📌 *Тема:* ${picked.title}\n🆔 *Run ID:* \`${newRunId}\``
+            `🎬 *KinoPeek News Radar — Выберите категорию тем:*\n\n` +
+            `Какой тип тем вы хотите получить от краулера перед запуском пайплайна?`,
+            this.cinemaCurator.getCuratorMenuKeyboard()
           );
+          return;
         }
+
+        const mode = param === "popular" ? "popular" : "fresh";
+        const loadingText =
+          mode === "popular"
+            ? "🔍 Собираю популярные тренды, аналитику и лор франшиз..."
+            : "⚡ Собираю свежие новости, инсайды и кастинги...";
+
+        await this.answerCallback(cb.id, loadingText);
+
+        const articles = await this.cinemaCurator.fetchCuratedTopics(mode);
+        this.cinemaCurator.saveUserArticles(cb.from.id, articles);
+
+        const { text, replyMarkup } = this.cinemaCurator.formatArticleListMessage(articles, mode);
+        await this.sendMessage(chatId, text, replyMarkup);
+      } else if (action === "cinema_refresh") {
+        if (!chatId) return;
+        const mode = param === "popular" ? "popular" : "fresh";
+        await this.answerCallback(cb.id, "🔄 Обновляю подборку статей...");
+
+        const articles = await this.cinemaCurator.fetchCuratedTopics(mode);
+        this.cinemaCurator.saveUserArticles(cb.from.id, articles);
+
+        const { text, replyMarkup } = this.cinemaCurator.formatArticleListMessage(articles, mode);
+        await this.sendMessage(chatId, text, replyMarkup);
+      } else if (action === "cinema_pick") {
+        if (!chatId) return;
+        const index = Number(param);
+        const article = this.cinemaCurator.getArticleByIndex(cb.from.id, index);
+
+        if (!article) {
+          await this.answerCallback(cb.id, "⚠️ Статья устарела, обновите список", true);
+          return;
+        }
+
+        await this.answerCallback(cb.id, `🚀 Выбрано: "${article.title.substring(0, 30)}..."`);
+
+        const runId = await this.cinemaCurator.launchGroundedPipeline(
+          article,
+          this.openclawUrl,
+          this.queues
+        );
+
+        const confirmText =
+          `🎬 *Запущен заземленный пайплайн KinoPeek!*\n\n` +
+          `📌 *Тема:* ${article.title}\n` +
+          `📂 *Рубрика:* \`${article.pillarId}\`\n` +
+          `🔗 *Источник фактов:* [${article.source}](${article.url})\n` +
+          `🆔 *Run ID:* \`${runId}\`\n\n` +
+          `_Все агенты (стратегия, копирайтинг, дизайн слайдов, SEO) генерируют пост строго на основе фактов этой статьи._`;
+
+        await this.sendMessage(chatId, confirmText);
       } else if (action === "cmd") {
         await this.answerCallback(cb.id);
         const command = param;
+
         if (command === "daily_cinema" && chatId) {
-          const runId = await this.testRunner.triggerPipelineTest("cinema-media", "daily-quick-recap");
-          await this.sendMessage(chatId, `🚀 *Запущен новый дайджест KinoPeek!*\nID: \`${runId}\``);
+          // Открываем интерактивное меню выбора тем для KinoPeek
+          await this.sendMessage(
+            chatId,
+            `🎬 *KinoPeek News Radar — Выберите категорию тем:*\n\n` +
+            `Какой тип тем вы хотите получить от краулера перед запуском пайплайна?`,
+            this.cinemaCurator.getCuratorMenuKeyboard()
+          );
+        } else if (command === "main_menu" && chatId) {
+          await this.sendMessage(
+            chatId,
+            `🎬 *Главное меню KinoPeek:*`,
+            buildMainMenuKeyboard()
+          );
         } else if (command === "trends" && chatId) {
+          const trendsKeyboard = {
+            inline_keyboard: [
+              [
+                { text: "🕷 Человек-Паук 4: Съемки и каст", callback_data: "trend_pick:spider_man_4" },
+              ],
+              [
+                { text: "⚡ Гарри Поттер: Кастинг трио HBO", callback_data: "trend_pick:harry_potter" },
+              ],
+              [
+                { text: "🏜 Дюна 3: Мессия Вильнева", callback_data: "trend_pick:dune_3" },
+              ],
+              [
+                { text: "🌸 Клинок демонов: Финал ufotable", callback_data: "trend_pick:demon_slayer" },
+              ],
+              [
+                { text: "📊 Бокс-офис: $1 млрд в IMAX", callback_data: "trend_pick:box_office_1b" },
+              ],
+            ],
+          };
+
           const trendsText =
-            `🔥 *Топ трендов кино сегодня:*\n\n` +
-            `1. 🔴 *[MCU]* Анонс даты съемок Мстителей: Секретные войны\n` +
-            `2. 📊 *[BoxOffice]* Рекорды кассовых сборов уикенда в IMAX\n` +
-            `3. ⚡ *[Casting]* Утвержден актерский состав сериала по Гарри Поттеру\n` +
-            `4. 🌸 *[Anime]* Финальная трилогия «Клинок, рассекающий демонов»\n\n` +
-            `💡 Чтобы создать пост по тренду: \`/post_topic <Тема>\``;
-          await this.sendMessage(chatId, trendsText);
+            `🔥 *Топ горячих трендов кино сегодня:*\n\n` +
+            `Нажмите на любой тренд ниже, чтобы сгенерировать по нему готовый пост и карусель, либо напишите свою тему: \`/post_topic <Тема>\``;
+
+          await this.sendMessage(chatId, trendsText, trendsKeyboard);
         } else if (command === "test_pipeline" && chatId) {
           const testRunId = await this.testRunner.triggerPipelineTest();
           await this.sendMessage(

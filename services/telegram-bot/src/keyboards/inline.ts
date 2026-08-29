@@ -13,6 +13,9 @@ export function buildApprovalKeyboard(runId: string) {
         { text: "🖼 Показать всю карусель (альбом)", callback_data: `view_carousel:${runId}` },
       ],
       [
+        { text: "📝 Читать весь текст поста", callback_data: `view_full_text:${runId}` },
+      ],
+      [
         { text: "📸 Загрузить свой кадр на обложку", callback_data: `upload_cover:${runId}` },
         { text: "✏️ Редактировать текст", callback_data: `edit_text:${runId}` },
       ],

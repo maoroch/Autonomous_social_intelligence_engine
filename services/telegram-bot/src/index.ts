@@ -17,6 +17,7 @@ import { PhotoHandler } from "./handlers/photo-handler.js";
 import { buildApprovalKeyboard } from "./keyboards/inline.js";
 import { TestRunnerService, type BotQueues } from "./services/test-runner.js";
 import { LogViewerService } from "./services/log-viewer.js";
+import { CinemaCuratorService } from "./services/cinema-curator.js";
 
 const logger = createLogger("telegram-bot");
 
@@ -37,6 +38,7 @@ export class TelegramBotApp {
   private photoHandler!: PhotoHandler;
   private testRunner!: TestRunnerService;
   private logViewer!: LogViewerService;
+  private cinemaCurator!: CinemaCuratorService;
   private queues!: BotQueues;
   private activeApprovalNotifs = new Set<string>();
 
@@ -61,6 +63,7 @@ export class TelegramBotApp {
     };
 
     this.logViewer = new LogViewerService();
+    this.cinemaCurator = new CinemaCuratorService();
     this.textEditor = new TextEditorHandler();
     this.photoHandler = new PhotoHandler(this.queues, BOT_TOKEN, this.sendMessage.bind(this));
     this.testRunner = new TestRunnerService(this.queues, OPENCLAW_URL);
@@ -69,6 +72,7 @@ export class TelegramBotApp {
       this.queues,
       this.testRunner,
       this.logViewer,
+      this.cinemaCurator,
       this.sendMessage.bind(this)
     );
 
@@ -79,6 +83,8 @@ export class TelegramBotApp {
       this.photoHandler,
       this.testRunner,
       this.logViewer,
+      this.cinemaCurator,
+      OPENCLAW_URL,
       this.sendMessage.bind(this),
       this.editMessageCaption.bind(this),
       this.editMessageReplyMarkup.bind(this)
@@ -138,12 +144,24 @@ export class TelegramBotApp {
 
       const portalLabel = runDoc.tenantId === "testo" ? "Testo Industrial" : "KinoPeek Media";
 
+      // Формируем чистый превью-текст без обрезания фраз на полуслове
+      let previewText = postText;
+      if (postText.length > 700) {
+        const cut = postText.substring(0, 700);
+        const lastSentenceEnd = Math.max(cut.lastIndexOf(".\n"), cut.lastIndexOf(". "), cut.lastIndexOf("\n\n"));
+        if (lastSentenceEnd > 350) {
+          previewText = `${cut.substring(0, lastSentenceEnd + 1)}\n\n_...(полный текст поста доступен по кнопке ниже)_`;
+        } else {
+          previewText = `${cut}...\n\n_...(полный текст поста доступен по кнопке ниже)_`;
+        }
+      }
+
       const messageText =
         `🎬 *[${portalLabel}] Новый пост ожидает проверки!*\n\n` +
         `📌 *Тема:* ${topicTitle}\n` +
         `🆔 *Run ID:* \`${runId}\`\n` +
         `📂 *Рубрика:* ${(runDoc as any).contentPillarId || (runDoc as any).targetPillarId || "default"}\n\n` +
-        `📝 *Текст поста:*\n${postText.substring(0, 700)}${postText.length > 700 ? "..." : ""}\n\n` +
+        `📝 *Текст поста:*\n${previewText}\n\n` +
         `👇 *Выберите действие:*`;
 
       const inlineKeyboard = buildApprovalKeyboard(runId);

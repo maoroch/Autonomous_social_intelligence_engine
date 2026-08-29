@@ -2,6 +2,7 @@ import { createLogger } from "@pipeline/shared/logger";
 import { buildMainMenuKeyboard } from "../keyboards/inline.js";
 import type { BotQueues, TestRunnerService } from "../services/test-runner.js";
 import type { LogViewerService } from "../services/log-viewer.js";
+import type { CinemaCuratorService } from "../services/cinema-curator.js";
 
 const logger = createLogger("telegram-bot:commands");
 
@@ -10,6 +11,7 @@ export class CommandHandler {
     private queues: BotQueues,
     private testRunner: TestRunnerService,
     private logViewer: LogViewerService,
+    private cinemaCurator: CinemaCuratorService,
     private sendMessage: (chatId: number | string, text: string, replyMarkup?: any) => Promise<any>
   ) {}
 
@@ -25,11 +27,11 @@ export class CommandHandler {
     if (text === "/start" || text === "/help") {
       const welcome =
         `🎬 *Добро пожаловать в KinoPeek Control Hub!* 🍿\n\n` +
-        `Управляйте генерацией контента, модерацией карточек и тестами прямо из Telegram.\n\n` +
+        `Управляйте генерацией контента, интерактивным отбором тем и модерацией прямо из Telegram.\n\n` +
         `📌 *Основные команды:*\n` +
-        `• \`/daily_cinema\` — Авто-поиск трендов и генерация дайджеста\n` +
-        `• \`/post_topic <тема>\` — Создать пост по вашей теме\n` +
-        `• \`/trends\` — Горячие тренды кино сегодня\n` +
+        `• \`/daily_cinema\` — Интерактивный радар тем (Популярные vs Свежие новости)\n` +
+        `• \`/post_topic <тема>\` — Создать пост по вашей произвольной теме\n` +
+        `• \`/trends\` — Каталог горячих трендов кино сегодня\n` +
         `• \`/status\` — Статус последних прогонов\n` +
         `• \`/logs\` — Журнал последних прогонов и логи\n` +
         `• \`/logs <runId>\` — Детальный лог конкретного прогона\n` +
@@ -42,11 +44,12 @@ export class CommandHandler {
       return;
     }
 
-    if (text === "/daily_cinema") {
-      const runId = await this.testRunner.triggerPipelineTest("cinema-media", "daily-quick-recap");
+    if (text === "/daily_cinema" || text === "/curate_cinema") {
       await this.sendMessage(
         chatId,
-        `🚀 *Запущен новый дайджест KinoPeek!*\nID прогона: \`${runId}\``
+        `🎬 *KinoPeek News Radar — Выберите категорию тем:*\n\n` +
+        `Какой тип тем вы хотите получить от краулера перед запуском пайплайна?`,
+        this.cinemaCurator.getCuratorMenuKeyboard()
       );
       return;
     }
