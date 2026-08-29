@@ -41,6 +41,7 @@ services:
       REDIS_URL: redis://redis:6379
       MONGO_URI: mongodb://mongo:27017
       MONGO_DB_NAME: linkedin_pipeline
+      AGENT_DESIGN_URL: http://agent-design:4005
       MAX_RETRIES_PER_STAGE: 2
     depends_on:
       redis:

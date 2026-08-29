@@ -14,10 +14,12 @@ interface CarouselTabProps {
   selectedTemplate: string;
   isAwaitingApproval: boolean;
   isReRendering: boolean;
+  actionLoading?: boolean;
   renderedStyles?: Record<string, any>;
   onSlideChange: (index: number, field: keyof SlideData, value: string | string[]) => void;
   onTemplateChange: (template: string) => void;
   onSelectSlide: (index: number) => void;
+  onSaveManualEdits?: () => void;
 }
 
 export function CarouselTab({
@@ -28,10 +30,12 @@ export function CarouselTab({
   selectedTemplate,
   isAwaitingApproval,
   isReRendering,
+  actionLoading = false,
   renderedStyles,
   onSlideChange,
   onTemplateChange,
   onSelectSlide,
+  onSaveManualEdits,
 }: CarouselTabProps) {
   if (slides.length === 0) {
     return (
@@ -57,8 +61,10 @@ export function CarouselTab({
           activeSlide={activeSlide}
           selectedTemplate={selectedTemplate}
           isAwaitingApproval={isAwaitingApproval}
+          actionLoading={actionLoading}
           onSlideChange={onSlideChange}
           onSelectSlide={onSelectSlide}
+          onSaveManualEdits={onSaveManualEdits}
         />
 
         {/* Live Visual Deck */}

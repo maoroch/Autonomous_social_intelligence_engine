@@ -164,11 +164,13 @@ export const DEFAULT_SOFTWARE_DEV_INDUSTRY_PROFILE: Omit<IndustryProfile, "creat
   verticalName: "software-development",
   language: ["en"],
   trendSources: [
-    { type: "api", url: "https://hacker-news.firebaseio.com/v0", label: "Hacker News Top Stories", weight: 0.9 },
-    { type: "api", url: "https://api.github.com/search/repositories", label: "GitHub Trending Repositories API", weight: 0.9 },
-    { type: "api", url: "https://dev.to/api/articles?tag=github", label: "Dev.to Top Tech Articles", weight: 0.8 },
-    { type: "rss", url: "https://medium.com/feed/tag/programming", label: "Medium Tech & Programming RSS", weight: 0.8 },
-    { type: "custom", url: "https://www.reddit.com/r/coolgithubprojects", label: "Reddit (r/coolgithubprojects & r/sideproject)", weight: 0.8 },
+    { type: "rss", url: "https://feeds.arstechnica.com/arstechnica/index", label: "Ars Technica (Tech & Systems)", weight: 1.0 },
+    { type: "rss", url: "https://feed.infoq.com/", label: "InfoQ (Software Architecture & Cloud)", weight: 1.0 },
+    { type: "rss", url: "https://techcrunch.com/feed/", label: "TechCrunch (Startups & AI)", weight: 0.9 },
+    { type: "rss", url: "https://venturebeat.com/feed/", label: "VentureBeat (Enterprise AI & ML)", weight: 0.9 },
+    { type: "rss", url: "https://dev.to/feed", label: "Dev.to (Engineering & Tutorials)", weight: 0.9 },
+    { type: "rss", url: "https://news.ycombinator.com/rss", label: "Hacker News Top Stories", weight: 0.9 },
+    { type: "custom", url: "https://t.me/s/github", label: "Telegram @github (Trending Repos)", weight: 1.0 },
   ],
   glossary: [],
   terminologyRules: {

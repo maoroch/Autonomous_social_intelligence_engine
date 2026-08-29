@@ -1,6 +1,7 @@
 import { createLogger } from "@pipeline/shared/logger";
 import type { TrendSourceConfig } from "@pipeline/shared/schemas";
 import type { RawTrendItem } from "../aggregator.js";
+import { fetchTelegramGithub } from "../fetchers/telegramGithub.js";
 
 const logger = createLogger("source-adapter");
 
@@ -192,12 +193,28 @@ export class YoutubeAdapter implements SourceAdapter {
   }
 }
 
-/** Заглушка для источников, требующих индивидуальной логики (партнёрские API, приватные фиды и т.д.). */
+/** Кастомные источники (включая Telegram-каналы, напр. @github). */
 export class CustomAdapter implements SourceAdapter {
-  async fetch(config: TrendSourceConfig): Promise<Array<{ title: string; url: string; score: number }>> {
+  async fetch(config: TrendSourceConfig): Promise<SourceAdapterResultItem[]> {
+    if (config.url && config.url.includes("t.me")) {
+      try {
+        const tgItems = await fetchTelegramGithub();
+        return tgItems.map((item) => ({
+          title: item.title,
+          url: item.url,
+          score: item.score || Math.round(config.weight * 100),
+          summary: item.summary,
+          fullText: item.summary,
+        }));
+      } catch (err: any) {
+        logger.error({ err: err.message, url: config.url }, "Telegram fetch failed in CustomAdapter");
+        return [];
+      }
+    }
+
     logger.warn(
       { url: config.url, label: config.label },
-      "CustomAdapter has no default implementation — implement per-source logic before production use",
+      "CustomAdapter has no default implementation for this URL",
     );
     return [];
   }

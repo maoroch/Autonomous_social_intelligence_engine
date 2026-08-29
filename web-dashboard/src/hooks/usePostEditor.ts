@@ -14,13 +14,13 @@ export function usePostEditor(
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
-  const hasInitializedRef = useRef(false);
+  const lastWritingTextRef = useRef<string>("");
 
   useEffect(() => {
-    if (writingResult && !hasInitializedRef.current) {
-      const fullText = writingResult?.text || writingResult?.body || "";
+    const fullText = writingResult?.text || writingResult?.body || "";
+    if (fullText && fullText !== lastWritingTextRef.current) {
       setBodyText(fullText);
-      hasInitializedRef.current = true;
+      lastWritingTextRef.current = fullText;
     }
   }, [writingResult]);
 

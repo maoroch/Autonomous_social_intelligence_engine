@@ -27,11 +27,13 @@ export function useSlideDeckEditor(
 
   const hasInitializedRef = useRef(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastDesignSyncRef = useRef<string>("");
+  const isDirtyRef = useRef<boolean>(false);
 
-  // Initialize slides on first load
+  // Initialize and synchronize slides when designResult updates
   useEffect(() => {
-    if (designResult && !hasInitializedRef.current) {
-      if (designResult.template_name) {
+    if (designResult) {
+      if (designResult.template_name && !isDirtyRef.current) {
         setSelectedTemplate(designResult.template_name);
       }
 
@@ -39,7 +41,13 @@ export function useSlideDeckEditor(
         designResult?.card_deck?.slides ||
         (designResult?.render_data ? Object.values(designResult.render_data) : []);
 
-      if (rawSlides.length > 0) {
+      const syncSignature = JSON.stringify({
+        tpl: designResult.template_name,
+        slides: rawSlides.map((s: any) => ({ t: s.title, b: s.bullets, bg: s.badge }))
+      });
+
+      // Synchronize if not dirty (or initial load)
+      if (rawSlides.length > 0 && syncSignature !== lastDesignSyncRef.current && !isDirtyRef.current) {
         setSlideDeck(
           rawSlides.map((val: any, idx: number) => ({
             key: `slide_${idx + 1}`,
@@ -51,7 +59,7 @@ export function useSlideDeckEditor(
             isCover: idx === 0,
           }))
         );
-        hasInitializedRef.current = true;
+        lastDesignSyncRef.current = syncSignature;
       }
     }
   }, [designResult]);
@@ -73,15 +81,17 @@ export function useSlideDeckEditor(
 
         await saveRunEdits(runId, tenantId, {
           render_data: renderDataObj,
+          slides: updatedSlides,
           customSlides: updatedSlides,
           template_name: templateName,
         });
 
         setSaveStatus("saved");
+        isDirtyRef.current = false;
         setTimeout(() => setSaveStatus("idle"), 2500);
 
         if (onReRenderTriggered) {
-          const previewId = designResult?.preview_cover_1_id || designResult?.coverImageId || null;
+          const previewId = designResult?.imageIds?.[0] || designResult?.preview_cover_1_id || designResult?.coverImageId || null;
           onReRenderTriggered(previewId);
         }
       } catch (err) {
@@ -97,6 +107,7 @@ export function useSlideDeckEditor(
     field: keyof SlideData,
     value: string | string[]
   ) => {
+    isDirtyRef.current = true;
     const updated = [...slideDeck];
     if (!updated[index]) return;
 
@@ -105,18 +116,16 @@ export function useSlideDeckEditor(
       [field]: value,
     };
     setSlideDeck(updated);
-
-    // Debounced autosave
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    debounceTimerRef.current = setTimeout(() => {
-      saveSlides(updated, selectedTemplate);
-    }, 1000);
   };
 
   const handleTemplateChange = (newTemplate: string) => {
+    isDirtyRef.current = true;
     setSelectedTemplate(newTemplate);
-    saveSlides(slideDeck, newTemplate);
   };
+
+  const markClean = useCallback(() => {
+    isDirtyRef.current = false;
+  }, []);
 
   return {
     slideDeck,
@@ -127,5 +136,6 @@ export function useSlideDeckEditor(
     handleSlideChange,
     handleTemplateChange,
     saveSlides,
+    markClean,
   };
 }

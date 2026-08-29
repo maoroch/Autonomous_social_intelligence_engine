@@ -118,9 +118,9 @@ export function interpolateTemplate(
     `<span style="font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 800; color: ${brand.inkColor};">${style.name || "Testo"}</span>`;
 
   let rendered = templateHtml
-    .replace(/\{\{ACCENT_COLOR\}\}/g, brand.accentColor)
-    .replace(/\{\{INK_COLOR\}\}/g, brand.inkColor)
-    .replace(/\{\{PAPER_COLOR\}\}/g, brand.paperColor)
+    .replace(/\{\s*\{\s*ACCENT_COLOR\s*\}\s*\}/g, brand.accentColor)
+    .replace(/\{\s*\{\s*INK_COLOR\s*\}\s*\}/g, brand.inkColor)
+    .replace(/\{\s*\{\s*PAPER_COLOR\s*\}\s*\}/g, brand.paperColor)
     .replace(/\{\{BADGE\}\}/g, escapeHtml(badge))
     .replace(/\{\{TITLE\}\}/g, escapeHtml(title))
     .replace(/\{\{BODY\}\}/g, escapeHtml(bodyText))
@@ -133,7 +133,7 @@ export function interpolateTemplate(
     .replace(/\{\{ILLUSTRATION\}\}/g, illustrationTag)
     .replace(
       /\{\{ILLUSTRATION_STYLE\}\}/g,
-      illustrationTag && !isCover ? "display: flex;" : "display: none;"
+      illustrationTag ? "display: flex;" : "display: none;"
     );
 
   return rendered;

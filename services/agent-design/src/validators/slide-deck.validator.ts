@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const SlideItemSchema = z.object({
+  key: z.string().optional(),
   slide_number: z.number().optional(),
   title: z.string().default(""),
   bullets: z.array(z.string()).default([]),
@@ -12,7 +13,7 @@ export const SlideItemSchema = z.object({
   isCover: z.boolean().optional(),
   footer: z.string().optional(),
   call_to_action: z.string().optional(),
-});
+}).passthrough();
 
 export const SlideDeckSchema = z.object({
   template_name: z.string().optional(),

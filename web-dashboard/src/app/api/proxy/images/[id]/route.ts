@@ -14,44 +14,53 @@ export async function GET(
   try {
     const response = await fetch(`${OPENCLAW_URL}/images/${id}`);
     if (!response.ok) {
-      return new NextResponse("ZIP file not found", { status: response.status });
+      return new NextResponse("File not found", { status: response.status });
     }
 
+    const contentType = response.headers.get("content-type") || "image/png";
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // If no index specified, return the ZIP file as-is
-    if (fileIndex === null) {
-      return new NextResponse(new Uint8Array(buffer), {
-        status: 200,
-        headers: {
-          "Content-Type": "application/zip",
-          "Content-Disposition": `attachment; filename="carousel_${id}.zip"`,
-        },
-      });
+    // If a specific slide card index is requested from a ZIP archive
+    if (fileIndex !== null) {
+      try {
+        const zip = new AdmZip(buffer);
+        const entries = zip.getEntries().sort((a, b) => a.entryName.localeCompare(b.entryName));
+        
+        const idx = parseInt(fileIndex, 10);
+        if (!isNaN(idx) && idx >= 0 && idx < entries.length) {
+          const targetEntry = entries[idx];
+          const imageBuffer = targetEntry.getData();
+
+          return new NextResponse(new Uint8Array(imageBuffer), {
+            status: 200,
+            headers: {
+              "Content-Type": "image/png",
+              "Cache-Control": "no-cache, no-store, must-revalidate",
+            },
+          });
+        }
+      } catch (zipErr) {
+        // If not a valid zip, fall through to direct stream
+      }
     }
 
-    // Otherwise, parse ZIP and extract the specific slide card PNG
-    const zip = new AdmZip(buffer);
-    const entries = zip.getEntries().sort((a, b) => a.entryName.localeCompare(b.entryName));
-    
-    const idx = parseInt(fileIndex, 10);
-    if (isNaN(idx) || idx < 0 || idx >= entries.length) {
-      return new NextResponse("Index out of bounds", { status: 400 });
+    const isZip = contentType.includes("zip") || contentType.includes("octet-stream");
+    const headers: Record<string, string> = {
+      "Content-Type": contentType,
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+    };
+
+    if (isZip) {
+      headers["Content-Disposition"] = `attachment; filename="carousel_${id}.zip"`;
     }
 
-    const targetEntry = entries[idx];
-    const imageBuffer = targetEntry.getData();
-
-    return new NextResponse(new Uint8Array(imageBuffer), {
+    return new NextResponse(new Uint8Array(buffer), {
       status: 200,
-      headers: {
-        "Content-Type": "image/png",
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-      },
+      headers,
     });
   } catch (error: any) {
-    console.error("Failed to extract card from zip:", error);
-    return new NextResponse("Failed to extract image from zip archive", { status: 500 });
+    console.error("Failed to proxy image:", error);
+    return new NextResponse("Failed to load image", { status: 500 });
   }
 }

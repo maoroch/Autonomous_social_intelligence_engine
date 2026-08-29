@@ -31,17 +31,23 @@ export function initIllustrations(): void {
 
     const pngDir = path.join(templateDir, "png-illustrations");
     if (fs.existsSync(pngDir)) {
-      const files = fs.readdirSync(pngDir).filter((f) => f.endsWith(".png") || f.endsWith(".svg"));
-      for (const file of files) {
-        const key = file.replace(/\.(png|svg)$/, "").toLowerCase();
-        if (file.endsWith(".svg")) {
-          const content = fs.readFileSync(path.join(pngDir, file), "utf8");
-          pngBase64Cache.set(key, content);
-        } else {
-          const base64 = fs.readFileSync(path.join(pngDir, file)).toString("base64");
-          pngBase64Cache.set(key, base64);
+      const scanDir = (dir: string) => {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            scanDir(fullPath);
+          } else if (entry.name.endsWith(".png") || entry.name.endsWith(".svg")) {
+            const key = entry.name.replace(/\.(png|svg)$/, "").toLowerCase();
+            if (entry.name.endsWith(".svg")) {
+              pngBase64Cache.set(key, fs.readFileSync(fullPath, "utf8"));
+            } else {
+              pngBase64Cache.set(key, fs.readFileSync(fullPath).toString("base64"));
+            }
+          }
         }
-      }
+      };
+      scanDir(pngDir);
       logger.info({ count: pngBase64Cache.size }, "Loaded PNG/SVG illustrations from disk");
     }
   } catch (err) {
@@ -64,8 +70,25 @@ export function resolveIllustrationTag(
   illustrationKey: string | undefined,
   templateSetId: string
 ): string {
-  if (!illustrationKey) return "";
-  const key = illustrationKey.toLowerCase();
+  if (!illustrationKey || !illustrationKey.trim()) return "";
+  const trimmed = illustrationKey.trim();
+
+  // Direct image URL or Data URI
+  if (
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("data:image/") ||
+    trimmed.startsWith("/")
+  ) {
+    return `<img src="${trimmed}" style="max-height: 100%; max-width: 100%; object-fit: contain;" alt="illustration" />`;
+  }
+
+  // Direct inline SVG
+  if (trimmed.startsWith("<svg")) {
+    return trimmed;
+  }
+
+  const key = trimmed.toLowerCase();
 
   // 1. Проверяем PNG / SVG cache
   if (pngBase64Cache.has(key)) {
@@ -81,11 +104,16 @@ export function resolveIllustrationTag(
     return svgCache.get(key)!;
   }
 
-  // 3. Пытаемся прочитать с диска
+  // 3. Пытаемся прочитать с диска (SVG или PNG)
   try {
-    const customPath = path.join(templateDir, templateSetId, `${key}.svg`);
-    if (fs.existsSync(customPath)) {
-      return fs.readFileSync(customPath, "utf8");
+    const svgPath = path.join(templateDir, templateSetId, `${key}.svg`);
+    if (fs.existsSync(svgPath)) {
+      return fs.readFileSync(svgPath, "utf8");
+    }
+    const pngPath = path.join(templateDir, "png-illustrations", templateSetId, `${key}.png`);
+    if (fs.existsSync(pngPath)) {
+      const base64 = fs.readFileSync(pngPath).toString("base64");
+      return `<img src="data:image/png;base64,${base64}" style="max-height: 100%; max-width: 100%; object-fit: contain;" alt="${key}" />`;
     }
   } catch (e) {
     // ignore

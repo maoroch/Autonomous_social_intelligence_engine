@@ -5,8 +5,9 @@
   <meta charset="UTF-8">
   <title>Testo carousel card</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@600;700;800;900&family=JetBrains+Mono:wght@600;700;800&family=IBM+Plex+Mono:wght@600;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@600;700&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@600;700;800&family=Manrope:wght@600;700;800;900&subset=cyrillic,cyrillic-ext&display=swap"
+    rel="stylesheet">
   <style>
     :root {
       --testo-accent: {{ACCENT_COLOR}};
@@ -142,6 +143,17 @@
       align-items: center;
       width: 100%;
       height: 320px;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    .illustration-container img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+      border-radius: 20px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.08);
     }
 
     .illustration-container svg {
@@ -198,7 +210,6 @@
           <span class="badge-dot"></span>
           <span>{{BADGE}}</span>
         </div>
-        <div class="tech-chip">ТЕХНИЧЕСКИЙ ОБЗОР</div>
       </div>
 
       <h1 class="headline">{{TITLE}}</h1>
@@ -213,7 +224,7 @@
 
       <div class="footer">
         <div class="footer-brand">
-          {{FOOTER_LEFT}}
+          <img src="https://azia-test.com/wp-content/uploads/2025/02/logo.svg" alt="Azia Test" style="height: 52px; max-height: 52px; width: auto; display: block; object-fit: contain;" />
         </div>
         <span>{{PAGE_TEXT}}</span>
       </div>

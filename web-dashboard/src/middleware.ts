@@ -8,6 +8,11 @@ import { verifySessionToken, SESSION_COOKIE_NAME } from "./lib/auth";
  */
 export async function middleware(req: NextRequest) {
   const { pathname, searchParams } = req.nextUrl;
+  const isAuthEnforced = process.env.ENFORCE_AUTH === "true";
+
+  if (!isAuthEnforced) {
+    return NextResponse.next();
+  }
 
   // ---------- 1. Защита страниц дашборда: /:tenantId/dashboard/... ----------
   const dashboardMatch = pathname.match(/^\/([^/]+)\/dashboard(\/.*)?$/);
@@ -30,8 +35,6 @@ export async function middleware(req: NextRequest) {
     const session = token ? await verifySessionToken(token) : null;
     const requestedTenantId = searchParams.get("tenantId");
 
-    // GET /api/runs/list и GET /api/profiles уже сами возвращают [] без tenantId (см. соответствующие route.ts),
-    // но здесь дополнительно блокируем доступ, если сессия не соответствует запрошенному tenantId вовсе.
     if (requestedTenantId && (!session || session.tenantId !== requestedTenantId)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

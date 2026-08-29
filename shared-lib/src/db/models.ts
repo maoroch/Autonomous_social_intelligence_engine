@@ -23,6 +23,7 @@ export interface PipelineRunDoc {
   targetPlatform?: "linkedin" | "instagram";
   contentFormat?: "carousel" | "reel-script" | "story" | "single-image";
   contentPillarId?: string;
+  targetPillarId?: string;
   retries: Record<string, number>; // stage -> кол-во повторов
   createdAt: Date;
   updatedAt: Date;

@@ -22,7 +22,8 @@ export async function PUT(
       throw new Error(`OpenClaw responded with ${res.status}`);
     }
 
-    return NextResponse.json({ ok: true });
+    const data = await res.json();
+    return NextResponse.json(data);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

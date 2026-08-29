@@ -38,12 +38,65 @@ export function SlidePreviewDeck({
         )}
       </div>
 
-      {/* Grid of Slide Previews */}
+      {/* Featured Large HD Active Slide Preview */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          marginBottom: 24,
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 440,
+            aspectRatio: "4/5",
+            borderRadius: 16,
+            overflow: "hidden",
+            border: "3px solid #FF7900",
+            boxShadow: "0 12px 32px rgba(0,0,0,0.12)",
+            background: "#F8FAFC",
+            position: "relative",
+          }}
+        >
+          {imageIds[activeSlide] ? (
+            <img
+              key={imageIds[activeSlide]}
+              src={`/api/proxy/images/${imageIds[activeSlide]}`}
+              alt={`Slide ${activeSlide + 1}`}
+              style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+            />
+          ) : (
+            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: "#94A3B8" }}>
+              Слайд {activeSlide + 1}
+            </div>
+          )}
+          <div
+            style={{
+              position: "absolute",
+              top: 12,
+              right: 12,
+              background: "rgba(15, 23, 42, 0.85)",
+              color: "#FFFFFF",
+              fontSize: 12,
+              fontWeight: 800,
+              padding: "4px 10px",
+              borderRadius: 8,
+              backdropFilter: "blur(8px)",
+            }}
+          >
+            Слайд #{activeSlide + 1}
+          </div>
+        </div>
+      </div>
+
+      {/* Thumbnails Row */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
-          gap: 12,
+          gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))",
+          gap: 10,
           marginBottom: 20,
         }}
       >
@@ -56,39 +109,41 @@ export function SlidePreviewDeck({
               key={idx}
               onClick={() => onSelectSlide(idx)}
               style={{
-                borderRadius: 10,
+                borderRadius: 8,
                 overflow: "hidden",
-                border: `2.5px solid ${isActive ? "#FF7900" : "#E2E8F0"}`,
-                boxShadow: isActive ? "0 4px 14px rgba(255, 121, 0, 0.25)" : "none",
+                border: `2px solid ${isActive ? "#FF7900" : "#CBD5E1"}`,
+                boxShadow: isActive ? "0 4px 12px rgba(255, 121, 0, 0.3)" : "none",
                 cursor: "pointer",
                 position: "relative",
                 aspectRatio: "4/5",
                 background: "#F8FAFC",
                 transition: "all 0.2s",
+                transform: isActive ? "scale(1.04)" : "scale(1)",
               }}
             >
               {imgId ? (
                 <img
+                  key={imgId}
                   src={`/api/proxy/images/${imgId}`}
                   alt={`Slide ${idx + 1}`}
                   style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                 />
               ) : (
-                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, color: "#94A3B8" }}>
-                  Слайд {idx + 1}
+                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#94A3B8" }}>
+                  #{idx + 1}
                 </div>
               )}
               <div
                 style={{
                   position: "absolute",
-                  bottom: 4,
-                  right: 4,
-                  background: "rgba(0,0,0,0.6)",
+                  bottom: 2,
+                  right: 2,
+                  background: "rgba(0,0,0,0.65)",
                   color: "#FFFFFF",
-                  fontSize: 10,
+                  fontSize: 9,
                   fontWeight: 700,
-                  padding: "2px 6px",
-                  borderRadius: 4,
+                  padding: "1px 4px",
+                  borderRadius: 3,
                 }}
               >
                 #{idx + 1}

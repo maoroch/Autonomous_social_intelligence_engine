@@ -56,8 +56,9 @@ async function processTrendJob(job: AgentJob): Promise<unknown> {
     logger.warn({ err, tenantId }, "Failed to load IndustryProfile for trend agent");
   }
 
-  // 2. Fetch raw trends via Source Factory (Den of Geek for cinema, Adapters for Testo, Aggregator for Tech)
-  const rawTrends = await fetchTrendsForTenant(tenantId, industryProfile);
+  // 2. Fetch raw trends via Source Factory (Den of Geek for cinema, Adapters for Tech/Testo, Telegram @github for GitHub pillars)
+  const targetPillar = run?.targetPillarId || run?.contentPillarId || (job.payload as any)?.targetPillarId;
+  const rawTrends = await fetchTrendsForTenant(tenantId, industryProfile, targetPillar);
 
   if (rawTrends.length === 0) {
     logger.warn({ runId: job.runId, tenantId }, "No raw trends fetched from any source — returning empty list");

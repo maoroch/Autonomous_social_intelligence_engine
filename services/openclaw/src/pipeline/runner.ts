@@ -48,13 +48,14 @@ export async function startPipelineRun(
   initialTopic: { title: string; summary: string } = { title: "", summary: "" },
   profileId?: string,
   tenantId?: string,
-  targetPillarId?: string
+  targetPillarId?: string,
+  skipDesign?: boolean
 ): Promise<string> {
   const runId = nanoid();
   const now = new Date();
   const isManualTopic = !!(initialTopic && initialTopic.title && initialTopic.title.trim().length > 0);
 
-  const run: PipelineRunDoc = {
+  const run: any = {
     runId,
     status: PipelineRunStatus.RUNNING,
     currentStage: isManualTopic ? PipelineStage.STRATEGY : PipelineStage.TREND,
@@ -62,6 +63,8 @@ export async function startPipelineRun(
     profileId,
     tenantId,
     contentPillarId: targetPillarId,
+    targetPillarId,
+    skipDesign: !!skipDesign,
     retries: {},
     createdAt: now,
     updatedAt: now,
@@ -231,12 +234,12 @@ export async function handleAgentCompleted(
     }
   }
 
-  if (stage === PipelineStage.WRITING && run.tenantId === "cinema-media") {
-    // Media portal (cinema-media) publishes text directly to Telegram without carousel design agent
+  if (stage === PipelineStage.WRITING && (run.tenantId === "cinema-media" || (run as any).skipDesign)) {
+    // Media portal (cinema-media) or skipDesign -> publishes text directly without carousel design agent
     const next = PipelineStage.SEO;
     await runs.updateOne({ runId }, { $set: { currentStage: next, updatedAt: new Date() } });
     await enqueueStage(queues, runId, next, result);
-    logger.info({ runId, from: stage, to: next }, "advanced directly from WRITING to SEO (skipping DESIGN for cinema-media)");
+    logger.info({ runId, from: stage, to: next }, "advanced directly from WRITING to SEO (skipping DESIGN)");
     return;
   }
 

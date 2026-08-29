@@ -59,7 +59,12 @@ export function createApprovalRouter(logger: Logger): Router {
       return res.status(404).json({ error: "run not found" });
     }
 
-    const stages = await stageResults().find({ runId: req.params.runId }).sort({ createdAt: 1 }).toArray();
+    const rawStages = await stageResults().find({ runId: req.params.runId }).sort({ updatedAt: -1, createdAt: -1 }).toArray();
+    const stageMap = new Map<string, any>();
+    for (const st of rawStages) {
+      if (!stageMap.has(st.stage)) stageMap.set(st.stage, st);
+    }
+    const stages = Array.from(stageMap.values()).reverse();
     res.json({ run, stages });
   });
 
@@ -141,7 +146,7 @@ export function createApprovalRouter(logger: Logger): Router {
 
   router.put("/runs/:runId/edit", async (req, res) => {
     const { runId } = req.params;
-    const { postText, slides, template_name, tenantId } = req.body;
+    const { postText, bodyText, slides, customSlides, render_data: reqRenderData, template_name, tenantId } = req.body;
 
     const existingRun = await runs().findOne({ runId });
     if (!existingRun) return res.status(404).json({ error: "run not found" });
@@ -151,34 +156,40 @@ export function createApprovalRouter(logger: Logger): Router {
 
     logger.info({ runId, template_name }, "received inline edits from human");
 
-    if (postText) {
-      const textVal = typeof postText === "string" ? postText : (postText.text || "");
-      const hookVal = typeof postText === "object" ? postText.hook : "";
-      const ctaVal = typeof postText === "object" ? postText.cta : "";
+    const textToSave = postText || bodyText;
+    if (textToSave) {
+      const textVal = typeof textToSave === "string" ? textToSave : (textToSave.text || textToSave.body || "");
+      const hookVal = typeof textToSave === "object" ? textToSave.hook : "";
+      const ctaVal = typeof textToSave === "object" ? textToSave.cta : "";
       await stageResults().updateOne(
         { runId, stage: "writing" },
-        { $set: { "result.text": textVal, "result.hook": hookVal, "result.cta": ctaVal } }
+        { $set: { "result.text": textVal, "result.body": textVal, "result.hook": hookVal, "result.cta": ctaVal } }
       );
     }
 
+    const slidesList = slides || customSlides;
     const updateFields: Record<string, any> = {};
     if (template_name) {
       updateFields["result.template_name"] = template_name;
     }
 
-    if (slides && Array.isArray(slides)) {
+    if (slidesList && Array.isArray(slidesList) && slidesList.length > 0) {
       const render_data: Record<string, any> = {};
-      slides.forEach((slide: any) => {
-        render_data[slide.key] = {
-          key: slide.key,
-          badge: slide.badge,
-          title: slide.title,
-          bullets: slide.bullets,
-          footer: slide.footer,
-          illustration: slide.illustration
+      slidesList.forEach((slide: any, idx: number) => {
+        const key = slide.key || `slide_${idx + 1}`;
+        render_data[key] = {
+          key,
+          badge: slide.badge || "",
+          title: slide.title || "",
+          bullets: Array.isArray(slide.bullets) ? slide.bullets : [],
+          footer: slide.footer || "",
+          illustration: slide.illustration || "none"
         };
       });
       updateFields["result.render_data"] = render_data;
+      updateFields["result.card_deck.slides"] = slidesList;
+    } else if (reqRenderData && typeof reqRenderData === "object") {
+      updateFields["result.render_data"] = reqRenderData;
     }
 
     if (Object.keys(updateFields).length > 0) {
@@ -186,29 +197,43 @@ export function createApprovalRouter(logger: Logger): Router {
         { runId, stage: "design" },
         { $set: updateFields }
       );
+    }
 
-      // Set run status to RUNNING to block concurrent approval while re-rendering
-      await runs().updateOne(
-        { runId },
-        { $set: { status: PipelineRunStatus.RUNNING, currentStage: PipelineStage.DESIGN, updatedAt: new Date() } }
-      );
-
-      // Trigger re-rendering of the design agent by queuing a design job
+    if (slidesList && Array.isArray(slidesList) && slidesList.length > 0) {
+      // Call synchronous inline render on agent-design microservice
       try {
-        const designQueue = createQueue<AgentJob>(QueueName.DESIGN, process.env.REDIS_URL ?? "redis://localhost:6379");
-        await designQueue.add(PipelineStage.DESIGN, {
-          runId,
-          stage: PipelineStage.DESIGN,
-          attempt: 1,
-          payload: { template_name, isInlineEdit: true },
+        const designServiceUrl = process.env.AGENT_DESIGN_URL ?? "http://agent-design:4005";
+        const renderRes = await fetch(`${designServiceUrl}/render-inline`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            runId,
+            template_name,
+            customSlides: slidesList,
+            tenantId: existingRun.tenantId,
+          }),
         });
-        logger.info({ runId, template_name }, "queued design re-rendering for inline edits");
+        if (renderRes.ok) {
+          logger.info({ runId, template_name }, "synchronous design re-render completed successfully");
+        } else {
+          logger.warn({ runId, status: renderRes.status }, "synchronous design render returned non-200");
+        }
       } catch (err) {
-        logger.error({ err, runId }, "failed to queue design re-rendering");
+        logger.error({ err, runId }, "failed calling synchronous agent-design render-inline");
       }
     }
 
-    res.json({ ok: true });
+    await runs().updateOne({ runId }, { $set: { updatedAt: new Date() } });
+
+    const updatedRun = await runs().findOne({ runId });
+    const rawStages = await stageResults().find({ runId }).sort({ updatedAt: -1, createdAt: -1 }).toArray();
+    const stageMap = new Map<string, any>();
+    for (const st of rawStages) {
+      if (!stageMap.has(st.stage)) stageMap.set(st.stage, st);
+    }
+    const stages = Array.from(stageMap.values()).reverse();
+
+    res.json({ ok: true, run: updatedRun, stages });
   });
 
   router.post("/runs/:runId/restart", async (req, res) => {

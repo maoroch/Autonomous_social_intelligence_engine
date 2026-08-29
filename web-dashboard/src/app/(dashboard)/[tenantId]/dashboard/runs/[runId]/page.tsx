@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useRunDetails } from "@/hooks/useRunDetails";
 import { useSlideDeckEditor } from "@/hooks/useSlideDeckEditor";
 import { usePostEditor } from "@/hooks/usePostEditor";
-import { approveRun, rejectRun, triggerRedesign, triggerReprocess } from "@/lib/api-client";
+import { approveRun, rejectRun, triggerRedesign, triggerReprocess, saveRunEdits } from "@/lib/api-client";
 
 import { RunHeader } from "@/components/runs/RunHeader";
 import { RunProgressTracker } from "@/components/runs/RunProgressTracker";
@@ -38,7 +38,10 @@ export default function RunDetailsPage({ params }: PageProps) {
     error,
     isReRendering,
     fetchDetails,
+    setRun,
+    setStages,
     triggerReRenderingState,
+    updateRunAndStages,
   } = useRunDetails(runId, tenantId);
 
   const stagesReversed = [...stages].reverse();
@@ -57,6 +60,7 @@ export default function RunDetailsPage({ params }: PageProps) {
     handleSlideChange,
     handleTemplateChange,
     saveSlides,
+    markClean,
   } = useSlideDeckEditor(
     runId,
     tenantId,
@@ -125,7 +129,7 @@ export default function RunDetailsPage({ params }: PageProps) {
       setIsReprocessModalOpen(false);
       fetchDetails();
     } catch (err) {
-      alert("Не удалось отправить на полную перегенерацию");
+      alert("Не удалось перезапустить пост");
     } finally {
       setActionLoading(false);
     }
@@ -134,9 +138,23 @@ export default function RunDetailsPage({ params }: PageProps) {
   const handleSaveManualEdits = async () => {
     setActionLoading(true);
     try {
-      await Promise.all([savePost(), saveSlides(slideDeck, selectedTemplate)]);
-      alert("Правки успешно сохранены!");
+      const data = await saveRunEdits(runId, tenantId, {
+        postText: bodyText,
+        bodyText,
+        slides: slideDeck,
+        customSlides: slideDeck,
+        template_name: selectedTemplate,
+      });
+      if (data?.run && data?.stages) {
+        updateRunAndStages(data.run, data.stages);
+      } else {
+        if (data?.stages) setStages(data.stages);
+        if (data?.run) setRun(data.run);
+      }
+      markClean();
+      alert("Правки успешно сохранены и слайды перерендерены!");
     } catch (err) {
+      console.error("Error saving manual edits:", err);
       alert("Ошибка при сохранении правок");
     } finally {
       setActionLoading(false);
@@ -289,10 +307,12 @@ export default function RunDetailsPage({ params }: PageProps) {
           selectedTemplate={selectedTemplate}
           isAwaitingApproval={isAwaitingApproval}
           isReRendering={isReRendering}
+          actionLoading={actionLoading}
           renderedStyles={designResult?.rendered_styles}
           onSlideChange={handleSlideChange}
           onTemplateChange={handleTemplateChange}
           onSelectSlide={setActiveSlide}
+          onSaveManualEdits={handleSaveManualEdits}
         />
       )}
 

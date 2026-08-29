@@ -23,7 +23,11 @@ export function useRunDetails(runId: string, tenantId: string) {
       const designStage = stagesReversed.find((s: any) => s.stage === "design");
 
       const newPreviewId =
-        designStage?.result?.preview_cover_1_id || designStage?.result?.imageId || null;
+        designStage?.result?.imageIds?.[0] ||
+        designStage?.result?.updatedAt ||
+        designStage?.result?.preview_cover_1_id ||
+        designStage?.result?.imageId ||
+        null;
 
       if (isReRenderingRef.current && newPreviewId && newPreviewId !== prevPreviewIdRef.current) {
         setIsReRendering(false);
@@ -43,10 +47,18 @@ export function useRunDetails(runId: string, tenantId: string) {
     setIsReRendering(true);
   }, []);
 
+  const updateRunAndStages = useCallback((newRun: any, newStages: any[]) => {
+    setRun(newRun);
+    setStages(newStages);
+    setIsReRendering(false);
+    isReRenderingRef.current = false;
+  }, []);
+
   useEffect(() => {
     fetchDetails();
 
     let interval: NodeJS.Timeout | null = null;
+    // Only poll when run is actively running in background or actively re-rendering
     if (run?.status === "running" || isReRendering) {
       interval = setInterval(fetchDetails, 3000);
     }
@@ -62,6 +74,9 @@ export function useRunDetails(runId: string, tenantId: string) {
     error,
     isReRendering,
     fetchDetails,
+    setRun,
+    setStages,
     triggerReRenderingState,
+    updateRunAndStages,
   };
 }

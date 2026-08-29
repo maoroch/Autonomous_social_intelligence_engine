@@ -44,6 +44,7 @@ export async function renderCarouselDeck(
       );
 
       await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 15000 });
+      await page.evaluateHandle("document.fonts.ready");
       const buffer = (await page.screenshot({ type: "png" })) as Buffer;
 
       const slideFilename = `slide_${i + 1}.png`;

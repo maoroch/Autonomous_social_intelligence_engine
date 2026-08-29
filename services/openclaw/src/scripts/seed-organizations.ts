@@ -13,7 +13,7 @@ import {
   DEFAULT_SOFTWARE_DEV_INDUSTRY_PROFILE,
 } from "@pipeline/shared/schemas";
 
-const MONGO_URI = process.env.MONGO_URI ?? "mongodb://localhost:27017";
+const MONGO_URI = process.env.MONGO_URI ?? "mongodb://localhost:27018";
 const MONGO_DB_NAME = process.env.MONGO_DB_NAME ?? "linkedin_pipeline";
 
 /**
@@ -39,7 +39,18 @@ async function main() {
     publishingTargets: ["linkedin"],
   });
 
-  const techProfile = IndustryProfileSchema.parse(DEFAULT_SOFTWARE_DEV_INDUSTRY_PROFILE);
+  const techProfile = IndustryProfileSchema.parse({
+    ...DEFAULT_SOFTWARE_DEV_INDUSTRY_PROFILE,
+    trendSources: [
+      { type: "rss", url: "https://feeds.arstechnica.com/arstechnica/index", label: "Ars Technica (Tech & Systems)", weight: 1.0 },
+      { type: "rss", url: "https://feed.infoq.com/", label: "InfoQ (Software Architecture & Cloud)", weight: 1.0 },
+      { type: "rss", url: "https://techcrunch.com/feed/", label: "TechCrunch (Startups & AI)", weight: 0.9 },
+      { type: "rss", url: "https://venturebeat.com/feed/", label: "VentureBeat (Enterprise AI & ML)", weight: 0.9 },
+      { type: "rss", url: "https://dev.to/feed", label: "Dev.to (Engineering & Tutorials)", weight: 0.9 },
+      { type: "rss", url: "https://news.ycombinator.com/rss", label: "Hacker News Top Stories", weight: 0.9 },
+      { type: "custom", url: "https://t.me/s/github", label: "Telegram @github (Trending Repos)", weight: 1.0 },
+    ],
+  });
 
   await orgsCol.updateOne(
     { tenantId: techOrg.tenantId },
@@ -67,10 +78,11 @@ async function main() {
     // Язык портала: исключительно русский для Testo.
     language: ["ru"],
 
-    // Плейсхолдер: список требует подтверждения (TZ v2, раздел "Вопросы к заказчику", п.1).
     trendSources: [
-      { type: "rss", url: "https://www.testo.com/en-US/company/news", label: "Testo Newsroom", weight: 0.9 },
-      { type: "custom", url: "https://www.chillventa.de", label: "Chillventa (отраслевая выставка)", weight: 0.5 },
+      { type: "rss", url: "https://www.plantengineering.com/feed/", label: "Plant Engineering (Industrial & Emissions)", weight: 1.0 },
+      { type: "rss", url: "https://www.pharmaceutical-technology.com/feed/", label: "Pharmaceutical Technology (GxP & Compliance)", weight: 1.0 },
+      { type: "rss", url: "https://www.worldpharmanews.com/index.php?format=feed&type=rss", label: "World Pharma News (Cold Chain & Quality)", weight: 0.9 },
+      { type: "rss", url: "https://www.processindustryforum.com/feed", label: "Process Industry Forum (Sensors & Measurement)", weight: 0.9 },
     ],
 
     glossary: [
@@ -215,13 +227,6 @@ async function main() {
         painPoints: ["погрешность замеров из-за конденсата", "требования инспекций к Госреестру СИ"],
         toneOfVoice: "formal",
       },
-    ],
-
-    trendSources: [
-      { type: "rss", url: "https://www.plantengineering.com/feed/", label: "Plant Engineering (Industrial & Emissions)", weight: 1.0 },
-      { type: "rss", url: "https://www.pharmaceutical-technology.com/feed/", label: "Pharmaceutical Technology (GxP & Compliance)", weight: 1.0 },
-      { type: "rss", url: "https://www.worldpharmanews.com/index.php?format=feed&type=rss", label: "World Pharma News (Cold Chain & Quality)", weight: 0.9 },
-      { type: "rss", url: "https://www.processindustryforum.com/feed", label: "Process Industry Forum (Sensors & Measurement)", weight: 0.9 },
     ],
 
     contentStyleRules: {

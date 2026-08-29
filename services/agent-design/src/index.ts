@@ -2,7 +2,7 @@ import "dotenv/config";
 import express from "express";
 import { createWorker, createQueue } from "@pipeline/shared/queue";
 import { createLogger } from "@pipeline/shared/logger";
-import { QueueName } from "@pipeline/shared";
+import { QueueName, PipelineStage } from "@pipeline/shared";
 import {
   AgentJobSchema,
   type AgentJob,
@@ -47,7 +47,7 @@ const eventsQueue = createQueue<PipelineEvent>(QueueName.PIPELINE_EVENTS, REDIS_
 /**
  * Обработка задачи генерации/рендеринга карусели
  */
-async function processDesignJob(job: AgentJob): Promise<void> {
+async function processDesignJob(job: AgentJob, notifyQueue = true): Promise<Record<string, any>> {
   const { runId, payload } = job;
   logger.info({ runId }, "Starting carousel slide deck design...");
 
@@ -207,13 +207,17 @@ async function processDesignJob(job: AgentJob): Promise<void> {
 
   logger.info({ runId, cardCount: slideDeck.slides.length }, "Carousel design completed successfully.");
 
-  // 7. Оповещение OpenClaw через очередь событий
-  await eventsQueue.add("pipeline-event", {
-    runId,
-    stage: "design",
-    status: "completed",
-    result: finalDesignResult,
-  });
+  if (notifyQueue) {
+    // 7. Оповещение OpenClaw через очередь событий
+    await eventsQueue.add("pipeline-event", {
+      runId,
+      stage: "design",
+      status: "completed",
+      result: finalDesignResult,
+    });
+  }
+
+  return finalDesignResult;
 }
 
 /**
@@ -224,7 +228,7 @@ async function start(): Promise<void> {
     await connectMongo(MONGO_URI, MONGO_DB_NAME);
     logger.info("Connected to MongoDB");
 
-    // Express Health & Templates API
+    // Express Health, Templates & Direct Synchronous Inline Render API
     const app = express();
     app.use(express.json());
 
@@ -236,6 +240,48 @@ async function start(): Promise<void> {
       res.json({ templates: templateRegistry.getAllTemplates() });
     });
 
+    // Mutex promise queue per runId to guarantee strict sequential execution
+    const runRenderLocks = new Map<string, Promise<any>>();
+
+    app.post("/render-inline", async (req, res) => {
+      const { runId, template_name, customSlides, tenantId } = req.body;
+      const job: AgentJob = {
+        runId,
+        stage: PipelineStage.DESIGN,
+        attempt: 1,
+        payload: {
+          isInlineEdit: true,
+          template_name,
+          customSlides,
+          tenantId,
+        },
+      };
+
+      const previousPromise = runRenderLocks.get(runId) || Promise.resolve();
+      const currentPromise = (async () => {
+        try {
+          await previousPromise.catch(() => {});
+        } catch {}
+        return await processDesignJob(job, false);
+      })();
+
+      runRenderLocks.set(runId, currentPromise);
+
+      try {
+        const result = await currentPromise;
+        if (runRenderLocks.get(runId) === currentPromise) {
+          runRenderLocks.delete(runId);
+        }
+        res.json({ ok: true, result });
+      } catch (err: any) {
+        if (runRenderLocks.get(runId) === currentPromise) {
+          runRenderLocks.delete(runId);
+        }
+        logger.error({ err, runId }, "Failed sequential inline design render");
+        res.status(500).json({ ok: false, error: err?.message || "Internal error" });
+      }
+    });
+
     app.listen(PORT, () => {
       logger.info({ port: PORT }, "agent-design listening");
     });
@@ -245,7 +291,7 @@ async function start(): Promise<void> {
       QueueName.DESIGN,
       async (job) => {
         const agentJob = AgentJobSchema.parse(job.data);
-        await processDesignJob(agentJob);
+        await processDesignJob(agentJob, true);
       },
       REDIS_URL,
       1
