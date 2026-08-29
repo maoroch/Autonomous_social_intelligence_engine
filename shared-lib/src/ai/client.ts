@@ -37,7 +37,7 @@ export interface AiProviderConfig {
 
 const DEFAULT_GEMINI_MODEL = "gemini-2.0-flash";
 const DEFAULT_OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct";
-const DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b";
+const DEFAULT_GROQ_MODEL = "qwen/qwen3.8-27b";
 
 export class AiClient {
   private redis?: Redis;
@@ -233,9 +233,9 @@ export class AiClient {
 
   private async callGroq(messages: ChatMessage[], options: AiCompletionOptions): Promise<AiCompletionResult> {
     const candidateModels = [
-      process.env.GROQ_MODEL || "openai/gpt-oss-120b",
+      process.env.GROQ_MODEL || "qwen/qwen3.8-27b",
+      "openai/gpt-oss-120b",
       "openai/gpt-oss-20b",
-      "qwen/qwen3.8-27b",
     ];
 
     await this.acquireToken("groq");
