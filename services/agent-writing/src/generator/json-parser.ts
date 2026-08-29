@@ -75,6 +75,23 @@ export function sanitizeLlmOutput(rawObj: any): {
   let text = "";
   if (typeof rawObj.text === "string" && rawObj.text.trim()) {
     text = rawObj.text.trim();
+  } else if (rawObj.заголовок || rawObj.лид || rawObj.буллеты || rawObj.детали || rawObj.подробности) {
+    const parts: string[] = [];
+    if (rawObj.заголовок) parts.push(String(rawObj.заголовок).trim());
+    if (rawObj.лид) parts.push(String(rawObj.лид).trim());
+    if (Array.isArray(rawObj.буллеты) && rawObj.буллеты.length > 0) {
+      parts.push(rawObj.буллеты.map((b: any) => `• ${typeof b === "string" ? b : JSON.stringify(b)}`).join("\n"));
+    }
+    if (rawObj.детали || rawObj.подробности || rawObj.цитаты) {
+      const d = rawObj.детали || rawObj.подробности || rawObj.цитаты;
+      if (Array.isArray(d)) {
+        parts.push(d.join("\n\n"));
+      } else {
+        parts.push(String(d).trim());
+      }
+    }
+    if (rawObj.вопрос || rawObj.cta) parts.push(String(rawObj.вопрос || rawObj.cta).trim());
+    text = parts.filter(Boolean).join("\n\n");
   } else if (Array.isArray(rawObj.sections) && rawObj.sections.length > 0) {
     text = rawObj.sections
       .map((s: any) => {
@@ -113,6 +130,8 @@ export function sanitizeLlmOutput(rawObj: any): {
   let hook = "";
   if (typeof rawObj.hook === "string" && rawObj.hook.trim()) {
     hook = rawObj.hook.trim();
+  } else if (typeof rawObj.заголовок === "string" && rawObj.заголовок.trim()) {
+    hook = rawObj.заголовок.trim();
   } else if (typeof rawObj.title === "string" && rawObj.title.trim()) {
     hook = rawObj.title.trim();
   } else if (rawObj.ru_post && typeof rawObj.ru_post.hook === "string" && rawObj.ru_post.hook.trim()) {
@@ -128,24 +147,34 @@ export function sanitizeLlmOutput(rawObj: any): {
   let cta = "";
   if (typeof rawObj.cta === "string" && rawObj.cta.trim()) {
     cta = rawObj.cta.trim();
+  } else if (typeof rawObj.вопрос === "string" && rawObj.вопрос.trim()) {
+    cta = rawObj.вопрос.trim();
   } else if (typeof rawObj.call_to_action === "string" && rawObj.call_to_action.trim()) {
     cta = rawObj.call_to_action.trim();
   } else {
     cta = "Какое ваше мнение? Поделитесь в комментариях!";
   }
 
+  const rawHashtags = Array.isArray(rawObj.hashtags)
+    ? rawObj.hashtags
+    : Array.isArray(rawObj.хэштеги)
+      ? rawObj.хэштеги
+      : Array.isArray(rawObj.ru_post?.hashtags)
+        ? rawObj.ru_post.hashtags
+        : [];
+
   let ru_post: { hook?: string; text: string; hashtags?: string[] } | undefined;
   if (rawObj.ru_post && typeof rawObj.ru_post === "object") {
     ru_post = {
       hook: typeof rawObj.ru_post.hook === "string" ? rawObj.ru_post.hook.trim() : hook,
       text: typeof rawObj.ru_post.text === "string" ? rawObj.ru_post.text.trim() : text,
-      hashtags: Array.isArray(rawObj.ru_post.hashtags) ? rawObj.ru_post.hashtags : [],
+      hashtags: rawHashtags,
     };
   } else {
     ru_post = {
       hook,
       text,
-      hashtags: Array.isArray(rawObj.hashtags) ? rawObj.hashtags : [],
+      hashtags: rawHashtags,
     };
   }
 

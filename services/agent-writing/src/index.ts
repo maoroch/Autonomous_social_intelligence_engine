@@ -148,7 +148,8 @@ async function processWritingJob(job: AgentJob): Promise<unknown> {
     isGithubShowcase,
   });
 
-  const generated = await generatePostContent(aiClient, systemPrompt, userPrompt, isRegulated, job.runId);
+  const isRussianTenant = isTestoTenant || tenantId === "cinema-media" || (industryProfile?.language?.includes("ru") ?? false);
+  const generated = await generatePostContent(aiClient, systemPrompt, userPrompt, isRegulated, job.runId, isRussianTenant);
 
   // 6. Инъекция официального CTA и подстановка URL
   const withCta = injectPresetCta(generated.text, generated.cta, tenantId, contentPillarId);

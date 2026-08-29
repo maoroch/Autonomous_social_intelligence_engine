@@ -115,9 +115,16 @@ ${filteredGlossary.map((g) => `- "${g.term}"${g.definition ? `: ${g.definition}`
     }
   }
 
-  const writerDomain = isNicheVertical
-    ? `You are a professional social media copywriter specializing in B2B content for the "${industryProfile!.verticalName}" industry, writing for ${platformLabel}.`
-    : "You are a professional LinkedIn content writer specializing in tech/programming topics.";
+  let writerDomain = "";
+  if (tenantId === "cinema-media") {
+    writerDomain = "Ты — главный редактор и ведущий кинообозреватель медиа-портала KinoPeek Media. Ты создаешь захватывающий, подробный, вирусный и кинематографичный контент для русскоязычной аудитории (Telegram, Threads, VK).";
+  } else if (isTestoTenant) {
+    writerDomain = "Ты — профессиональный технический копирайтер и эксперт по промышленному оборудованию Testo. Ты пишешь экспертные технические статьи и посты на русском языке.";
+  } else if (isNicheVertical) {
+    writerDomain = `You are a professional social media copywriter specializing in B2B content for the "${industryProfile!.verticalName}" industry, writing for ${platformLabel}.`;
+  } else {
+    writerDomain = "You are a professional LinkedIn content writer specializing in tech/programming topics.";
+  }
 
   const rubricWritingInstruction = getRubricWritingInstruction(contentPillarId);
 
@@ -185,55 +192,50 @@ Output format:
 }
 
 Return ONLY valid raw JSON. Do NOT include markdown code blocks or conversational text.`;
+  } else {
     const exampleHook =
       tenantId === "cinema-media"
-        ? "🍿 Главные киноновости недели"
+        ? "Том Холланд и «Spider-Man: Brand New Day» на обложке юбилейного выпуска"
         : isTestoTenant
           ? "⚡ Требования GxP на фармпроизводстве"
           : "⚡ 5 инструментов для оптимизации Node.js";
 
     const exampleText =
       tenantId === "cinema-media"
-        ? "🍿 Главные киноновости недели\\n\\nИнсайды со съемочной площадки..."
+        ? "Том Холланд и «Spider-Man: Brand New Day» на обложке юбилейного выпуска Den of Geek к SDCC\\n\\nИздание подготовило специальный 10-й печатный номер, приуроченный к главному гик-событию года — San Diego Comic-Con.\\n\\nЧто ждёт читателей внутри:\\n• Эксклюзив по новому фильму: Первые детали «Spider-Man: Brand New Day» от Тома Холланда и режиссёра Дестина Дэниела Креттона («Шан-Чи»).\\n\\n• Интервью с кастом: Комментарии Зендаи и Джона Бернтала, который возвращается к роли Карателя.\\n\\n• Коллекционный мерч: Лимитированная обложка Gold Edition (тираж строго 100 копий) и голографическая версия Holo Edition для подписчиков.\\n\\n«Мы специально взяли паузу после „Нет пути домой“, чтобы персонажи повзрослели вместе с нами», — поделился Холланд.\\n\\nДжон Бернтал добавил, что зрителей ждёт более приземлённая и мрачная история о поиске себя в новом мире.\\n\\nКакой вариант обложки выбрали бы для коллекции — строгий золотой или голографический? И чего больше всего ждёте от возвращения Паучка? Делитесь в комментариях! 👇"
         : isTestoTenant
           ? "⚡ Требования GxP на фармпроизводстве\\n\\nКонтроль микроклимата..."
           : "⚡ 5 инструментов для оптимизации Node.js\\n\\nОптимизация производительности...";
 
     const exampleHashtags =
       tenantId === "cinema-media"
-        ? '["#marvel", "#cinema", "#кино", "#фильмы"]'
+        ? '["#Marvel", "#MCU", "#SpiderMan", "#TomHolland", "#DenOfGeek", "#SDCC", "#Кино"]'
         : isTestoTenant
           ? '["#фармацевтика", "#GxP", "#testo"]'
           : '["#nodejs", "#performance"]';
 
     systemPrompt = `${writerDomain}
-Your job is to write an engaging, high-performing social media post based on the provided topic and content strategy.
+Твоя задача — написать полноценный, глубокий, увлекательный и длинный пост для социальных сетей (Telegram / Threads / VK) на основе предоставленной статьи и стратегии.
 
-CRITICAL INSTRUCTION: You are writing a ready-to-publish social media post, NOT an abstract JSON schema or metadata object.
-The "text" field MUST contain the full, final post text with catchy paragraphs, emojis, bullet points, and facts.
-
-Style Guidelines:
-1. Tone: ${authorProfile.tone}
-2. Hook: Create a very strong first line (Hook) that grabs attention immediately.
-3. Readability: Write in short, scanable paragraphs (1-3 sentences maximum). Use bullet points and clean lists. Avoid large blocks/walls of text.
-4. Emojis: ${emojiInstruction}
-5. Call to Action: ${ctaInstruction}
-6. Forbidden Words: Never use these words: ${authorProfile.forbidden_words.join(", ")}
+КРИТИЧЕСКИЕ ТРЕБОВАНИЯ К ПОСТУ:
+1. ЯЗЫК: 100% СТРОГО НА РУССКОМ ЯЗЫКЕ. Ни одного предложения на английском!
+2. ОБЪЕМ И СТРУКТУРА: Пост должен быть ПОЛНОЦЕННЫМ и ДЛИННЫМ (150-250 слов, 1000-1500 символов).
+   СТРОГО СЛЕДУЙ ЭТОМУ ШАБЛОНУ:
+   - Заголовок (Hook) без лишних кавычек в первой строке.
+   - Вводный лид (1-2 предложения с контекстом новости).
+   - Структурированный блок ключевых деталей статьи с буллетами (• Пункт 1: подробности... • Пункт 2: подробности...).
+   - Прямая речь / цитаты персонажей, актеров или создателей, а также интересные подробности из статьи.
+   - Вовлекающий интерактивный вопрос читателям (Call to Action) со смайликом 👇.
+   - Хэштеги в конце.
+3. ТОН: ${authorProfile.tone}.
+4. ЗАПРЕЩЕННЫЕ СЛОВА: ${authorProfile.forbidden_words.length > 0 ? authorProfile.forbidden_words.join(", ") : "нет"}.
 ${styleRulesBlock}${complianceBlock}${glossaryBlock}${platformBlock}${rubricWritingInstruction}${verifiedSourcesBlock}${fewShotText}${languageInstruction}
-You must return a single, valid JSON object containing:
-- "text": The complete, full text of the post (strictly in Russian for Testo and Cinema portals).
-- "hook": The first line (Hook) of the post.
-- "cta": The final Call to Action string.
-- "ru_post": An object containing the high-quality Russian post adaptation for Telegram & Threads:
-  - "hook": Russian header starting with a single emoji (e.g. "${exampleHook}")
-  - "text": Full Russian post body, formatted into scanable paragraphs, ending with hashtags.
-  - "hashtags": Array of 4-6 dynamic, topic-specific hashtags generated automatically and directly from the entities, franchise, actors, and topics in this post (e.g. ${exampleHashtags})
 
-Output format:
+Ты обязан вернуть один валидный JSON объект:
 {
-  "text": "Full ready-to-publish text of the post...",
-  "hook": "Catchy first line...",
-  "cta": "Engaging question at the end...",
+  "text": "Полный текст поста строго на русском языке по указанной выше структуре...",
+  "hook": "Главный заголовок поста...",
+  "cta": "Вовлекающий вопрос в конце поста...",
   "ru_post": {
     "hook": "${exampleHook}",
     "text": "${exampleText}",
@@ -241,17 +243,35 @@ Output format:
   }
 }
 
-Return ONLY valid raw JSON. Do NOT include markdown code blocks or conversational text.`;
+Верни ТОЛЬКО валидный JSON без markdown-оберток и комментариев.`;
   }
 
   let batchesBlock = "";
   if (Array.isArray(topic.batches) && topic.batches.length > 0) {
-    batchesBlock = `\n[DYNAMIC ARTICLE RAG GROUNDING / FACT CHUNKS]:\n${topic.batches.map((b: string, i: number) => `[Fact Chunk ${i + 1}]: ${b}`).join("\n\n")}\n\nCRITICAL RAG GROUNDING & FIDELITY RULE:\nThis post is strictly grounded in the article RAG chunks above. You MUST extract the core narrative points, cast members, plot details, quotes, and statistics directly from these chunks. Do NOT invent unverified character names, fictional release dates, or hallucinated plotlines not in the source text.\n`;
+    batchesBlock = `\n[ДЕТАЛИ И ФАКТЫ ИЗ СТАТЬИ / FACT CHUNKS]:\n${topic.batches.map((b: string, i: number) => `• [Факт ${i + 1}]: ${b}`).join("\n\n")}\n\nВАЖНО: Опирайся строго на факты из статьи выше. Раскрой всех упомянутых героев, фильмы, даты и цитаты подробно на русском языке!\n`;
   } else if (topic.fullArticleText) {
-    batchesBlock = `\n[DYNAMIC ARTICLE RAG GROUNDING]:\n${topic.fullArticleText}\n\nCRITICAL RAG GROUNDING & FIDELITY RULE:\nWrite the post strictly grounded in the source article text above without inventing unverified facts.\n`;
+    batchesBlock = `\n[ПОЛНЫЙ ТЕКСТ СТАТЬИ]:\n${topic.fullArticleText}\n\nВАЖНО: Опирайся строго на текст статьи выше. Раскрой все детали подробно на русском языке!\n`;
   }
 
-  const userPrompt = `Here are the inputs for the post:
+  let userPrompt = "";
+  if (isRussianTenant) {
+    userPrompt = `Входные данные для написания полноценного поста:
+
+---
+Заголовок темы / статьи: "${topic.title}"
+Краткое описание: "${topic.summary}"
+${topic.url ? `Источник: "${topic.url}"` : ""}${batchesBlock}
+
+Формат: "${strategy.format || "analytical-deep-dive"}"
+Целевая аудитория: "${strategy.target_audience || (tenantId === "cinema-media" ? "Любители кино, фанаты поп-культуры и сериалов" : "Специалисты отрасли")}"
+Основная идея: "${strategy.core_idea || topic.summary}"
+---
+
+${extraInstructions ? `Указания редактора: ${extraInstructions}` : ""}
+
+ЗАДАЧА: Напиши ПОЛНЫЙ, ДЛИННЫЙ, РАЗВЕРНУТЫЙ пост (150-250 слов) строго на русском языке по структуре (Заголовок -> Лид -> Буллеты с подробностями -> Цитаты/детали -> Вопрос в конце -> Хэштеги). Верни JSON:`;
+  } else {
+    userPrompt = `Here are the inputs for the post:
 
 ---
 Topic:
@@ -261,13 +281,14 @@ ${topic.url ? `Source URL: "${topic.url}"` : ""}${batchesBlock}
 
 Strategy:
 Format: "${strategy.format || "analytical-deep-dive"}"
-Target Audience: "${strategy.target_audience || (tenantId === "cinema-media" ? "Movie fans and cinema buffs" : "Industry professionals")}"
+Target Audience: "${strategy.target_audience || "Industry professionals"}"
 Core Idea: "${strategy.core_idea || topic.summary}"
 ---
 
 ${extraInstructions ? `Additional guidance from Editor: ${extraInstructions}` : ""}
 
 Please write the post and return the JSON.`;
+  }
 
   return { systemPrompt, userPrompt };
 }
