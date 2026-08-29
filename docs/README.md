@@ -16,6 +16,7 @@
 | **🧪 Testo Pharma** | [testo-pharma-strategy.md](file:///Applications/projects/linkedin_ai-agent_tool/docs/testo-pharma-strategy.md) | Стратегия `testo` (Фармацевтика): 4 рубрики (GxP, 21 CFR Part 11, GDP, разбор приборов), RAG Grounding. |
 | **🏭 Testo Gas** | [testo-gas-strategy.md](file:///Applications/projects/linkedin_ai-agent_tool/docs/testo-gas-strategy.md) | Стратегия `testo` (Газоанализаторы): 3 рубрики (котлы, ТЭЦ, печи), словарь 5 приборов, AZIA-TEST LLP. |
 | **🎬 Cinema Media** | [cinema-media-strategy.md](file:///Applications/projects/linkedin_ai-agent_tool/docs/cinema-media-strategy.md) | Стратегия портала `cinema-media`: Marvel/MCU lore, история кино, бокс-офис, ежедневные тренды. |
+| **☸️ Облачный деплой** | [azure-k8s-deployment-idea.md](file:///Applications/projects/linkedin_ai-agent_tool/docs/azure-k8s-deployment-idea.md) | Идея деплоя: Azure for Students ($100), K3s (Lightweight K8s), Scale-to-Zero и KEDA Autoscaling. |
 
 ---
 
