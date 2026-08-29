@@ -10,6 +10,25 @@ export function parseCleanJson(text: string): any {
   }
   cleaned = cleaned.trim();
 
+  // Try direct parse first
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    // Continue with resilient extract
+  }
+
+  // Extract outer JSON braces
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    const extracted = cleaned.substring(firstBrace, lastBrace + 1);
+    try {
+      return JSON.parse(extracted);
+    } catch {
+      // Continue to newline escaping
+    }
+  }
+
   let inString = false;
   let result = "";
   for (let i = 0; i < cleaned.length; i++) {
@@ -32,10 +51,10 @@ export function parseCleanJson(text: string): any {
   try {
     return JSON.parse(result);
   } catch (err) {
-    const firstBrace = result.indexOf("{");
-    const lastBrace = result.lastIndexOf("}");
-    if (firstBrace !== -1 && lastBrace > firstBrace) {
-      const extracted = result.substring(firstBrace, lastBrace + 1);
+    const fBrace = result.indexOf("{");
+    const lBrace = result.lastIndexOf("}");
+    if (fBrace !== -1 && lBrace > fBrace) {
+      const extracted = result.substring(fBrace, lBrace + 1);
       return JSON.parse(extracted);
     }
     throw err;
@@ -52,21 +71,86 @@ export function sanitizeLlmOutput(rawObj: any): {
     throw new Error("LLM did not return an object");
   }
 
-  const text = typeof rawObj.text === "string" ? rawObj.text.trim() : "No text generated";
-  const hook = typeof rawObj.hook === "string" ? rawObj.hook.trim() : "No hook generated";
-  const cta = typeof rawObj.cta === "string" ? rawObj.cta.trim() : "No CTA generated";
+  // 1. Извлечение основного текста из всех возможных структур
+  let text = "";
+  if (typeof rawObj.text === "string" && rawObj.text.trim()) {
+    text = rawObj.text.trim();
+  } else if (Array.isArray(rawObj.sections) && rawObj.sections.length > 0) {
+    text = rawObj.sections
+      .map((s: any) => {
+        if (typeof s === "string") return s;
+        const heading = s.heading || s.title || s.person || "";
+        const prev = s.previousCareer ? `📌 Предыдущая профессия: ${s.previousCareer}` : "";
+        const breakout = s.breakoutRole || s.breakout || (Array.isArray(s.breakoutRoles) ? s.breakoutRoles.join(", ") : "");
+        const breakoutStr = breakout ? `🎬 Прорыв: ${breakout}` : "";
+        const body = s.text || s.content || s.body || s.analysis || "";
+        
+        const parts = [
+          heading ? `### ${heading}` : "",
+          prev,
+          breakoutStr,
+          body
+        ].filter(Boolean);
+        return parts.join("\n");
+      })
+      .filter(Boolean)
+      .join("\n\n");
+  } else if (rawObj.ru_post && typeof rawObj.ru_post.text === "string" && rawObj.ru_post.text.trim()) {
+    text = rawObj.ru_post.text.trim();
+  } else if (typeof rawObj.post === "string" && rawObj.post.trim()) {
+    text = rawObj.post.trim();
+  } else if (typeof rawObj.body === "string" && rawObj.body.trim()) {
+    text = rawObj.body.trim();
+  } else if (typeof rawObj.content === "string" && rawObj.content.trim()) {
+    text = rawObj.content.trim();
+  } else if (typeof rawObj.article === "string" && rawObj.article.trim()) {
+    text = rawObj.article.trim();
+  } else if (typeof rawObj.summary === "string" && rawObj.summary.trim()) {
+    text = rawObj.summary.trim();
+  }
+
+  // 2. Извлечение хука
+  let hook = "";
+  if (typeof rawObj.hook === "string" && rawObj.hook.trim()) {
+    hook = rawObj.hook.trim();
+  } else if (typeof rawObj.title === "string" && rawObj.title.trim()) {
+    hook = rawObj.title.trim();
+  } else if (rawObj.ru_post && typeof rawObj.ru_post.hook === "string" && rawObj.ru_post.hook.trim()) {
+    hook = rawObj.ru_post.hook.trim();
+  } else if (text) {
+    const firstLine = text.split("\n")[0]?.replace(/^#+\s*/, "").trim();
+    hook = firstLine || "No hook generated";
+  } else {
+    hook = "No hook generated";
+  }
+
+  // 3. Извлечение CTA
+  let cta = "";
+  if (typeof rawObj.cta === "string" && rawObj.cta.trim()) {
+    cta = rawObj.cta.trim();
+  } else if (typeof rawObj.call_to_action === "string" && rawObj.call_to_action.trim()) {
+    cta = rawObj.call_to_action.trim();
+  } else {
+    cta = "Какое ваше мнение? Поделитесь в комментариях!";
+  }
 
   let ru_post: { hook?: string; text: string; hashtags?: string[] } | undefined;
   if (rawObj.ru_post && typeof rawObj.ru_post === "object") {
     ru_post = {
-      hook: typeof rawObj.ru_post.hook === "string" ? rawObj.ru_post.hook.trim() : undefined,
+      hook: typeof rawObj.ru_post.hook === "string" ? rawObj.ru_post.hook.trim() : hook,
       text: typeof rawObj.ru_post.text === "string" ? rawObj.ru_post.text.trim() : text,
       hashtags: Array.isArray(rawObj.ru_post.hashtags) ? rawObj.ru_post.hashtags : [],
+    };
+  } else {
+    ru_post = {
+      hook,
+      text,
+      hashtags: Array.isArray(rawObj.hashtags) ? rawObj.hashtags : [],
     };
   }
 
   return {
-    text,
+    text: text || "No text generated",
     hook,
     cta,
     ru_post,

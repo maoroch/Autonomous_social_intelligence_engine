@@ -207,7 +207,10 @@ Return ONLY valid raw JSON. Do NOT include markdown code blocks or conversationa
           : '["#nodejs", "#performance"]';
 
     systemPrompt = `${writerDomain}
-Your job is to write an engaging, high-performing post based on the provided topic and content strategy.
+Your job is to write an engaging, high-performing social media post based on the provided topic and content strategy.
+
+CRITICAL INSTRUCTION: You are writing a ready-to-publish social media post, NOT an abstract JSON schema or metadata object.
+The "text" field MUST contain the full, final post text with catchy paragraphs, emojis, bullet points, and facts.
 
 Style Guidelines:
 1. Tone: ${authorProfile.tone}
@@ -218,7 +221,7 @@ Style Guidelines:
 6. Forbidden Words: Never use these words: ${authorProfile.forbidden_words.join(", ")}
 ${styleRulesBlock}${complianceBlock}${glossaryBlock}${platformBlock}${rubricWritingInstruction}${verifiedSourcesBlock}${fewShotText}${languageInstruction}
 You must return a single, valid JSON object containing:
-- "text": The complete text of the post (strictly in Russian for Testo and Cinema portals).
+- "text": The complete, full text of the post (strictly in Russian for Testo and Cinema portals).
 - "hook": The first line (Hook) of the post.
 - "cta": The final Call to Action string.
 - "ru_post": An object containing the high-quality Russian post adaptation for Telegram & Threads:
@@ -228,7 +231,7 @@ You must return a single, valid JSON object containing:
 
 Output format:
 {
-  "text": "Full text of the post...",
+  "text": "Full ready-to-publish text of the post...",
   "hook": "Catchy first line...",
   "cta": "Engaging question at the end...",
   "ru_post": {

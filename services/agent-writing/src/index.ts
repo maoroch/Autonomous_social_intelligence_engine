@@ -256,13 +256,31 @@ const worker = createWorker<AgentJob>(
       );
       writingResult.text = corrected.text;
 
+      // Сохранение stage_results для WRITING в MongoDB
+      const stageResultsCol = getCollection(Collections.STAGE_RESULTS);
+      await stageResultsCol.updateOne(
+        { runId: parsed.runId, stage: PipelineStage.WRITING },
+        {
+          $set: {
+            runId: parsed.runId,
+            stage: PipelineStage.WRITING,
+            attempt: parsed.attempt ?? 1,
+            result: writingResult,
+            status: "completed",
+            updatedAt: new Date(),
+          },
+          $setOnInsert: { createdAt: new Date() },
+        },
+        { upsert: true }
+      );
+
       await eventsQueue.add(
         "event",
         PipelineEventSchema.parse({
           runId: parsed.runId,
           stage: parsed.stage,
           status: "completed",
-          result: result as Record<string, unknown>,
+          result: writingResult as Record<string, unknown>,
         } satisfies PipelineEvent)
       );
     } catch (err) {
