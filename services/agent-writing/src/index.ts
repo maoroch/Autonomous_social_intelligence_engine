@@ -115,17 +115,27 @@ async function processWritingJob(job: AgentJob): Promise<unknown> {
     }
   }
 
-  // 4. Достаем проверенные ссылки на GitHub репозитории
+  // 4. Достаем проверенные ссылки и батчи статей
   const stageResultsCol = getCollection(Collections.STAGE_RESULTS);
   const trendResultDoc = await stageResultsCol.findOne({ runId: job.runId, stage: PipelineStage.TREND });
   const trendItems = (trendResultDoc?.result as any)?.items ?? [];
+  const selectedTrend = trendItems[0] || {};
+
+  const effectiveTopic = {
+    title: topic.title || selectedTrend.title || "Cinema Lore",
+    summary: topic.summary || selectedTrend.summary || "",
+    url: (topic as any).url || selectedTrend.url,
+    fullArticleText: (topic as any).fullArticleText || selectedTrend.fullArticleText,
+    batches: (topic as any).batches || selectedTrend.batches || (job.payload as any)?.batches || [],
+  };
+
   const verifiedSources = extractVerifiedGithubSources(trendItems, isGithubShowcase);
   const verifiedSourcesBlock = buildVerifiedSourcesBlock(verifiedSources);
 
   // 5. Формируем промпт и генерируем текст через LLM
   const isRegulated = !!industryProfile && industryProfile.complianceConfig.regulatedIndustry;
   const { systemPrompt, userPrompt } = buildWritingPrompts({
-    topic,
+    topic: effectiveTopic,
     strategy,
     authorProfile,
     industryProfile,
@@ -134,7 +144,7 @@ async function processWritingJob(job: AgentJob): Promise<unknown> {
     retrievedFacts,
     verifiedSourcesBlock,
     fewShotText,
-    extraInstructions: job.extraInstructions,
+    extraInstructions: (job.payload as any)?.extraInstructions,
     isGithubShowcase,
   });
 

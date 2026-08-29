@@ -130,4 +130,17 @@ describe("CinemaCuratorService Unit Tests", () => {
     assert.ok(replyMarkup.inline_keyboard.length >= 2);
     assert.strictEqual(replyMarkup.inline_keyboard[0]?.[0]?.callback_data, "cinema_pick:0");
   });
+
+  test("batchArticleContent should chunk article text into coherent paragraphs and insights", () => {
+    const fullText = `Первый абзац статьи содержит важную вводную информацию о кастинге.
+    
+Второй абзац детально раскрывает сюжетные повороты и новые инсайды со съемочной площадки в Лондоне.
+
+Третий абзац анализирует дату премьеры в кинотеатрах и формат показа в IMAX.`;
+
+    const batches = curator.batchArticleContent(fullText, 200);
+    assert.ok(batches.length >= 2, "Should produce at least 2 structured batches");
+    assert.ok(batches[0]?.includes("кастинге"));
+    assert.ok(batches.some((b) => b.includes("IMAX")));
+  });
 });

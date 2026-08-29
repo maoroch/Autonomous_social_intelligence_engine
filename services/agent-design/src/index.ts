@@ -80,11 +80,10 @@ async function processDesignJob(job: AgentJob, notifyQueue = true): Promise<Reco
   const strategyResult = strategyDoc?.result as any;
   const writingResult = writingDoc?.result as any;
   const existingDesignResult = existingDesignDoc?.result as any;
-
-  const topicTitle = trendResult?.selected_topic?.title ?? "Overview";
-  const topicSummary = trendResult?.selected_topic?.summary ?? "";
+  const topicTitle = runDoc?.topic?.title || trendResult?.selected_topic?.title || (trendResult?.items && trendResult.items[0]?.title) || "Overview";
+  const topicSummary = runDoc?.topic?.summary || trendResult?.selected_topic?.summary || (trendResult?.items && trendResult.items[0]?.summary) || "";
   const fallbackCoverDesc =
-    strategyResult?.core_idea || writingResult?.hook || topicSummary || "";
+    writingResult?.hook || strategyResult?.core_idea || topicSummary || "";
 
   // 1. Получаем список стилей через TemplateRegistry
   const styleConfigs = templateRegistry.resolveStylesForTenant(tenantId, industryProfile);
@@ -115,10 +114,10 @@ async function processDesignJob(job: AgentJob, notifyQueue = true): Promise<Reco
       topicTitle,
       topicSummary,
       writingHook: writingResult?.hook,
-      writingBody: writingResult?.body,
-      writingCta: writingResult?.call_to_action,
+      writingBody: writingResult?.text || writingResult?.body,
+      writingCta: writingResult?.cta || writingResult?.call_to_action,
       strategyAngle: strategyResult?.angle,
-      strategyCoreIdea: strategyResult?.core_idea,
+      strategyCoreIdea: strategyResult?.core_idea || writingResult?.hook || topicSummary,
       strategyPillarId,
       tenantId,
       industryProfile,

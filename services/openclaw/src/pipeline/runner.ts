@@ -35,7 +35,16 @@ export interface AgentQueues {
   [PipelineStage.SEO]: Queue<AgentJob>;
 }
 
-function nextAgentStage(current: PipelineStage): PipelineStage | null {
+function nextAgentStage(current: PipelineStage, tenantId?: string): PipelineStage | null {
+  // Для кино-портала (cinema-media) исключаем POSITIONING, STRATEGY и SEO:
+  // Статья как RAG -> напрямую в WRITING -> затем DESIGN -> сразу HUMAN_APPROVAL
+  if (tenantId === "cinema-media") {
+    if (current === PipelineStage.TREND) return PipelineStage.WRITING;
+    if (current === PipelineStage.WRITING) return PipelineStage.DESIGN;
+    if (current === PipelineStage.DESIGN) return null; // Готово к модерации в Telegram!
+    if (current === PipelineStage.SEO) return null;
+  }
+
   const idx = AGENT_STAGES.indexOf(current);
   if (idx === -1 || idx === AGENT_STAGES.length - 1) return null;
   return AGENT_STAGES[idx + 1] ?? null;
@@ -45,7 +54,7 @@ function nextAgentStage(current: PipelineStage): PipelineStage | null {
 export async function startPipelineRun(
   queues: AgentQueues,
   logger: Logger,
-  initialTopic: { title: string; summary: string } = { title: "", summary: "" },
+  initialTopic: { title: string; summary: string; url?: string; fullArticleText?: string; batches?: string[] } = { title: "", summary: "" },
   profileId?: string,
   tenantId?: string,
   targetPillarId?: string,
@@ -55,10 +64,12 @@ export async function startPipelineRun(
   const now = new Date();
   const isManualTopic = !!(initialTopic && initialTopic.title && initialTopic.title.trim().length > 0);
 
+  const isDirectWriting = isManualTopic || tenantId === "cinema-media";
+
   const run: any = {
     runId,
     status: PipelineRunStatus.RUNNING,
-    currentStage: isManualTopic ? PipelineStage.STRATEGY : PipelineStage.TREND,
+    currentStage: isDirectWriting ? PipelineStage.WRITING : PipelineStage.TREND,
     topic: initialTopic,
     profileId,
     tenantId,
@@ -72,26 +83,38 @@ export async function startPipelineRun(
 
   await getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS).insertOne(run);
 
-  if (isManualTopic) {
-    // If the user provided an explicit topic title, record it as the chosen trend & proceed directly to STRATEGY
+  if (isDirectWriting) {
+    // Для выбранной темы/статьи фиксируем этап TREND и сразу переходим в WRITING (без Positioning и Strategy)
     await getCollection<StageResultDoc>(Collections.STAGE_RESULTS).insertOne({
       runId,
       stage: PipelineStage.TREND,
       attempt: 1,
       result: {
-        items: [{ title: initialTopic.title, summary: initialTopic.summary, score: 100, keywords: [], sources: [] }]
+        items: [
+          {
+            title: initialTopic.title,
+            summary: initialTopic.summary,
+            url: initialTopic.url,
+            fullArticleText: initialTopic.fullArticleText,
+            batches: initialTopic.batches,
+            score: 100,
+            keywords: [],
+            sources: initialTopic.url ? [initialTopic.url] : [],
+          },
+        ],
       },
       createdAt: now,
     });
-    await getCollection<StageResultDoc>(Collections.STAGE_RESULTS).insertOne({
-      runId,
-      stage: PipelineStage.POSITIONING,
-      attempt: 1,
-      result: { relevance: 100, reason: "Manual user specified topic", accepted: true },
-      createdAt: now,
+
+    await enqueueStage(queues, runId, PipelineStage.WRITING, {
+      profileId,
+      targetPillarId,
+      batches: initialTopic.batches,
     });
-    await enqueueStage(queues, runId, PipelineStage.STRATEGY, { profileId, targetPillarId });
-    logger.info({ runId, tenantId, targetPillarId, topic: initialTopic.title }, "manual topic pipeline run started at STRATEGY stage");
+    logger.info(
+      { runId, tenantId, targetPillarId, topic: initialTopic.title },
+      "direct grounded pipeline run started at WRITING stage (skipping Positioning & Strategy)"
+    );
   } else {
     await enqueueStage(queues, runId, PipelineStage.TREND, { profileId, targetPillarId });
     logger.info({ runId, tenantId, targetPillarId }, "automated trend discovery pipeline run started");
@@ -234,8 +257,8 @@ export async function handleAgentCompleted(
     }
   }
 
-  if (stage === PipelineStage.WRITING && (run.tenantId === "cinema-media" || (run as any).skipDesign)) {
-    // Media portal (cinema-media) or skipDesign -> publishes text directly without carousel design agent
+  if (stage === PipelineStage.WRITING && (run as any).skipDesign) {
+    // Explicit skipDesign -> advances directly from WRITING to SEO
     const next = PipelineStage.SEO;
     await runs.updateOne({ runId }, { $set: { currentStage: next, updatedAt: new Date() } });
     await enqueueStage(queues, runId, next, result);
@@ -243,7 +266,7 @@ export async function handleAgentCompleted(
     return;
   }
 
-  const next = nextAgentStage(stage);
+  const next = nextAgentStage(stage, run.tenantId);
 
   if (!next) {
     // Прошли все agent-стадии (последняя — SEO) -> ждём ручного подтверждения.

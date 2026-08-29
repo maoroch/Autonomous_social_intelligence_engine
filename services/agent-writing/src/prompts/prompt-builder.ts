@@ -3,7 +3,7 @@ import { formatFactsForPrompt, type RetrievableChunk } from "@pipeline/shared/ai
 import { getRubricWritingInstruction } from "./rubric-instructions.js";
 
 export interface PromptBuilderParams {
-  topic: { title: string; summary: string };
+  topic: { title: string; summary: string; url?: string; fullArticleText?: string; batches?: string[] };
   strategy: Record<string, any>;
   authorProfile: {
     topics: string[];
@@ -221,17 +221,25 @@ Output format:
 Return ONLY valid raw JSON. Do NOT include markdown code blocks or conversational text.`;
   }
 
+  let batchesBlock = "";
+  if (Array.isArray(topic.batches) && topic.batches.length > 0) {
+    batchesBlock = `\n[DYNAMIC ARTICLE RAG GROUNDING / FACT CHUNKS]:\n${topic.batches.map((b: string, i: number) => `[Fact Chunk ${i + 1}]: ${b}`).join("\n\n")}\n\nCRITICAL RAG GROUNDING & FIDELITY RULE:\nThis post is strictly grounded in the article RAG chunks above. You MUST extract the core narrative points, cast members, plot details, quotes, and statistics directly from these chunks. Do NOT invent unverified character names, fictional release dates, or hallucinated plotlines not in the source text.\n`;
+  } else if (topic.fullArticleText) {
+    batchesBlock = `\n[DYNAMIC ARTICLE RAG GROUNDING]:\n${topic.fullArticleText}\n\nCRITICAL RAG GROUNDING & FIDELITY RULE:\nWrite the post strictly grounded in the source article text above without inventing unverified facts.\n`;
+  }
+
   const userPrompt = `Here are the inputs for the post:
 
 ---
 Topic:
 Title: "${topic.title}"
 Summary: "${topic.summary}"
+${topic.url ? `Source URL: "${topic.url}"` : ""}${batchesBlock}
 
 Strategy:
-Format: "${strategy.format || "tutorial"}"
-Target Audience: "${strategy.target_audience || "Developers"}"
-Core Idea: "${strategy.core_idea || ""}"
+Format: "${strategy.format || "analytical-deep-dive"}"
+Target Audience: "${strategy.target_audience || (tenantId === "cinema-media" ? "Movie fans and cinema buffs" : "Industry professionals")}"
+Core Idea: "${strategy.core_idea || topic.summary}"
 ---
 
 ${extraInstructions ? `Additional guidance from Editor: ${extraInstructions}` : ""}
