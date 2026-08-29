@@ -112,18 +112,37 @@ ${JSON.stringify(ex.expected_output, null, 2)}
 
   let tenantSeoGuidance = "";
   if (isTestoTenant) {
-    const targetPillar = (job.payload as any)?.targetPillarId || (job.payload as any)?.contentPillarId || "";
-    const isGas = typeof targetPillar === "string" && (targetPillar.startsWith("gas-") || targetPillar.includes("gas") || targetPillar.includes("boiler") || targetPillar.includes("emission"));
-    if (isGas) {
-      tenantSeoGuidance = `\nSPECIAL TENANT INSTRUCTION (Testo Gas Analyzers B2B):
-- This post is for Russian/CIS B2B industrial engineering, flue gas analysis, boiler tuning, and emissions monitoring.
-- Recommend Russian engineering hashtags (e.g. #газоанализатор, #Testo350, #экологическийконтроль, #промышленность, #котельные, #выбросы).
-- Focus recommendations on B2B engineering clarity, industrial accuracy, and instrument advantages.`;
-    } else {
+    const targetPillar =
+      (job.payload as any)?.targetPillarId ||
+      (job.payload as any)?.contentPillarId ||
+      runDoc?.contentPillarId ||
+      "";
+
+    if (targetPillar === "gas-safety-leak-detection") {
+      tenantSeoGuidance = `\nSPECIAL TENANT INSTRUCTION (Testo Gas Safety & Leak Detection):
+- This post is for Russian/CIS gas distribution safety, pipeline integrity, and combustible/refrigerant leak detection.
+- Recommend relevant gas leak safety hashtags: #Testo316, #поискутечек, #газоваябезопасность, #метан, #течеискатель, #безопасность.
+- STRICT PROHIBITION: Do NOT recommend #Testo350, #котельные, or #выбросы! Testo 350 is a flue gas analyzer for chimneys and boilers, NOT a portable leak detector.`;
+    } else if (targetPillar === "gas-boiler-efficiency") {
+      tenantSeoGuidance = `\nSPECIAL TENANT INSTRUCTION (Testo Boiler Tuning & Efficiency):
+- This post is for Russian/CIS boiler service engineers, combustion optimization, and burner tuning.
+- Recommend relevant boiler tuning hashtags: #Testo300, #наладкакотлов, #КПДкотла, #энергоэффективность, #котельные, #газоанализатор.
+- Focus recommendations on heat losses (qA), excess air ratio (lambda), and fuel savings.`;
+    } else if (targetPillar === "gas-industrial-emissions") {
+      tenantSeoGuidance = `\nSPECIAL TENANT INSTRUCTION (Testo Industrial Flue Gas Emissions):
+- This post is for industrial energy managers, power plants (ТЭЦ), and environmental compliance.
+- Recommend emission monitoring hashtags: #Testo350, #Testo340, #промышленныевыбросы, #экологическийконтроль, #ПДВ, #ТЭЦ, #газоанализатор.
+- Focus recommendations on sensor range extension and Peltier gas sample conditioning (+3°C).`;
+    } else if (targetPillar.startsWith("pharma-")) {
       tenantSeoGuidance = `\nSPECIAL TENANT INSTRUCTION (Testo Pharma B2B):
 - This post is for Russian/CIS B2B pharmaceutical engineering and GxP compliance.
-- Do NOT recommend adding English hashtags (e.g., #TemperatureControl, #Pharmaceutical). Recommend Russian/GxP hashtags only (e.g. #фармацевтика, #GxP, #21CFRPart11, #холодоваяцепь, #качество).
+- Recommend Russian GxP hashtags: #TestoSaveris, #Testo190, #фармацевтика, #GxP, #21CFRPart11, #холодоваяцепь, #качество.
+- Do NOT recommend adding English hashtags (e.g. #TemperatureControl).
 - Focus recommendations strictly on B2B engineering clarity, GxP readability, and compliance accuracy.`;
+    } else {
+      tenantSeoGuidance = `\nSPECIAL TENANT INSTRUCTION (Testo General):
+- Ensure hashtags match the specific instrument and task discussed in the post.
+- Never recommend flue gas tags (#Testo350, #котельные) for leak detection or pharmaceutical posts.`;
     }
   }
 

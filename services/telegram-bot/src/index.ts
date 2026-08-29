@@ -5,6 +5,7 @@ import {
   createQueue,
   createWorker,
   PipelineStage,
+  PipelineRunStatus,
   QueueName,
   type PipelineEvent,
   PipelineEventSchema,
@@ -15,6 +16,7 @@ import { TextEditorHandler } from "./handlers/text-editor.js";
 import { PhotoHandler } from "./handlers/photo-handler.js";
 import { buildApprovalKeyboard } from "./keyboards/inline.js";
 import { TestRunnerService, type BotQueues } from "./services/test-runner.js";
+import { LogViewerService } from "./services/log-viewer.js";
 
 const logger = createLogger("telegram-bot");
 
@@ -34,7 +36,9 @@ export class TelegramBotApp {
   private textEditor!: TextEditorHandler;
   private photoHandler!: PhotoHandler;
   private testRunner!: TestRunnerService;
+  private logViewer!: LogViewerService;
   private queues!: BotQueues;
+  private activeApprovalNotifs = new Set<string>();
 
   async start() {
     if (!BOT_TOKEN) {
@@ -56,21 +60,28 @@ export class TelegramBotApp {
       [PipelineStage.PUBLISHING]: createQueue(QueueName.PUBLISHING, REDIS_URL),
     };
 
+    this.logViewer = new LogViewerService();
     this.textEditor = new TextEditorHandler();
     this.photoHandler = new PhotoHandler(this.queues, BOT_TOKEN, this.sendMessage.bind(this));
     this.testRunner = new TestRunnerService(this.queues, OPENCLAW_URL);
+
     this.commandHandler = new CommandHandler(
       this.queues,
       this.testRunner,
+      this.logViewer,
       this.sendMessage.bind(this)
     );
+
     this.callbackHandler = new CallbackHandler(
       this.queues,
       BOT_TOKEN,
       this.textEditor,
       this.photoHandler,
       this.testRunner,
-      this.sendMessage.bind(this)
+      this.logViewer,
+      this.sendMessage.bind(this),
+      this.editMessageCaption.bind(this),
+      this.editMessageReplyMarkup.bind(this)
     );
 
     // Подписка на очередь уведомлений для согласования контента
@@ -82,7 +93,8 @@ export class TelegramBotApp {
         const event = parsed.data;
         await this.handleApprovalNotification(event.runId);
       },
-      REDIS_URL
+      REDIS_URL,
+      1 // Обрабатываем последовательно, предотвращая параллельные гонки
     );
 
     // Запуск цикла Long-polling
@@ -91,15 +103,29 @@ export class TelegramBotApp {
   }
 
   /**
-   * Отправка карточки на модерацию в Telegram
+   * Отправка карточки на модерацию в Telegram с защитой от дублирования
    */
   async handleApprovalNotification(runId: string) {
     if (!ADMIN_CHAT_ID || !BOT_TOKEN) return;
+
+    // 1. In-memory debounce защита (если несколько событий пришли параллельно)
+    if (this.activeApprovalNotifs.has(runId)) {
+      logger.info({ runId }, "Approval notification already being processed — skipping duplicate");
+      return;
+    }
+    this.activeApprovalNotifs.add(runId);
+    setTimeout(() => this.activeApprovalNotifs.delete(runId), 20000);
 
     try {
       const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
       const runDoc = await runsCol.findOne({ runId });
       if (!runDoc) return;
+
+      // 2. Проверяем статус: карточка высылается ТОЛЬКО если статус awaiting_approval и ранее не отправлялась
+      if (runDoc.status !== PipelineRunStatus.AWAITING_APPROVAL && (runDoc as any).telegramCardSent) {
+        logger.info({ runId, status: runDoc.status }, "Card already sent or run not awaiting approval — skipping duplicate");
+        return;
+      }
 
       const stageResultsCol = getCollection<StageResultDoc>(Collections.STAGE_RESULTS);
       const writingDoc = await stageResultsCol.findOne({ runId, stage: PipelineStage.WRITING });
@@ -110,8 +136,10 @@ export class TelegramBotApp {
       const imageId =
         (designDoc?.result as any)?.preview_cover_1_id || (designDoc?.result as any)?.imageId;
 
+      const portalLabel = runDoc.tenantId === "testo" ? "Testo Industrial" : "KinoPeek Media";
+
       const messageText =
-        `🎬 *[KinoPeek] Новый пост ожидает проверки!*\n\n` +
+        `🎬 *[${portalLabel}] Новый пост ожидает проверки!*\n\n` +
         `📌 *Тема:* ${topicTitle}\n` +
         `🆔 *Run ID:* \`${runId}\`\n` +
         `📂 *Рубрика:* ${(runDoc as any).contentPillarId || (runDoc as any).targetPillarId || "default"}\n\n` +
@@ -119,6 +147,7 @@ export class TelegramBotApp {
         `👇 *Выберите действие:*`;
 
       const inlineKeyboard = buildApprovalKeyboard(runId);
+      let sentMessageId: number | undefined;
 
       if (imageId) {
         const photoUrl = `${OPENCLAW_URL}/api/illustrations/${imageId}`;
@@ -134,26 +163,41 @@ export class TelegramBotApp {
           body: formData,
         });
 
-        if (!res.ok) {
-          await this.sendMessage(ADMIN_CHAT_ID, messageText, inlineKeyboard);
+        if (res.ok) {
+          const data = (await res.json()) as any;
+          sentMessageId = data.result?.message_id;
+        } else {
+          sentMessageId = await this.sendMessage(ADMIN_CHAT_ID, messageText, inlineKeyboard);
         }
       } else {
-        await this.sendMessage(ADMIN_CHAT_ID, messageText, inlineKeyboard);
+        sentMessageId = await this.sendMessage(ADMIN_CHAT_ID, messageText, inlineKeyboard);
       }
 
-      logger.info({ runId }, "Sent Telegram approval notification successfully");
+      // Отмечаем в БД, что карточка успешно отправлена (атомарная защита от повторов)
+      await runsCol.updateOne(
+        { runId },
+        {
+          $set: {
+            telegramCardSent: true,
+            telegramCardSentAt: new Date(),
+            telegramMessageId: sentMessageId,
+          },
+        }
+      );
+
+      logger.info({ runId, sentMessageId }, "Sent Telegram approval notification successfully");
     } catch (err) {
       logger.error({ err, runId }, "Failed to send Telegram approval notification");
     }
   }
 
   /**
-   * Отправка сообщений в Telegram
+   * Отправка сообщений в Telegram (возвращает message_id)
    */
-  async sendMessage(chatId: number | string, text: string, replyMarkup?: any) {
-    if (!BOT_TOKEN) return;
+  async sendMessage(chatId: number | string, text: string, replyMarkup?: any): Promise<number | undefined> {
+    if (!BOT_TOKEN) return undefined;
     try {
-      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -163,8 +207,55 @@ export class TelegramBotApp {
           reply_markup: replyMarkup,
         }),
       });
+      if (res.ok) {
+        const data = (await res.json()) as any;
+        return data.result?.message_id;
+      }
     } catch (err) {
       logger.error({ err, chatId }, "Failed to send message via Telegram API");
+    }
+    return undefined;
+  }
+
+  /**
+   * Редактирование inline-клавиатуры сообщения
+   */
+  async editMessageReplyMarkup(chatId: number | string, messageId: number, replyMarkup: any) {
+    if (!BOT_TOKEN) return;
+    try {
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageReplyMarkup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          message_id: messageId,
+          reply_markup: replyMarkup,
+        }),
+      });
+    } catch (err) {
+      logger.error({ err, chatId, messageId }, "Failed to editMessageReplyMarkup");
+    }
+  }
+
+  /**
+   * Редактирование подписи к фотографии
+   */
+  async editMessageCaption(chatId: number | string, messageId: number, caption: string, replyMarkup?: any) {
+    if (!BOT_TOKEN) return;
+    try {
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageCaption`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          message_id: messageId,
+          caption,
+          parse_mode: "Markdown",
+          reply_markup: replyMarkup,
+        }),
+      });
+    } catch (err) {
+      logger.error({ err, chatId, messageId }, "Failed to editMessageCaption");
     }
   }
 

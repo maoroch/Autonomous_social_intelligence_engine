@@ -94,26 +94,7 @@ function sanitizeLlmOutput(rawObj: any): any {
   };
 }
 
-/**
- * Выбирает рубрику (content pillar) с учётом weight и активных seasonalTrigger.
- * MVP-реализация: сезонные рубрики получают х2 к весу (упрощение вместо календарной логики
- * с точными датами — это можно уточнить в будущей фазе, привязав seasonalTrigger к реальным датам).
- * (см. TZ_v3_instagram_testo_portal.md, раздел 1.8)
- */
-function pickContentPillar(pillars: ContentPillar[]): ContentPillar | undefined {
-  if (pillars.length === 0) return undefined;
-
-  const weighted = pillars.map((p) => ({ pillar: p, effectiveWeight: p.seasonalTrigger ? p.weight * 2 : p.weight }));
-  const totalWeight = weighted.reduce((sum, w) => sum + w.effectiveWeight, 0);
-  if (totalWeight <= 0) return pillars[0];
-
-  let roll = Math.random() * totalWeight;
-  for (const w of weighted) {
-    roll -= w.effectiveWeight;
-    if (roll <= 0) return w.pillar;
-  }
-  return pillars[pillars.length - 1];
-}
+import { pickContentPillar, matchPillarSemantically } from "./pillar-matcher.js";
 
 async function processStrategyJob(job: AgentJob): Promise<unknown> {
   logger.info({ runId: job.runId }, "Starting content strategy planning...");
@@ -157,7 +138,7 @@ async function processStrategyJob(job: AgentJob): Promise<unknown> {
   }
 
   const isNicheVertical = !!industryProfile && industryProfile.verticalName !== "software-development";
-  const targetPillarId = (job.payload as any)?.targetPillarId || (job as any)?.targetPillarId;
+  const targetPillarId = (job.payload as any)?.targetPillarId || (job as any)?.targetPillarId || run?.contentPillarId;
 
   let selectedPillar: ContentPillar | undefined;
   if (targetPillarId && industryProfile?.contentPillars) {
@@ -231,6 +212,13 @@ Author Profile Context:
 - Tone of Voice: ${authorProfile.tone}
 - Main Topics of Expertise: ${JSON.stringify(authorProfile.topics)}
 ${audiencePersonasBlock}${pillarBlock}${fewShotText}
+${tenantId === "testo" ? `
+CRITICAL ANTI-COLLISION & BRAND LOGIC (TESTO):
+- DO NOT force-connect unrelated concepts!
+- Testo is a manufacturer and distributor of precision measurement equipment (flue gas analyzers, gas leak detectors, temperature/humidity loggers, thermal imagers).
+- NEVER invent absurd connections between unrelated topics like personal protective equipment (PPE/СИЗ, arc-flash clothing, gloves) and gas leaks or boiler tuning!
+- The core_idea MUST focus purely on how Testo measurement instruments solve the specific technical challenge of the topic.
+` : ""}
 Output must be a single, valid JSON object:
 {
   "format": "lessons_learned",

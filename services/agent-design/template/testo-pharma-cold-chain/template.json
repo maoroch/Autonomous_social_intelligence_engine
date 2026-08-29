@@ -5,8 +5,8 @@
   "tenants": ["testo"],
   "cover": "cover.html",
   "card": "card.html",
-  "defaultCoverBadge": "LOGISTICS",
-  "defaultCardBadge": "GDP",
+  "defaultCoverBadge": "ХОЛОДОВАЯ ЦЕПЬ",
+  "defaultCardBadge": "СТАНДАРТЫ GDP",
   "brand": {
     "accentColor": "#06B6D4",
     "inkColor": "#14171A",

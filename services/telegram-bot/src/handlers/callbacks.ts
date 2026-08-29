@@ -4,6 +4,7 @@ import { createLogger } from "@pipeline/shared/logger";
 import { GridFSBucket, ObjectId } from "mongodb";
 import AdmZip from "adm-zip";
 import type { BotQueues, TestRunnerService } from "../services/test-runner.js";
+import type { LogViewerService } from "../services/log-viewer.js";
 import type { TextEditorHandler } from "./text-editor.js";
 import type { PhotoHandler } from "./photo-handler.js";
 import { buildApprovalKeyboard } from "../keyboards/inline.js";
@@ -11,42 +12,75 @@ import { buildApprovalKeyboard } from "../keyboards/inline.js";
 const logger = createLogger("telegram-bot:callbacks");
 
 export class CallbackHandler {
+  private activeDebounce = new Set<string>();
+
   constructor(
     private queues: BotQueues,
     private botToken: string,
     private textEditor: TextEditorHandler,
     private photoHandler: PhotoHandler,
     private testRunner: TestRunnerService,
-    private sendMessage: (chatId: number | string, text: string, replyMarkup?: any) => Promise<void>
+    private logViewer: LogViewerService,
+    private sendMessage: (chatId: number | string, text: string, replyMarkup?: any) => Promise<any>,
+    private editMessageCaption?: (chatId: number | string, messageId: number, caption: string, replyMarkup?: any) => Promise<void>,
+    private editMessageReplyMarkup?: (chatId: number | string, messageId: number, replyMarkup?: any) => Promise<void>
   ) {}
 
-  async handleCallback(cb: {
-    id: string;
-    from: { id: number };
-    message?: { message_id: number; chat: { id: number } };
-    data?: string;
-  }) {
-    if (!cb.data) return;
-    const [action, param] = cb.data.split(":");
-    const chatId = cb.message?.chat.id;
-    const runId = param || "";
-
-    logger.info({ action, runId, userId: cb.from.id }, "Handling telegram callback query");
-
-    // Отвечаем Telegram сразу, чтобы убрать спиннер загрузки на кнопке
+  /**
+   * Ответ на callback query (убирает лоадер на кнопке или показывает всплывающий Toast)
+   */
+  private async answerCallback(cbId: string, text?: string, showAlert = false) {
     try {
       await fetch(`https://api.telegram.org/bot${this.botToken}/answerCallbackQuery`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ callback_query_id: cb.id }),
+        body: JSON.stringify({
+          callback_query_id: cbId,
+          text,
+          show_alert: showAlert,
+        }),
       });
     } catch (e) {
       // Игнорируем сетевые ошибки answerCallbackQuery
     }
+  }
+
+  async handleCallback(cb: {
+    id: string;
+    from: { id: number };
+    message?: { message_id: number; chat: { id: number }; caption?: string; text?: string };
+    data?: string;
+  }) {
+    if (!cb.data) return;
+
+    // 1. Защита от дабл-клика и дублирования обработки (debounce на 4 секунды)
+    const debounceKey = `${cb.from.id}:${cb.data}`;
+    if (this.activeDebounce.has(debounceKey)) {
+      await this.answerCallback(cb.id, "Запрос уже обрабатывается...", false);
+      return;
+    }
+    this.activeDebounce.add(debounceKey);
+    setTimeout(() => this.activeDebounce.delete(debounceKey), 4000);
+
+    const [action, param] = cb.data.split(":");
+    const chatId = cb.message?.chat.id;
+    const messageId = cb.message?.message_id;
+    const runId = param || "";
+
+    logger.info({ action, runId, userId: cb.from.id }, "Handling telegram callback query");
 
     try {
       if (action === "approve_run") {
+        await this.answerCallback(cb.id, "🚀 Публикуем в канал...");
+
         const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
+        const currentRun = await runsCol.findOne({ runId });
+
+        if (currentRun?.status === PipelineRunStatus.APPROVED) {
+          await this.answerCallback(cb.id, "Пост уже был опубликован ранее!", true);
+          return;
+        }
+
         await runsCol.updateOne(
           { runId },
           { $set: { status: PipelineRunStatus.APPROVED, updatedAt: new Date() } }
@@ -59,23 +93,45 @@ export class CallbackHandler {
         const imageId =
           (designDoc?.result as any)?.imageId || (designDoc?.result as any)?.zip_cover_1_id;
 
-        // Отправляем в очередь публикации
+        // Отправляем задачу в очередь публикации
         await this.queues[PipelineStage.PUBLISHING].add("publish-job", {
           runId,
           stage: PipelineStage.PUBLISHING,
-          payload: { text: postText, imageId, tenantId: "cinema-media" },
+          payload: { text: postText, imageId, tenantId: currentRun?.tenantId || "cinema-media" },
         } as any);
 
-        if (chatId) {
-          await this.sendMessage(
-            chatId,
-            `🚀 *Карусель \`${runId.substring(0, 8)}\` утверждена и отправлена на публикацию в канал!*`
-          );
+        // Обновляем исходную карточку на месте (убираем кнопки, чтобы нельзя было нажать повторно)
+        if (chatId && messageId) {
+          if (this.editMessageCaption && cb.message?.caption) {
+            const updatedCaption = `${cb.message.caption}\n\n✅ *[УТВЕРЖДЕНО]* Отправлено на публикацию в канал! 🚀`;
+            await this.editMessageCaption(chatId, messageId, updatedCaption, { inline_keyboard: [] });
+          } else if (this.editMessageReplyMarkup) {
+            await this.editMessageReplyMarkup(chatId, messageId, { inline_keyboard: [] });
+          }
+        }
+      } else if (action === "reject_run") {
+        await this.answerCallback(cb.id, "❌ Прогон отклонен");
+
+        const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
+        await runsCol.updateOne(
+          { runId },
+          { $set: { status: PipelineRunStatus.REJECTED, updatedAt: new Date() } }
+        );
+
+        // Обновляем исходную карточку на месте (убираем кнопки)
+        if (chatId && messageId) {
+          if (this.editMessageCaption && cb.message?.caption) {
+            const updatedCaption = `${cb.message.caption}\n\n❌ *[ОТКЛОНЕНО]* Прогон отменен администратором.`;
+            await this.editMessageCaption(chatId, messageId, updatedCaption, { inline_keyboard: [] });
+          } else if (this.editMessageReplyMarkup) {
+            await this.editMessageReplyMarkup(chatId, messageId, { inline_keyboard: [] });
+          }
         }
       } else if (action === "view_carousel") {
         if (!chatId) return;
 
-        await this.sendMessage(chatId, `⏳ *Загружаю все слайды карусели для прогона \`${runId.substring(0, 8)}\`...*`);
+        // Отвечаем тостом без создания мусорных сообщений
+        await this.answerCallback(cb.id, "⏳ Загружаю слайды карусели...");
 
         try {
           const db = getDb();
@@ -85,7 +141,7 @@ export class CallbackHandler {
           const zipIdStr = (designDoc?.result as any)?.imageId || (designDoc?.result as any)?.zip_cover_1_id;
 
           if (!zipIdStr) {
-            await this.sendMessage(chatId, `⚠️ Архив слайдов для прогона не найден.`);
+            await this.sendMessage(chatId, `⚠️ Архив слайдов для прогона \`${runId.substring(0, 8)}\` не найден.`);
             return;
           }
 
@@ -110,7 +166,7 @@ export class CallbackHandler {
             return;
           }
 
-          // Формируем multipart FormData с объектами File
+          // Формируем multipart FormData с альбомом слайдов
           const formData = new FormData();
           formData.append("chat_id", String(chatId));
 
@@ -123,7 +179,7 @@ export class CallbackHandler {
             return {
               type: "photo",
               media: `attach://${attachName}`,
-              caption: idx === 0 ? `🎬 *KinoPeek Карусель*: \`${runId}\`` : undefined,
+              caption: idx === 0 ? `🎬 *Карусель:* \`${runId}\` (${entries.length} слайдов)` : undefined,
               parse_mode: idx === 0 ? "Markdown" : undefined,
             };
           });
@@ -139,17 +195,18 @@ export class CallbackHandler {
             const errBody = await res.text();
             throw new Error(`Failed to sendMediaGroup: ${res.status} ${errBody}`);
           }
-
-          await this.sendMessage(
-            chatId,
-            `✅ *Карусель загружена (${entries.length} слайдов).* Выберите следующее действие:`,
-            buildApprovalKeyboard(runId)
-          );
         } catch (err: any) {
           logger.error({ err, runId }, "Failed to send carousel media group");
           await this.sendMessage(chatId, `❌ Не удалось загрузить слайды: ${err.message}`);
         }
+      } else if (action === "view_logs") {
+        await this.answerCallback(cb.id, "📜 Открываю журнал логов...");
+        if (chatId) {
+          const logsText = await this.logViewer.getRunLogs(runId);
+          await this.sendMessage(chatId, logsText);
+        }
       } else if (action === "upload_cover") {
+        await this.answerCallback(cb.id);
         this.photoHandler.setPendingPhoto(cb.from.id, { runId, slideIndex: 0 });
         if (chatId) {
           await this.sendMessage(
@@ -157,16 +214,8 @@ export class CallbackHandler {
             `📸 *Отправьте фотографию или скриншот кадра следующим сообщением в чат:*\n\nБот автоматически подставит её в обложку карусели и перерендерит карточку.`
           );
         }
-      } else if (action === "reject_run") {
-        const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
-        await runsCol.updateOne(
-          { runId },
-          { $set: { status: PipelineRunStatus.REJECTED, updatedAt: new Date() } }
-        );
-        if (chatId) {
-          await this.sendMessage(chatId, `❌ *Прогон \`${runId.substring(0, 8)}\` отклонен.*`);
-        }
       } else if (action === "edit_text") {
+        await this.answerCallback(cb.id);
         this.textEditor.setPendingEdit(cb.from.id, runId);
         if (chatId) {
           await this.sendMessage(
@@ -175,6 +224,7 @@ export class CallbackHandler {
           );
         }
       } else if (action === "regenerate_writing") {
+        await this.answerCallback(cb.id, "🔄 Запущена регенерация текста...");
         await this.queues[PipelineStage.WRITING].add("writing-job", {
           runId,
           stage: PipelineStage.WRITING,
@@ -187,6 +237,7 @@ export class CallbackHandler {
           );
         }
       } else if (action === "regenerate_design") {
+        await this.answerCallback(cb.id, "🎨 Запущена перегенерация слайдов...");
         await this.queues[PipelineStage.DESIGN].add("design-job", {
           runId,
           stage: PipelineStage.DESIGN,
@@ -199,6 +250,7 @@ export class CallbackHandler {
           );
         }
       } else if (action === "trend_pick") {
+        await this.answerCallback(cb.id, "🎬 Запуск генерации...");
         const trendMap: Record<string, { title: string; summary: string; pillar: string }> = {
           spider_man_4: {
             title: "Человек-Паук 4: дата съемок, возвращение Черной Кошки и новый костюм",
@@ -245,6 +297,7 @@ export class CallbackHandler {
           );
         }
       } else if (action === "cmd") {
+        await this.answerCallback(cb.id);
         const command = param;
         if (command === "daily_cinema" && chatId) {
           const runId = await this.testRunner.triggerPipelineTest("cinema-media", "daily-quick-recap");
@@ -265,26 +318,19 @@ export class CallbackHandler {
             `🧪 *Тестовый прогон KinoPeek запущен!*\nRun ID: \`${testRunId}\``
           );
         } else if (command === "status" && chatId) {
-          const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
-          const recentRuns = await runsCol
-            .find({ tenantId: "cinema-media" })
-            .sort({ createdAt: -1 })
-            .limit(5)
-            .toArray();
-          const statusText = recentRuns
-            .map(
-              (r) =>
-                `- \`${r.runId.substring(0, 8)}\` [${r.status}] ${r.topic?.title || "Без темы"}`
-            )
-            .join("\n");
-          await this.sendMessage(
-            chatId,
-            `📋 *Последние прогоны Кино-медиа:*\n\n${statusText || "Нет прогонов."}`
-          );
+          const summary = await this.logViewer.getRecentRunsSummary(5);
+          await this.sendMessage(chatId, summary);
+        } else if (command === "logs" && chatId) {
+          const recentLogs = await this.logViewer.getRecentRunsSummary(5);
+          await this.sendMessage(chatId, recentLogs);
+        } else if (command === "queues" && chatId) {
+          const queueStats = await this.logViewer.getQueueStats(this.queues);
+          await this.sendMessage(chatId, queueStats);
         }
       }
     } catch (err) {
       logger.error({ err, cbData: cb.data }, "Failed to handle callback query");
+      await this.answerCallback(cb.id, "Ошибка при обработке действия", true);
     }
   }
 }

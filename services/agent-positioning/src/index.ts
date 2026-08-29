@@ -15,6 +15,7 @@ import {
 import { AiClient } from "@pipeline/shared/ai";
 import { connectMongo, getCollection, Collections, type PipelineRunDoc, type IndustryProfileDoc } from "@pipeline/shared/db";
 import { ObjectId } from "mongodb";
+import { isTestoForbiddenDomain } from "./competency.js";
 
 const logger = createLogger("agent-positioning");
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
@@ -174,21 +175,34 @@ ${JSON.stringify(ex.expected_output, null, 2)}
   }
 
   // 3. Формируем запрос к LLM для отбора лучшей темы
+  let tenantPositioningRules = "";
+  if (tenantId === "testo") {
+    tenantPositioningRules = `
+CRITICAL TESTO COMPANY COMPETENCY & PORTFOLIO RULES:
+- Testo is exclusively a manufacturer and distributor of PRECISION MEASURING INSTRUMENTS (flue gas analyzers Testo 300/350, leak detectors Testo 316, pharma loggers Testo Saveris/190/174T, thermal imagers, thermometers, hygrometers).
+- STRICTLY FORBIDDEN DOMAINS (MUST REJECT WITH RELEVANCE 0):
+  * Personal Protective Equipment (PPE / СИЗ): Arc-flash suits, dielectric gloves, helmets, protective apparel under NFPA 70E or OSHA 1910. Testo DOES NOT manufacture protective clothing or electrical PPE!
+  * Power transformers, circuit breakers, electrical cabling.
+  * Finished chemical pharmaceuticals.
+- If a topic is centered on electrical PPE (NFPA 70E arc flash), you MUST set "relevance": 0 and "accepted": false! Never force-fit PPE into measurement equipment.`;
+  }
+
   const systemPrompt = `${positioningDomain}
-Your task is to analyze a list of tech trends/topics and match them against the author's profile.
+Your task is to analyze a list of trends/topics and match them against the author's profile and company competencies.
 Author Profile:
 - Allowed Topics of Interest: ${JSON.stringify(authorProfile.topics)}
 - Forbidden Topics/Words: ${JSON.stringify(authorProfile.forbidden_words)}
+${tenantPositioningRules}
 
 Evaluation Rules:
-1. Any topic that falls under forbidden topics (e.g. crypto, nft, web3) must be immediately rejected with relevance 0.
-2. Evaluate how relevant the topics are to the author's allowed topics (Node.js, Next.js, AI, SaaS, Backend, Supabase, etc.).
-3. Choose the SINGLE most relevant topic from the list.
+1. Any topic that falls under forbidden topics or outside company competencies must be rejected with relevance 0.
+2. Evaluate how relevant the topics are to the author's allowed topics and business domain.
+3. Choose the SINGLE most relevant topic from the list that legitimately fits the company's products.
 4. Calculate a relevance score (0 to 100) for this chosen topic. If the relevance is 70 or higher, set "accepted" to true. Otherwise, set it to false.
 ${fewShotText}
 You must return a single, valid JSON object containing:
 - "relevance": relevance score (0-100) of the selected topic.
-- "reason": detailed explanation of why this topic was selected and how it matches the author's positioning.
+- "reason": detailed explanation of why this topic was selected or rejected.
 - "accepted": boolean (true if relevance >= 70, false otherwise).
 - "selected_index": the 0-based index of the selected topic from the input list.
 
@@ -232,15 +246,21 @@ ${job.extraInstructions ? `Additional guidance: ${job.extraInstructions}` : ""}`
   if (relevance > 100) relevance = 100;
   const reason = typeof parsedJson.reason === "string" ? parsedJson.reason : "No reason provided";
   
-  const hasTargetPillar = !!(run?.contentPillarId || (job.payload as any)?.targetPillarId);
-  let accepted = typeof parsedJson.accepted === "boolean" ? parsedJson.accepted : false;
-  if (hasTargetPillar || relevance >= 50) {
-    accepted = true;
-  }
-  
   const selectedIndex = typeof parsedJson.selected_index === "number" ? parsedJson.selected_index : 0;
-
   const selectedTopic = trends[selectedIndex] || trends[0];
+
+  const isForbidden = tenantId === "testo" && selectedTopic && isTestoForbiddenDomain(selectedTopic.title, selectedTopic.summary || "");
+
+  let accepted = typeof parsedJson.accepted === "boolean" ? parsedJson.accepted : false;
+  if (isForbidden) {
+    logger.warn({ runId: job.runId, title: selectedTopic?.title }, "Topic rejected: Testo does not produce PPE / NFPA 70E gear");
+    accepted = false;
+    relevance = 0;
+  } else if (relevance >= 70) {
+    accepted = true;
+  } else {
+    accepted = false;
+  }
 
   // 4. Если тема одобрена, обновляем запись PipelineRun в БД выбранной темой
   if (accepted && selectedTopic) {

@@ -14,11 +14,14 @@ export async function GET(req: Request) {
   try {
     await connectMongo(MONGO_URI, MONGO_DB_NAME);
     const { searchParams } = new URL(req.url);
-    const templateSetId = searchParams.get("templateSetId");
-    if (!templateSetId) {
-      return NextResponse.json([]);
+    const templateSetId = searchParams.get("templateSetId") || "industrial-measurement-equipment";
+    const sets = [templateSetId];
+    if (templateSetId.startsWith("testo-") || templateSetId === "industrial-measurement-equipment") {
+      sets.push("industrial-measurement-equipment", "testo-brand-orange", "testo-pharma-compliance", "testo-pharma-audit", "testo-pharma-cold-chain");
     }
-    const illustrations = await getCollection(Collections.PNG_ILLUSTRATIONS).find({ templateSetId }).toArray();
+    const illustrations = await getCollection(Collections.PNG_ILLUSTRATIONS)
+      .find({ templateSetId: { $in: sets } })
+      .toArray();
     return NextResponse.json(illustrations);
   } catch (err) {
     return NextResponse.json({ error: "Failed to fetch PNG illustrations" }, { status: 500 });

@@ -5,8 +5,8 @@
   "tenants": ["testo"],
   "cover": "cover.html",
   "card": "card.html",
-  "defaultCoverBadge": "COMPLIANCE",
-  "defaultCardBadge": "PART 11",
+  "defaultCoverBadge": "КОМПЛАЕНС GXP",
+  "defaultCardBadge": "СТАНДАРТ 21 CFR",
   "brand": {
     "accentColor": "#3B82F6",
     "inkColor": "#14171A",

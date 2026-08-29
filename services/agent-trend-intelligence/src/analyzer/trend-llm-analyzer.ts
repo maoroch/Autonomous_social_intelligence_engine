@@ -4,19 +4,27 @@ import type { IndustryProfile } from "@pipeline/shared/schemas";
 import type { RawTrendItem, TrendAnalysisOutput, AnalyzedTrendItem } from "../validators/trend.validator.js";
 import { parseCleanJson, sanitizeLlmOutput } from "./json-parser.js";
 import { chunkArticleText } from "../sources/denofgeek.source.js";
+import {
+  getBrandTagForArticle,
+  getNicheFocusPrompt,
+  prioritizeTrendsForTenant,
+} from "../filters/trend-filters.js";
 
 const logger = createLogger("agent-trend:llm-analyzer");
 
 /**
  * Stage 1: Formats headlines + short snippets for lightweight virality selection
  */
-export function formatHeadlinesForSelection(trends: RawTrendItem[]): string {
+export function formatHeadlinesForSelection(trends: RawTrendItem[], tenantId: string = "software-development-default"): string {
   if (trends.length === 0) return "No articles available.";
 
   // Up to 25 headlines, very compact (<1000 tokens total)
   return trends
     .slice(0, 25)
-    .map((t, idx) => `[#${idx + 1}] "${t.title}" | Source: ${t.source} | URL: ${t.url}`)
+    .map((t, idx) => {
+      const brandTag = getBrandTagForArticle(t, tenantId);
+      return `[#${idx + 1}] "${t.title}"${brandTag} | Source: ${t.source} | URL: ${t.url}`;
+    })
     .join("\n");
 }
 
@@ -27,18 +35,11 @@ async function selectTopHeadlinesWithLLM(
   aiClient: AiClient,
   rawTrends: RawTrendItem[],
   tenantId: string,
-  industryProfile?: IndustryProfile
+  industryProfile?: IndustryProfile,
+  targetPillarId?: string
 ): Promise<number[]> {
-  const isCinemaMedia = tenantId === "cinema-media";
-  const isTesto = tenantId === "testo";
-  const headlinesText = formatHeadlinesForSelection(rawTrends);
-
-  let nicheFocus = "Focus on high-impact software development, cloud, AI, and IT engineering trends.";
-  if (isCinemaMedia) {
-    nicheFocus = "Focus on pop-culture, Marvel/DC lore, film production secrets, forgotten movies, box-office and iconic TV series.";
-  } else if (isTesto) {
-    nicheFocus = "Focus on industrial measurement, pharmaceutical compliance (GxP / 21 CFR Part 11), cold chain monitoring, cleanrooms, boiler efficiency, and environmental emissions (OSHA / NOx / CO / NFPA).";
-  }
+  const headlinesText = formatHeadlinesForSelection(rawTrends, tenantId);
+  const nicheFocus = getNicheFocusPrompt(tenantId, targetPillarId);
 
   const systemPrompt = `You are an expert Chief Editor and Content Strategist.
 Your task is to analyze news headlines and select the TOP 3 most critical, engaging, and high-impact topics for our professional audience.
@@ -88,7 +89,8 @@ Pick the 3 best topics to write in-depth posts about.`;
 async function deepDiveSingleArticle(
   aiClient: AiClient,
   article: RawTrendItem,
-  tenantId: string
+  tenantId: string,
+  targetPillarId?: string
 ): Promise<AnalyzedTrendItem> {
   const isCinemaMedia = tenantId === "cinema-media";
   const isTesto = tenantId === "testo";
@@ -102,9 +104,28 @@ async function deepDiveSingleArticle(
 
   let domainInstructions = "";
   if (isCinemaMedia) {
-    domainInstructions = "Analyze real facts, director/actor quotes, production trivia, and core pop-culture conflicts.";
+    domainInstructions = "Analyze real facts, director/actor quotes, production trivia, and core pop-culture conflicts. Output title and summary in Russian.";
   } else if (isTesto) {
-    domainInstructions = "Analyze industrial engineering challenges, regulatory standards (OSHA, FDA, GxP, ISO, 21 CFR Part 11), technical parameters (temperature, humidity, NOx, CO, O2), and audit risks for plant managers.";
+    const isPharma = targetPillarId?.startsWith("pharma-") || /pharma|fda|gxp|gmp|cleanroom|биос[еэ]нсор|препарат|медицин|saveris|lingo|abbott/i.test(`${article.title} ${article.summary || ""}`);
+    const isGas = targetPillarId?.startsWith("gas-") || /boiler|flue|combustion|котельн|газоанализ|горелк|выброс|пелтье/i.test(`${article.title} ${article.summary || ""}`);
+
+    if (isPharma) {
+      domainInstructions = `Analyze pharmaceutical engineering, cleanroom environments, regulatory standards (FDA, GxP, GMP, ISO 13485, 21 CFR Part 11), technical parameters (temperature, relative humidity, differential pressure, audit trail), and audit compliance risks.
+STRICT PILLAR ISOLATION:
+- Do NOT mention boilers, flue gas, emissions, NOx, CO, SO2, or boiler analyzers (Testo 300/350)!
+- Only reference pharmaceutical systems (Testo Saveris Pharma, Testo 190, Testo 174T).
+CRITICAL LANGUAGE REQUIREMENT: All output fields ("title", "summary") MUST BE STRICTLY WRITTEN IN RUSSIAN LANGUAGE.`;
+    } else if (isGas) {
+      domainInstructions = `Analyze industrial flue gas emissions, boiler tuning, combustion efficiency, environmental regulations (OSHA, NFPA), technical parameters (NOx, CO, O2, SO2, lambda, Peltier gas cooling, heat losses qA), and safety risks for plant engineers.
+STRICT PILLAR ISOLATION:
+- Do NOT mention pharmaceutical drugs, clinical trials, FDA 21 CFR Part 11, GxP, GMP, or biosensors!
+- Only reference flue gas analyzers (Testo 300, Testo 310 II, Testo 340, Testo 350).
+CRITICAL LANGUAGE REQUIREMENT: All output fields ("title", "summary") MUST BE STRICTLY WRITTEN IN RUSSIAN LANGUAGE.`;
+    } else {
+      domainInstructions = `Analyze industrial engineering challenges, regulatory standards, and metrology precision.
+STRICT PILLAR ISOLATION: Keep cleanrooms/pharma and boiler emissions (NOx/CO) strictly separated. Never mix boiler flue gas into pharma cleanrooms!
+CRITICAL LANGUAGE REQUIREMENT: All output fields ("title", "summary") MUST BE STRICTLY WRITTEN IN RUSSIAN LANGUAGE.`;
+    }
   } else {
     domainInstructions = "Analyze technical architecture, developer challenges, and practical software engineering takeaways.";
   }
@@ -168,23 +189,32 @@ export async function analyzeTrendsWithLLM(
   aiClient: AiClient,
   rawTrends: RawTrendItem[],
   tenantId: string,
-  industryProfile?: IndustryProfile
+  industryProfile?: IndustryProfile,
+  targetPillarId?: string
 ): Promise<TrendAnalysisOutput> {
   if (rawTrends.length === 0) {
     return { items: [] };
   }
 
+  const { candidateTrends, brandMatchesCount } = prioritizeTrendsForTenant(rawTrends, tenantId, targetPillarId);
+  if (brandMatchesCount > 0) {
+    logger.info(
+      { tenantId, targetPillarId, brandMatchesCount },
+      "Prioritized articles with direct brand/niche focus at top"
+    );
+  }
+
   // 1. Stage 1: Pick Top 1-3 winning candidate stories by lightweight headlines
-  const winningIndices = await selectTopHeadlinesWithLLM(aiClient, rawTrends, tenantId, industryProfile);
+  const winningIndices = await selectTopHeadlinesWithLLM(aiClient, candidateTrends, tenantId, industryProfile, targetPillarId);
   logger.info({ winningIndices, count: winningIndices.length }, "Selected top winning topics from headlines");
 
   // 2. Stage 2: Deep Dive into each winning article (with full text extraction & batching)
   const analyzedItems: AnalyzedTrendItem[] = [];
   for (const idx of winningIndices.slice(0, 3)) {
-    const article = rawTrends[idx];
+    const article = candidateTrends[idx];
     if (!article) continue;
     try {
-      const analyzed = await deepDiveSingleArticle(aiClient, article, tenantId);
+      const analyzed = await deepDiveSingleArticle(aiClient, article, tenantId, targetPillarId);
       analyzedItems.push(analyzed);
     } catch (err: any) {
       logger.warn({ err: err.message, url: article.url }, "Deep-dive on single article failed, using raw fallback");

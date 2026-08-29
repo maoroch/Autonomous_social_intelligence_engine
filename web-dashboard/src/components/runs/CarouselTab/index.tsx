@@ -62,6 +62,7 @@ export function CarouselTab({
           selectedTemplate={selectedTemplate}
           isAwaitingApproval={isAwaitingApproval}
           actionLoading={actionLoading}
+          tenantId={tenantId}
           onSlideChange={onSlideChange}
           onSelectSlide={onSelectSlide}
           onSaveManualEdits={onSaveManualEdits}

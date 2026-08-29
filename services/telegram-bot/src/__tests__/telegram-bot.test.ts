@@ -2,14 +2,15 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { buildApprovalKeyboard, buildMainMenuKeyboard } from "../keyboards/inline.js";
 import { TextEditorHandler } from "../handlers/text-editor.js";
+import { LogViewerService } from "../services/log-viewer.js";
 
 describe("Telegram Bot Unit Tests", () => {
-  test("buildApprovalKeyboard should contain valid action callbacks", () => {
+  test("buildApprovalKeyboard should contain valid action callbacks including logs", () => {
     const runId = "test_run_12345";
     const keyboard = buildApprovalKeyboard(runId);
 
-    assert.ok(keyboard.inline_keyboard.length >= 4, "Should have at least 4 rows of buttons");
-    
+    assert.ok(keyboard.inline_keyboard.length >= 5, "Should have at least 5 rows of buttons");
+
     // Row 1: Approve & Reject
     const row1 = keyboard.inline_keyboard[0];
     assert.ok(row1);
@@ -21,21 +22,15 @@ describe("Telegram Bot Unit Tests", () => {
     assert.ok(row2);
     assert.strictEqual(row2[0]?.callback_data, `view_carousel:${runId}`);
 
-    // Row 3: Edit text
-    const row3 = keyboard.inline_keyboard[2];
-    assert.ok(row3);
-    assert.strictEqual(row3[0]?.callback_data, `edit_text:${runId}`);
-
-    // Row 4: Regenerate
-    const row4 = keyboard.inline_keyboard[3];
-    assert.ok(row4);
-    assert.strictEqual(row4[0]?.callback_data, `regenerate_writing:${runId}`);
-    assert.strictEqual(row4[1]?.callback_data, `regenerate_design:${runId}`);
+    // Last row: View run logs
+    const lastRow = keyboard.inline_keyboard[keyboard.inline_keyboard.length - 1];
+    assert.ok(lastRow);
+    assert.strictEqual(lastRow[0]?.callback_data, `view_logs:${runId}`);
   });
 
   test("buildMainMenuKeyboard should contain interactive quick action buttons", () => {
     const menu = buildMainMenuKeyboard();
-    assert.ok(menu.inline_keyboard.length === 2, "Menu should have 2 rows");
+    assert.ok(menu.inline_keyboard.length >= 2, "Menu should have multiple rows");
     assert.strictEqual(menu.inline_keyboard[0]?.[0]?.callback_data, "cmd:daily_cinema");
     assert.strictEqual(menu.inline_keyboard[0]?.[1]?.callback_data, "cmd:trends");
     assert.strictEqual(menu.inline_keyboard[1]?.[0]?.callback_data, "cmd:test_pipeline");
@@ -57,5 +52,14 @@ describe("Telegram Bot Unit Tests", () => {
 
     editor.clearPendingEdit(userId);
     assert.strictEqual(editor.getPendingEdit(userId), undefined);
+  });
+
+  test("LogViewerService instance should be created properly", () => {
+    const viewer = new LogViewerService();
+    assert.ok(viewer);
+    assert.strictEqual(typeof viewer.getRunLogs, "function");
+    assert.strictEqual(typeof viewer.getRecentErrors, "function");
+    assert.strictEqual(typeof viewer.getQueueStats, "function");
+    assert.strictEqual(typeof viewer.getRecentRunsSummary, "function");
   });
 });

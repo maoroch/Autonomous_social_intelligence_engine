@@ -23,6 +23,7 @@ import { templateRegistry } from "./registry/template-registry.js";
 import { renderCarouselDeck } from "./render/deck-renderer.js";
 import { generateSlideDeckWithLLM } from "./generator/llm-generator.js";
 import { closeSharedBrowser } from "./render/browser-pool.js";
+import { loadIllustrationsFromDb } from "./assets/illustration-loader.js";
 import { DesignJobPayloadSchema } from "./validators/job-payload.validator.js";
 import type { SlideDeck, SlideItem } from "./validators/slide-deck.validator.js";
 
@@ -62,7 +63,7 @@ async function processDesignJob(job: AgentJob, notifyQueue = true): Promise<Reco
   const industryProfilesCol = getCollection(Collections.INDUSTRY_PROFILES);
 
   const runDoc = await runsCol.findOne({ runId });
-  const tenantId = runDoc?.tenantId ?? "software-development-default";
+  const tenantId = (payload as any)?.tenantId || runDoc?.tenantId || "software-development-default";
 
   const industryProfileDoc = await industryProfilesCol.findOne({ tenantId });
   const industryProfile = (industryProfileDoc as any)?.profile as IndustryProfile | undefined;
@@ -87,6 +88,7 @@ async function processDesignJob(job: AgentJob, notifyQueue = true): Promise<Reco
 
   // 1. Получаем список стилей через TemplateRegistry
   const styleConfigs = templateRegistry.resolveStylesForTenant(tenantId, industryProfile);
+  await loadIllustrationsFromDb();
 
   let slideDeck: SlideDeck;
 
@@ -102,6 +104,13 @@ async function processDesignJob(job: AgentJob, notifyQueue = true): Promise<Reco
     };
   } else {
     // 3. Первичная генерация текстового состава слайдов через LLM
+    const strategyPillarId =
+      (strategyResult as any)?.pillar ||
+      (strategyResult as any)?.content_pillar_id ||
+      (payload as any)?.targetPillarId ||
+      runDoc?.contentPillarId ||
+      "";
+
     slideDeck = await generateSlideDeckWithLLM(aiClient, {
       topicTitle,
       topicSummary,
@@ -110,6 +119,7 @@ async function processDesignJob(job: AgentJob, notifyQueue = true): Promise<Reco
       writingCta: writingResult?.call_to_action,
       strategyAngle: strategyResult?.angle,
       strategyCoreIdea: strategyResult?.core_idea,
+      strategyPillarId,
       tenantId,
       industryProfile,
       styleConfigs,
@@ -117,10 +127,12 @@ async function processDesignJob(job: AgentJob, notifyQueue = true): Promise<Reco
   }
 
   // 4. Подготовка логотипа организации
-  let logoHtml: string | undefined;
-  if (tenantId === "testo") {
-    logoHtml = `<img src="https://azia-test.com/wp-content/uploads/2025/02/logo.svg" alt="Testo" style="height: 52px; max-height: 52px; width: auto; display: block; object-fit: contain;" />`;
-  }
+  const isTestoTenant =
+    tenantId === "testo" ||
+    styleConfigs.some((s) => s.key.startsWith("testo-") || s.key === "industrial-measurement-equipment");
+  const logoHtml = isTestoTenant
+    ? `<img src="https://azia-test.com/wp-content/uploads/2025/02/logo.svg" alt="Azia Test" style="height: 52px; max-height: 52px; width: auto; display: block; object-fit: contain;" />`
+    : undefined;
 
   // 5. Рендеринг всех подходящих шаблонов через DeckRenderer
   const renderedStyles: Record<string, any> = existingDesignResult?.rendered_styles
@@ -227,6 +239,7 @@ async function start(): Promise<void> {
   try {
     await connectMongo(MONGO_URI, MONGO_DB_NAME);
     logger.info("Connected to MongoDB");
+    await loadIllustrationsFromDb();
 
     // Express Health, Templates & Direct Synchronous Inline Render API
     const app = express();

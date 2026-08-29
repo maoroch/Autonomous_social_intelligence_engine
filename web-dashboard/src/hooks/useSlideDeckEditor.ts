@@ -43,7 +43,12 @@ export function useSlideDeckEditor(
 
       const syncSignature = JSON.stringify({
         tpl: designResult.template_name,
-        slides: rawSlides.map((s: any) => ({ t: s.title, b: s.bullets, bg: s.badge }))
+        slides: rawSlides.map((s: any) => ({
+          t: s.title,
+          b: s.bullets,
+          bg: s.badge,
+          ill: s.illustration && s.illustration !== "none" ? s.illustration : (s.illustration_name || "")
+        }))
       });
 
       // Synchronize if not dirty (or initial load)
@@ -55,7 +60,7 @@ export function useSlideDeckEditor(
             title: val.title || "",
             bullets: Array.isArray(val.bullets) ? val.bullets : [],
             footer: val.footer || "",
-            illustration: val.illustration || val.illustration_name || "none",
+            illustration: val.illustration && val.illustration !== "none" ? val.illustration : (val.illustration_name || ""),
             isCover: idx === 0,
           }))
         );

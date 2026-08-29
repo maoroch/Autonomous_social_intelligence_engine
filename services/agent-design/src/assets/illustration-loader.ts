@@ -58,6 +58,36 @@ export function initIllustrations(): void {
 // Вызываем инициализацию при импорте
 initIllustrations();
 
+import { getCollection, Collections } from "@pipeline/shared/db";
+
+export async function loadIllustrationsFromDb(): Promise<void> {
+  try {
+    const pngCollection = getCollection<any>(Collections.PNG_ILLUSTRATIONS);
+    const pngDocs = await pngCollection.find({}).toArray();
+    for (const doc of pngDocs) {
+      if (doc.name && doc.base64Content) {
+        const key = doc.name.toLowerCase();
+        pngBase64Cache.set(key, doc.base64Content);
+      }
+    }
+
+    const svgCollection = getCollection<any>(Collections.SVG_ILLUSTRATIONS);
+    const svgDocs = await svgCollection.find({}).toArray();
+    for (const doc of svgDocs) {
+      if (doc.name && doc.svgContent) {
+        const key = doc.name.toLowerCase();
+        svgCache.set(key, doc.svgContent);
+      }
+    }
+    logger.info(
+      { pngCount: pngDocs.length, svgCount: svgDocs.length },
+      "Loaded illustrations from MongoDB collections into cache"
+    );
+  } catch (err) {
+    // If not connected yet during early import, ignore
+  }
+}
+
 export function getSvgIllustration(name: string): string | undefined {
   return svgCache.get(name.toLowerCase());
 }
@@ -80,7 +110,7 @@ export function resolveIllustrationTag(
     trimmed.startsWith("data:image/") ||
     trimmed.startsWith("/")
   ) {
-    return `<img src="${trimmed}" style="max-height: 100%; max-width: 100%; object-fit: contain;" alt="illustration" />`;
+    return `<img src="${trimmed}" style="width: 100%; height: 100%; object-fit: cover; display: block;" alt="illustration" />`;
   }
 
   // Direct inline SVG
@@ -90,16 +120,25 @@ export function resolveIllustrationTag(
 
   const key = trimmed.toLowerCase();
 
-  // 1. Проверяем PNG / SVG cache
+  // 1. Проверяем PNG / SVG cache (включая MongoDB)
   if (pngBase64Cache.has(key)) {
-    const raw = pngBase64Cache.get(key)!;
-    if (raw.trim().startsWith("<svg")) {
+    const raw = pngBase64Cache.get(key)!.trim();
+    if (raw.startsWith("<svg")) {
       return raw;
     }
-    return `<img src="data:image/png;base64,${raw}" style="max-height: 100%; max-width: 100%; object-fit: contain;" alt="${key}" />`;
+    if (raw.startsWith("data:image/")) {
+      return `<img src="${raw}" style="width: 100%; height: 100%; object-fit: cover; display: block;" alt="${key}" />`;
+    }
+    try {
+      const head = Buffer.from(raw.slice(0, 100), "base64").toString("utf8").trim();
+      if (head.startsWith("<svg")) {
+        return Buffer.from(raw, "base64").toString("utf8");
+      }
+    } catch (e) {}
+    return `<img src="data:image/png;base64,${raw}" style="width: 100%; height: 100%; object-fit: cover; display: block;" alt="${key}" />`;
   }
 
-  // 2. Проверяем SVG cache
+  // 2. Проверяем SVG cache (включая MongoDB)
   if (svgCache.has(key)) {
     return svgCache.get(key)!;
   }
@@ -113,7 +152,7 @@ export function resolveIllustrationTag(
     const pngPath = path.join(templateDir, "png-illustrations", templateSetId, `${key}.png`);
     if (fs.existsSync(pngPath)) {
       const base64 = fs.readFileSync(pngPath).toString("base64");
-      return `<img src="data:image/png;base64,${base64}" style="max-height: 100%; max-width: 100%; object-fit: contain;" alt="${key}" />`;
+      return `<img src="data:image/png;base64,${base64}" style="width: 100%; height: 100%; object-fit: cover; display: block;" alt="${key}" />`;
     }
   } catch (e) {
     // ignore

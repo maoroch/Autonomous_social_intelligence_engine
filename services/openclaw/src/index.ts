@@ -2,9 +2,9 @@ import "dotenv/config";
 import express from "express";
 import { createQueue, createWorker } from "@pipeline/shared/queue";
 import { createLogger } from "@pipeline/shared/logger";
-import { connectMongo, getDb } from "@pipeline/shared/db";
+import { connectMongo, getDb, getCollection, Collections, type PipelineRunDoc } from "@pipeline/shared/db";
 import { GridFSBucket, ObjectId } from "mongodb";
-import { QueueName, PipelineStage, type AgentJob, PipelineEventSchema, type PipelineEvent } from "@pipeline/shared";
+import { QueueName, PipelineStage, PipelineRunStatus, type AgentJob, PipelineEventSchema, type PipelineEvent } from "@pipeline/shared";
 import {
   startPipelineRun,
   handleAgentCompleted,
@@ -54,10 +54,24 @@ async function main() {
       if (event.status === "completed") {
         await handleAgentCompleted(queues, logger, event.runId, stage, event.result ?? {});
 
-        // Уведомление микросервиса telegram-bot через очередь событий
-        if (stage === PipelineStage.SEO || stage === PipelineStage.DESIGN) {
+        // Уведомление микросервиса telegram-bot ТОЛЬКО когда прогон реально дошел до HUMAN_APPROVAL
+        const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
+        const currentRun = await runsCol.findOne({ runId: event.runId });
+        if (
+          currentRun?.status === PipelineRunStatus.AWAITING_APPROVAL &&
+          !(currentRun as any).telegramApprovalNotified
+        ) {
+          await runsCol.updateOne(
+            { runId: event.runId },
+            { $set: { telegramApprovalNotified: true, telegramApprovalNotifiedAt: new Date() } }
+          );
           const telegramNotifierQueue = createQueue<PipelineEvent>("queue-telegram-approval-notifier", REDIS_URL);
-          await telegramNotifierQueue.add("approval-notify", event);
+          await telegramNotifierQueue.add("approval-notify", event, {
+            jobId: `approval-${event.runId}`,
+            removeOnComplete: true,
+            removeOnFail: true,
+          });
+          logger.info({ runId: event.runId }, "Queued single approval notification for telegram-bot");
         }
       } else {
         await handleAgentFailed(queues, logger, event.runId, stage, event.error ?? "unknown error");

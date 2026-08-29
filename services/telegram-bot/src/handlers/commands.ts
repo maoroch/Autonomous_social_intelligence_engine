@@ -1,7 +1,7 @@
-import { getCollection, Collections, type PipelineRunDoc } from "@pipeline/shared/db";
 import { createLogger } from "@pipeline/shared/logger";
 import { buildMainMenuKeyboard } from "../keyboards/inline.js";
 import type { BotQueues, TestRunnerService } from "../services/test-runner.js";
+import type { LogViewerService } from "../services/log-viewer.js";
 
 const logger = createLogger("telegram-bot:commands");
 
@@ -9,7 +9,8 @@ export class CommandHandler {
   constructor(
     private queues: BotQueues,
     private testRunner: TestRunnerService,
-    private sendMessage: (chatId: number | string, text: string, replyMarkup?: any) => Promise<void>
+    private logViewer: LogViewerService,
+    private sendMessage: (chatId: number | string, text: string, replyMarkup?: any) => Promise<any>
   ) {}
 
   async handleCommand(msg: {
@@ -30,6 +31,10 @@ export class CommandHandler {
         `• \`/post_topic <тема>\` — Создать пост по вашей теме\n` +
         `• \`/trends\` — Горячие тренды кино сегодня\n` +
         `• \`/status\` — Статус последних прогонов\n` +
+        `• \`/logs\` — Журнал последних прогонов и логи\n` +
+        `• \`/logs <runId>\` — Детальный лог конкретного прогона\n` +
+        `• \`/logs errors\` — Список последних сбоев и ошибок\n` +
+        `• \`/logs queues\` — Состояние очередей задач BullMQ\n` +
         `• \`/test_pipeline\` — Тестовый запуск генерации карточки\n` +
         `• \`/test_unit\` — Запуск системных unit-тестов`;
 
@@ -98,24 +103,36 @@ export class CommandHandler {
     }
 
     if (text === "/status") {
-      const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
-      const recentRuns = await runsCol
-        .find({ tenantId: "cinema-media" })
-        .sort({ createdAt: -1 })
-        .limit(5)
-        .toArray();
+      const summary = await this.logViewer.getRecentRunsSummary(5);
+      await this.sendMessage(chatId, summary);
+      return;
+    }
 
-      const statusText = recentRuns
-        .map(
-          (r) =>
-            `- \`${r.runId.substring(0, 8)}\` [${r.status}] ${r.topic?.title || "Без темы"}`
-        )
-        .join("\n");
+    // Команды работы с логами
+    if (text.startsWith("/logs")) {
+      const subParam = text.replace("/logs", "").trim();
 
-      await this.sendMessage(
-        chatId,
-        `📋 *Последние прогоны KinoPeek:*\n\n${statusText || "Нет прогонов."}`
-      );
+      if (!subParam) {
+        const summary = await this.logViewer.getRecentRunsSummary(5);
+        await this.sendMessage(chatId, summary);
+        return;
+      }
+
+      if (subParam === "errors" || subParam === "error") {
+        const errorsReport = await this.logViewer.getRecentErrors(5);
+        await this.sendMessage(chatId, errorsReport);
+        return;
+      }
+
+      if (subParam === "queues" || subParam === "queue") {
+        const queueStats = await this.logViewer.getQueueStats(this.queues);
+        await this.sendMessage(chatId, queueStats);
+        return;
+      }
+
+      // Если передан конкретный runId
+      const runLog = await this.logViewer.getRunLogs(subParam);
+      await this.sendMessage(chatId, runLog);
       return;
     }
 

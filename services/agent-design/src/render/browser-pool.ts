@@ -32,6 +32,8 @@ export async function getSharedBrowser(): Promise<Browser> {
           "--disable-dev-shm-usage",
           "--disable-gpu",
           "--font-render-hinting=none",
+          "--disable-web-security",
+          "--allow-running-insecure-content",
         ],
       });
       sharedBrowser = browser;

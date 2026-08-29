@@ -70,7 +70,7 @@ async function processTrendJob(job: AgentJob): Promise<unknown> {
   logger.info({ runId: job.runId, tenantId, rawCount: rawTrends.length, uniqueCount: deduplicated.length }, "Raw trends collected and deduplicated");
 
   // 4. LLM Analysis & Scoring
-  const analyzed = await analyzeTrendsWithLLM(aiClient, deduplicated, tenantId, industryProfile);
+  const analyzed = await analyzeTrendsWithLLM(aiClient, deduplicated, tenantId, industryProfile, targetPillar);
 
   // 5. Schema validation
   const validated = TrendAgentOutputSchema.parse(analyzed);

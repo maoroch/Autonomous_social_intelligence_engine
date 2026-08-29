@@ -16,7 +16,7 @@ export class PhotoHandler {
   constructor(
     private queues: BotQueues,
     private botToken: string,
-    private sendMessage: (chatId: number | string, text: string, replyMarkup?: any) => Promise<void>
+    private sendMessage: (chatId: number | string, text: string, replyMarkup?: any) => Promise<any>
   ) {}
 
   setPendingPhoto(userId: number, state: PendingPhotoState) {

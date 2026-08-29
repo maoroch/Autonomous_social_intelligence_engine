@@ -145,6 +145,13 @@ async function processWritingJob(job: AgentJob): Promise<unknown> {
   generated.text = withCta.text;
   generated.cta = withCta.cta;
 
+  if (isTestoTenant && generated.ru_post && generated.ru_post.text) {
+    generated.text = generated.ru_post.text;
+    if (generated.ru_post.hook) {
+      generated.hook = generated.ru_post.hook;
+    }
+  }
+
   if (isGithubShowcase && verifiedSources.length > 0) {
     generated.text = substituteGithubUrlsInText(generated.text, verifiedSources);
   }

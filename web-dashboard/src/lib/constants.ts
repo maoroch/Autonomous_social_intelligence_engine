@@ -29,11 +29,11 @@ export const TEMPLATE_ACCENT_COLORS: Record<string, string> = {
 };
 
 export const TEMPLATE_BADGE_DEFAULTS: Record<string, { cover: string; card: string }> = {
-  "industrial-measurement-equipment": { cover: "B2B CASE", card: "TECHNICAL OVERVIEW" },
+  "industrial-measurement-equipment": { cover: "ПРОИЗВОДСТВЕННЫЙ КЕЙС", card: "ТЕХНИЧЕСКИЙ РАЗБОР" },
   "testo-brand-orange": { cover: "TESTO ГАЗОАНАЛИЗАТОРЫ", card: "ПРЕИМУЩЕСТВА" },
-  "testo-pharma-compliance": { cover: "COMPLIANCE", card: "PART 11" },
-  "testo-pharma-cold-chain": { cover: "LOGISTICS", card: "GDP" },
-  "testo-pharma-audit": { cover: "QA", card: "AUDIT" },
+  "testo-pharma-compliance": { cover: "КОМПЛАЕНС GXP", card: "СТАНДАРТ 21 CFR" },
+  "testo-pharma-cold-chain": { cover: "ХОЛОДОВАЯ ЦЕПЬ", card: "СТАНДАРТЫ GDP" },
+  "testo-pharma-audit": { cover: "КОНТРОЛЬ КАЧЕСТВА", card: "АУДИТ И ВАЛИДАЦИЯ" },
   "cover-1": { cover: "The fix", card: "Setup" },
   "cover-2": { cover: "AI Agents", card: "Setup" },
   "cover-3": { cover: "Terminal", card: "Code" },

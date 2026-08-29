@@ -14,13 +14,14 @@ export function buildApprovalKeyboard(runId: string) {
       ],
       [
         { text: "📸 Загрузить свой кадр на обложку", callback_data: `upload_cover:${runId}` },
-      ],
-      [
         { text: "✏️ Редактировать текст", callback_data: `edit_text:${runId}` },
       ],
       [
         { text: "🔄 Регенерация текста", callback_data: `regenerate_writing:${runId}` },
         { text: "🎨 Сменить дизайн", callback_data: `regenerate_design:${runId}` },
+      ],
+      [
+        { text: "📜 Логи прогона", callback_data: `view_logs:${runId}` },
       ],
     ],
   };
@@ -36,6 +37,10 @@ export function buildMainMenuKeyboard() {
       [
         { text: "🧪 Тест пайплайна", callback_data: "cmd:test_pipeline" },
         { text: "📋 Статус прогонов", callback_data: "cmd:status" },
+      ],
+      [
+        { text: "📜 Журнал логов", callback_data: "cmd:logs" },
+        { text: "📊 Очереди задач", callback_data: "cmd:queues" },
       ],
     ],
   };

@@ -5,8 +5,8 @@
   "tenants": ["testo"],
   "cover": "cover.html",
   "card": "card.html",
-  "defaultCoverBadge": "QA",
-  "defaultCardBadge": "AUDIT",
+  "defaultCoverBadge": "КОНТРОЛЬ КАЧЕСТВА",
+  "defaultCardBadge": "АУДИТ И ВАЛИДАЦИЯ",
   "brand": {
     "accentColor": "#10B981",
     "inkColor": "#14171A",

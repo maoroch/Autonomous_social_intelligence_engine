@@ -169,67 +169,94 @@
       background: #FFF3E6;
       color: #D94800;
       border: 1.5px solid #FFD8A8;
-      padding: 8px 22px;
+      padding: 10px 24px;
       border-radius: 999px;
-      font-size: 16px;
+      font-size: 18px;
       font-weight: 800;
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
 
     .card-headline {
-      font-size: 46px;
+      font-size: 54px;
       font-weight: 900;
-      line-height: 1.18;
+      line-height: 1.15;
       letter-spacing: -0.025em;
       color: #0F172A;
-      margin: 0 0 32px 0;
+      margin: 0 0 28px 0;
+      text-wrap: balance;
     }
 
     .bullets-list {
       display: flex;
       flex-direction: column;
-      gap: 20px;
-      font-size: 27px;
-      font-weight: 600;
+      gap: 18px;
+      margin-bottom: 20px;
     }
 
-    .bullet-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 20px;
-      background: #F8FAFC;
-      border-radius: 20px;
-      padding: 22px 26px;
-      border: 1px solid #E2E8F0;
-    }
-
-    .bullet-icon-box {
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, #FF9838 0%, #FF7300 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      box-shadow: 0 6px 16px rgba(255, 115, 0, 0.28);
-    }
-
-    .bullet-icon-box svg {
-      width: 22px;
-      height: 22px;
-      stroke: #FFFFFF;
-      stroke-width: 3;
-      fill: none;
-    }
-
-    .bullet-text {
-      font-size: 25px;
+    .bullet-card,
+    .bullet-item,
+    .bullets-list p {
+      font-size: 28px;
       font-weight: 600;
       line-height: 1.45;
       color: #1E293B;
       margin: 0;
+      padding: 22px 28px;
+      background: #F8FAFC;
+      border-radius: 20px;
+      border: 1.5px solid #E2E8F0;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .bullet-card::before,
+    .bullet-item::before {
+      content: "•";
+      color: #FF7900;
+      font-size: 36px;
+      line-height: 1;
+      font-weight: 900;
+      margin-top: -2px;
+    }
+
+    .bullet-text {
+      font-size: 28px;
+      font-weight: 600;
+      line-height: 1.45;
+      color: #1E293B;
+      margin: 0;
+    }
+
+    /* Dedicated Showcase Container for Device Photos & Illustrations */
+    .illustration-container {
+      position: relative;
+      width: 100%;
+      height: 380px;
+      max-height: 380px;
+      border-radius: 24px;
+      overflow: hidden;
+      margin-top: 16px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.08);
+      border: 1.5px solid #E2E8F0;
+      background: #F8FAFC;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .illustration-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .illustration-container svg {
+      height: 100%;
+      width: auto;
     }
 
     /* Bottom Action Bar */
@@ -313,7 +340,12 @@
         <h2 class="card-headline">{{TITLE}}</h2>
 
         <div class="bullets-list">
-          {{BODY}}
+          {{BODY_HTML}}
+        </div>
+
+        <!-- Illustration / Device Showcase -->
+        <div class="illustration-container" style="{{ILLUSTRATION_STYLE}}">
+          {{ILLUSTRATION}}
         </div>
       </div>
     </div>
