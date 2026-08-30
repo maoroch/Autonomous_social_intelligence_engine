@@ -19,8 +19,6 @@ spec:
         - name: agent-publishing
           image: ghcr.io/maoroch/linkedin-ai-agent-publishing:latest
           imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 4007
           envFrom:
             - configMapRef:
                 name: pipeline-config
@@ -36,15 +34,3 @@ spec:
             limits:
               cpu: 200m
               memory: 192Mi
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 4007
-            initialDelaySeconds: 15
-            periodSeconds: 20
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 4007
-            initialDelaySeconds: 5
-            periodSeconds: 10
