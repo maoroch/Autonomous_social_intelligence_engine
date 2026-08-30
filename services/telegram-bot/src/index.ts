@@ -18,6 +18,8 @@ import { buildApprovalKeyboard } from "./keyboards/inline.js";
 import { TestRunnerService, type BotQueues } from "./services/test-runner.js";
 import { LogViewerService } from "./services/log-viewer.js";
 import { CinemaCuratorService } from "./services/cinema-curator.js";
+import { TechCuratorService } from "./services/tech-curator.js";
+import { TestoCuratorService } from "./services/testo-curator.js";
 
 const logger = createLogger("telegram-bot");
 
@@ -39,6 +41,8 @@ export class TelegramBotApp {
   private testRunner!: TestRunnerService;
   private logViewer!: LogViewerService;
   private cinemaCurator!: CinemaCuratorService;
+  private techCurator!: TechCuratorService;
+  private testoCurator!: TestoCuratorService;
   private queues!: BotQueues;
   private activeApprovalNotifs = new Set<string>();
 
@@ -64,6 +68,8 @@ export class TelegramBotApp {
 
     this.logViewer = new LogViewerService();
     this.cinemaCurator = new CinemaCuratorService();
+    this.techCurator = new TechCuratorService();
+    this.testoCurator = new TestoCuratorService();
     this.textEditor = new TextEditorHandler();
     this.photoHandler = new PhotoHandler(this.queues, BOT_TOKEN, this.sendMessage.bind(this));
     this.testRunner = new TestRunnerService(this.queues, OPENCLAW_URL);
@@ -73,6 +79,8 @@ export class TelegramBotApp {
       this.testRunner,
       this.logViewer,
       this.cinemaCurator,
+      this.techCurator,
+      this.testoCurator,
       this.sendMessage.bind(this)
     );
 
@@ -84,6 +92,8 @@ export class TelegramBotApp {
       this.testRunner,
       this.logViewer,
       this.cinemaCurator,
+      this.techCurator,
+      this.testoCurator,
       OPENCLAW_URL,
       this.sendMessage.bind(this),
       this.editMessageCaption.bind(this),

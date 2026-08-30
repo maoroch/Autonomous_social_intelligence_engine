@@ -3,6 +3,8 @@ import { buildMainMenuKeyboard } from "../keyboards/inline.js";
 import type { BotQueues, TestRunnerService } from "../services/test-runner.js";
 import type { LogViewerService } from "../services/log-viewer.js";
 import type { CinemaCuratorService } from "../services/cinema-curator.js";
+import type { TechCuratorService } from "../services/tech-curator.js";
+import type { TestoCuratorService } from "../services/testo-curator.js";
 
 const logger = createLogger("telegram-bot:commands");
 
@@ -12,6 +14,8 @@ export class CommandHandler {
     private testRunner: TestRunnerService,
     private logViewer: LogViewerService,
     private cinemaCurator: CinemaCuratorService,
+    private techCurator: TechCuratorService,
+    private testoCurator: TestoCuratorService,
     private sendMessage: (chatId: number | string, text: string, replyMarkup?: any) => Promise<any>
   ) {}
 
@@ -26,19 +30,21 @@ export class CommandHandler {
 
     if (text === "/start" || text === "/help") {
       const welcome =
-        `🎬 *Добро пожаловать в KinoPeek Control Hub!* 🍿\n\n` +
-        `Управляйте генерацией контента, интерактивным отбором тем и модерацией прямо из Telegram.\n\n` +
-        `📌 *Основные команды:*\n` +
-        `• \`/daily_cinema\` — Интерактивный радар тем (Популярные vs Свежие новости)\n` +
-        `• \`/post_topic <тема>\` — Создать пост по вашей произвольной теме\n` +
-        `• \`/trends\` — Каталог горячих трендов кино сегодня\n` +
+        `🤖 *Добро пожаловать в Multi-Portal AI Content Hub!* 🚀\n\n` +
+        `Управляйте генерацией контента, интерактивным отбором тем и модерацией для всех 3 порталов прямо из Telegram.\n\n` +
+        `📌 *Команды кураторов тем:*\n` +
+        `• \`/daily_cinema\` — Радар тем кино и Marvel (Популярные vs Свежие)\n` +
+        `• \`/daily_tech\` — Радар IT & Tech (Архитектура, Open-Source репозитории)\n` +
+        `• \`/daily_testo\` — Радар Testo (Газоанализаторы ТЭЦ, Фармацевтика GxP)\n\n` +
+        `✍️ *Создание постов по своей теме:*\n` +
+        `• \`/post_cinema <тема>\` — Создать пост по теме кино\n` +
+        `• \`/post_tech <тема>\` — Создать пост по IT-теме\n` +
+        `• \`/post_testo <тема>\` — Создать пост по оборудованию Testo\n\n` +
+        `⚙️ *Системные команды:*\n` +
         `• \`/status\` — Статус последних прогонов\n` +
-        `• \`/logs\` — Журнал последних прогонов и логи\n` +
-        `• \`/logs <runId>\` — Детальный лог конкретного прогона\n` +
-        `• \`/logs errors\` — Список последних сбоев и ошибок\n` +
+        `• \`/logs\` — Журнал последних прогонов и детальные логи\n` +
         `• \`/logs queues\` — Состояние очередей задач BullMQ\n` +
-        `• \`/test_pipeline\` — Тестовый запуск генерации карточки\n` +
-        `• \`/test_unit\` — Запуск системных unit-тестов`;
+        `• \`/test_pipeline\` — Тестовый запуск генерации карточки`;
 
       await this.sendMessage(chatId, welcome, buildMainMenuKeyboard());
       return;
@@ -54,12 +60,76 @@ export class CommandHandler {
       return;
     }
 
-    if (text.startsWith("/post_topic")) {
-      const topicTitle = text.replace("/post_topic", "").trim();
+    if (text === "/daily_tech" || text === "/curate_tech") {
+      await this.sendMessage(
+        chatId,
+        `💻 *Tech Radar — Выберите категорию тем:*\n\n` +
+        `Что вы хотите сгенерировать сегодня для Tech Portal?`,
+        this.techCurator.getCuratorMenuKeyboard()
+      );
+      return;
+    }
+
+    if (text === "/daily_testo" || text === "/curate_testo") {
+      await this.sendMessage(
+        chatId,
+        `🏭 *Testo Kazakhstan Radar — Выберите отрасль:*\n\n` +
+        `Какое направление оборудования Testo вы хотите раскрыть в публикации?`,
+        this.testoCurator.getCuratorMenuKeyboard()
+      );
+      return;
+    }
+
+    if (text.startsWith("/post_tech")) {
+      const topicTitle = text.replace("/post_tech", "").trim();
       if (!topicTitle) {
         await this.sendMessage(
           chatId,
-          `⚠️ *Укажите тему поста!*\nПример:\n\`/post_topic Секретные войны Marvel: кого вернут из старого каста\``
+          `⚠️ *Укажите тему IT-поста!*\nПример:\n\`/post_tech Архитектура очередей: BullMQ vs RabbitMQ в high-load Node.js\``
+        );
+        return;
+      }
+
+      const runId = await this.testRunner.triggerPipelineTest("software-development-default", "architecture-deep-dive", {
+        title: topicTitle,
+        summary: topicTitle,
+      });
+
+      await this.sendMessage(
+        chatId,
+        `💻 *Запущен прогон Tech Portal!*\nТема: "${topicTitle}"\nRun ID: \`${runId}\``
+      );
+      return;
+    }
+
+    if (text.startsWith("/post_testo")) {
+      const topicTitle = text.replace("/post_testo", "").trim();
+      if (!topicTitle) {
+        await this.sendMessage(
+          chatId,
+          `⚠️ *Укажите тему Testo!*\nПример:\n\`/post_testo Сферы применения газоанализатора Testo 350: от котельных до металлургии\``
+        );
+        return;
+      }
+
+      const runId = await this.testRunner.triggerPipelineTest("testo", "gas-industrial-emissions", {
+        title: topicTitle,
+        summary: topicTitle,
+      });
+
+      await this.sendMessage(
+        chatId,
+        `🏭 *Запущен прогон Testo Kazakhstan!*\nТема: "${topicTitle}"\nRun ID: \`${runId}\``
+      );
+      return;
+    }
+
+    if (text.startsWith("/post_cinema") || text.startsWith("/post_topic")) {
+      const topicTitle = text.replace("/post_cinema", "").replace("/post_topic", "").trim();
+      if (!topicTitle) {
+        await this.sendMessage(
+          chatId,
+          `⚠️ *Укажите тему поста!*\nПример:\n\`/post_cinema Секретные войны Marvel: кого вернут из старого каста\``
         );
         return;
       }

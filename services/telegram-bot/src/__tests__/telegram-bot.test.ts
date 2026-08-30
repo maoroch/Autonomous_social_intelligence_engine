@@ -35,11 +35,12 @@ describe("Telegram Bot Unit Tests", () => {
 
   test("buildMainMenuKeyboard should contain interactive quick action buttons", () => {
     const menu = buildMainMenuKeyboard();
-    assert.ok(menu.inline_keyboard.length >= 2, "Menu should have multiple rows");
+    assert.ok(menu.inline_keyboard.length >= 3, "Menu should have multiple rows");
     assert.strictEqual(menu.inline_keyboard[0]?.[0]?.callback_data, "cmd:daily_cinema");
-    assert.strictEqual(menu.inline_keyboard[0]?.[1]?.callback_data, "cmd:trends");
-    assert.strictEqual(menu.inline_keyboard[1]?.[0]?.callback_data, "cmd:test_pipeline");
-    assert.strictEqual(menu.inline_keyboard[1]?.[1]?.callback_data, "cmd:status");
+    assert.strictEqual(menu.inline_keyboard[1]?.[0]?.callback_data, "cmd:daily_tech");
+    assert.strictEqual(menu.inline_keyboard[1]?.[1]?.callback_data, "cmd:daily_testo");
+    assert.strictEqual(menu.inline_keyboard[2]?.[0]?.callback_data, "cmd:trends");
+    assert.strictEqual(menu.inline_keyboard[2]?.[1]?.callback_data, "cmd:status");
   });
 
   test("TextEditorHandler should manage user pending state accurately", () => {

@@ -35,10 +35,10 @@ export interface AgentQueues {
   [PipelineStage.SEO]: Queue<AgentJob>;
 }
 
-function nextAgentStage(current: PipelineStage, tenantId?: string): PipelineStage | null {
-  // Для кино-портала (cinema-media) исключаем POSITIONING, STRATEGY и SEO:
+function nextAgentStage(current: PipelineStage, tenantId?: string, isDirectGrounded?: boolean): PipelineStage | null {
+  // Для кино-портала (cinema-media) и прямых заземленных прогонов кураторов (Tech, Testo):
   // Статья как RAG -> напрямую в WRITING -> затем DESIGN -> сразу HUMAN_APPROVAL
-  if (tenantId === "cinema-media") {
+  if (tenantId === "cinema-media" || isDirectGrounded) {
     if (current === PipelineStage.TREND) return PipelineStage.WRITING;
     if (current === PipelineStage.WRITING) return PipelineStage.DESIGN;
     if (current === PipelineStage.DESIGN) return null; // Готово к модерации в Telegram!
@@ -267,7 +267,8 @@ export async function handleAgentCompleted(
     return;
   }
 
-  const next = nextAgentStage(stage, run.tenantId);
+  const isDirectGrounded = Boolean((run as any).targetPillarId && ((run as any).batches || (run as any).topic));
+  const next = nextAgentStage(stage, run.tenantId, isDirectGrounded);
 
   if (!next) {
     // Прошли все agent-стадии (последняя — SEO) -> ждём ручного подтверждения.

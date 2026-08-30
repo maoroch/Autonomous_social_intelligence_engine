@@ -34,11 +34,14 @@ export function buildMainMenuKeyboard() {
   return {
     inline_keyboard: [
       [
-        { text: "🎬 Запуск KinoPeek", callback_data: "cmd:daily_cinema" },
-        { text: "🔥 Тренды дня", callback_data: "cmd:trends" },
+        { text: "🎬 Кино-медиа (KinoPeek)", callback_data: "cmd:daily_cinema" },
       ],
       [
-        { text: "🧪 Тест пайплайна", callback_data: "cmd:test_pipeline" },
+        { text: "💻 IT & Tech (Dev / GitHub)", callback_data: "cmd:daily_tech" },
+        { text: "🏭 Testo (B2B / Промышленность)", callback_data: "cmd:daily_testo" },
+      ],
+      [
+        { text: "🔥 Тренды кино", callback_data: "cmd:trends" },
         { text: "📋 Статус прогонов", callback_data: "cmd:status" },
       ],
       [
