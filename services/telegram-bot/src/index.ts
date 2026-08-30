@@ -152,7 +152,12 @@ export class TelegramBotApp {
       const imageId =
         (designDoc?.result as any)?.preview_cover_1_id || (designDoc?.result as any)?.imageId;
 
-      const portalLabel = runDoc.tenantId === "testo" ? "Testo Industrial" : "KinoPeek Media";
+      const portalConfig =
+        runDoc.tenantId === "testo"
+          ? { label: "Testo Kazakhstan", emoji: "🏭" }
+          : runDoc.tenantId === "software-development-default"
+            ? { label: "Tech Hub (IT)", emoji: "💻" }
+            : { label: "KinoPeek Media", emoji: "🎬" };
 
       // Формируем чистый превью-текст без обрезания фраз на полуслове
       let previewText = postText;
@@ -167,7 +172,7 @@ export class TelegramBotApp {
       }
 
       const messageText =
-        `🎬 *[${portalLabel}] Новый пост ожидает проверки!*\n\n` +
+        `${portalConfig.emoji} *[${portalConfig.label}] Новый пост ожидает проверки!*\n\n` +
         `📌 *Тема:* ${topicTitle}\n` +
         `🆔 *Run ID:* \`${runId}\`\n` +
         `📂 *Рубрика:* ${(runDoc as any).contentPillarId || (runDoc as any).targetPillarId || "default"}\n\n` +

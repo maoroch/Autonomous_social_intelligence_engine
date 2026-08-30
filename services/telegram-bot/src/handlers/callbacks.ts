@@ -152,22 +152,52 @@ export class CallbackHandler {
         await this.sendMessage(chatId, "✏️ Отправьте отредактированный текст:");
       } else if (action === "regenerate_writing") {
         if (!runId) return;
+        const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
+        const currentRun = await runsCol.findOne({ runId });
+        const stageResultsCol = getCollection<StageResultDoc>(Collections.STAGE_RESULTS);
+        const trendDoc = await stageResultsCol.findOne({ runId, stage: PipelineStage.TREND });
+        const strategyDoc = await stageResultsCol.findOne({ runId, stage: PipelineStage.STRATEGY });
+
         await this.queues[PipelineStage.WRITING].add("rewrite-job", {
           runId,
           stage: PipelineStage.WRITING,
           attempt: 1,
-          payload: {},
+          payload: {
+            topic: trendDoc?.result || currentRun?.topic,
+            strategy: strategyDoc?.result,
+            batches: (trendDoc?.result as any)?.batches,
+            targetPillarId: (currentRun as any)?.contentPillarId || (currentRun as any)?.targetPillarId,
+            tenantId: currentRun?.tenantId,
+          },
+          extraInstructions: "User requested full rewrite of the post copy.",
         } as AgentJob);
-        await this.answerCallback(cb.id, "🔄 Регенерация текста...");
+        await this.answerCallback(cb.id, "🔄 Запущена регенерация текста...");
+        if (chatId) {
+          await this.sendMessage(chatId, `🔄 *Агент копирайтинга переписывает текст поста (${currentRun?.tenantId || "default"})...*\nRun ID: \`${runId}\``);
+        }
       } else if (action === "regenerate_design") {
         if (!runId) return;
+        const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
+        const currentRun = await runsCol.findOne({ runId });
+        const stageResultsCol = getCollection<StageResultDoc>(Collections.STAGE_RESULTS);
+        const writingDoc = await stageResultsCol.findOne({ runId, stage: PipelineStage.WRITING });
+
         await this.queues[PipelineStage.DESIGN].add("redesign-job", {
           runId,
           stage: PipelineStage.DESIGN,
           attempt: 1,
-          payload: {},
+          payload: {
+            text: (writingDoc?.result as any)?.text,
+            hook: (writingDoc?.result as any)?.hook,
+            tenantId: currentRun?.tenantId,
+            targetPillarId: (currentRun as any)?.contentPillarId || (currentRun as any)?.targetPillarId,
+          },
+          extraInstructions: "User requested alternative visual design palette.",
         } as AgentJob);
-        await this.answerCallback(cb.id, "🎨 Регенерация дизайна...");
+        await this.answerCallback(cb.id, "🎨 Запущена регенерация дизайна...");
+        if (chatId) {
+          await this.sendMessage(chatId, `🎨 *Агент дизайна перерисовывает карусель (${currentRun?.tenantId || "default"})...*\nRun ID: \`${runId}\``);
+        }
       } else if (action === "cinema_mode") {
         const mode = param === "popular" ? "popular" : "fresh";
         const articles = await this.cinemaCurator.fetchCuratedTopics(mode);

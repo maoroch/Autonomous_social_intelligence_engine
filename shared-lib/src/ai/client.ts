@@ -205,7 +205,16 @@ export class AiClient {
     messages: ChatMessage[],
     options: AiCompletionOptions,
   ): Promise<AiCompletionResult> {
-    const model = options.model ?? this.config.openrouterModel ?? DEFAULT_OPENROUTER_MODEL;
+    let model = options.model ?? this.config.openrouterModel ?? DEFAULT_OPENROUTER_MODEL;
+    if (model === "llama-3.3-70b-versatile") {
+      model = "meta-llama/llama-3.3-70b-instruct";
+    } else if (model.startsWith("llama-3.1-8b")) {
+      model = "meta-llama/llama-3.1-8b-instruct";
+    } else if (!model.includes("/") && this.config.openrouterModel) {
+      model = this.config.openrouterModel;
+    } else if (!model.includes("/")) {
+      model = DEFAULT_OPENROUTER_MODEL;
+    }
 
     await this.acquireToken("openrouter");
 
