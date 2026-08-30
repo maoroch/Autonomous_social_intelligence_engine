@@ -71,50 +71,6 @@ services:
       redis:
         condition: service_healthy
 
-  agent-positioning:
-    build:
-      context: .
-      dockerfile: Dockerfile.service
-      args:
-        SERVICE_DIR: services/agent-positioning
-    ports:
-      - "4002:4002"
-    environment:
-      PORT: 4002
-      REDIS_URL: redis://redis:6379
-      MONGO_URI: mongodb://mongo:27017
-      MONGO_DB_NAME: linkedin_pipeline
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      GROQ_API_KEY: ${GROQ_API_KEY:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-flash-latest}
-      AI_PROVIDER: ${AI_PROVIDER:-}
-    depends_on:
-      redis:
-        condition: service_healthy
-
-  agent-strategy:
-    build:
-      context: .
-      dockerfile: Dockerfile.service
-      args:
-        SERVICE_DIR: services/agent-content-strategy
-    ports:
-      - "4003:4003"
-    environment:
-      PORT: 4003
-      REDIS_URL: redis://redis:6379
-      MONGO_URI: mongodb://mongo:27017
-      MONGO_DB_NAME: linkedin_pipeline
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      GROQ_API_KEY: ${GROQ_API_KEY:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-flash-latest}
-      AI_PROVIDER: ${AI_PROVIDER:-}
-    depends_on:
-      redis:
-        condition: service_healthy
-
   agent-writing:
     build:
       context: .
@@ -160,28 +116,6 @@ services:
         condition: service_healthy
     volumes:
       - ./services/agent-design/template:/app/service/template:ro
-
-  agent-seo:
-    build:
-      context: .
-      dockerfile: Dockerfile.service
-      args:
-        SERVICE_DIR: services/agent-seo
-    ports:
-      - "4006:4006"
-    environment:
-      PORT: 4006
-      REDIS_URL: redis://redis:6379
-      MONGO_URI: mongodb://mongo:27017
-      MONGO_DB_NAME: linkedin_pipeline
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      GROQ_API_KEY: ${GROQ_API_KEY:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
-      AI_PROVIDER: ${AI_PROVIDER:-}
-    depends_on:
-      redis:
-        condition: service_healthy
 
   agent-publishing:
     build:

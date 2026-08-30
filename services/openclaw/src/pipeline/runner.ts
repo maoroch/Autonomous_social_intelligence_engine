@@ -19,35 +19,20 @@ const MAX_RETRIES_PER_STAGE = Number(process.env.MAX_RETRIES_PER_STAGE ?? 2);
  */
 const AGENT_STAGES: PipelineStage[] = [
   PipelineStage.TREND,
-  PipelineStage.POSITIONING,
-  PipelineStage.STRATEGY,
   PipelineStage.WRITING,
   PipelineStage.DESIGN,
-  PipelineStage.SEO,
 ];
 
 export interface AgentQueues {
   [PipelineStage.TREND]: Queue<AgentJob>;
-  [PipelineStage.POSITIONING]: Queue<AgentJob>;
-  [PipelineStage.STRATEGY]: Queue<AgentJob>;
   [PipelineStage.WRITING]: Queue<AgentJob>;
   [PipelineStage.DESIGN]: Queue<AgentJob>;
-  [PipelineStage.SEO]: Queue<AgentJob>;
 }
 
-function nextAgentStage(current: PipelineStage, tenantId?: string, isDirectGrounded?: boolean): PipelineStage | null {
-  // Для кино-портала (cinema-media) и прямых заземленных прогонов кураторов (Tech, Testo):
-  // Статья как RAG -> напрямую в WRITING -> затем DESIGN -> сразу HUMAN_APPROVAL
-  if (tenantId === "cinema-media" || isDirectGrounded) {
-    if (current === PipelineStage.TREND) return PipelineStage.WRITING;
-    if (current === PipelineStage.WRITING) return PipelineStage.DESIGN;
-    if (current === PipelineStage.DESIGN) return null; // Готово к модерации в Telegram!
-    if (current === PipelineStage.SEO) return null;
-  }
-
-  const idx = AGENT_STAGES.indexOf(current);
-  if (idx === -1 || idx === AGENT_STAGES.length - 1) return null;
-  return AGENT_STAGES[idx + 1] ?? null;
+function nextAgentStage(current: PipelineStage): PipelineStage | null {
+  if (current === PipelineStage.TREND) return PipelineStage.WRITING;
+  if (current === PipelineStage.WRITING) return PipelineStage.DESIGN;
+  return null;
 }
 
 /** Создаёт новый прогон пайплайна для темы и сразу ставит первую задачу в очередь. */
@@ -212,66 +197,26 @@ export async function handleAgentCompleted(
     return;
   }
 
-  // QA-проверка Open Claw: на MVP — упрощённая, отбраковка по relevance/accepted для Positioning.
-  if (stage === PipelineStage.POSITIONING && result.accepted === false) {
+  if (stage === PipelineStage.WRITING && (run as any).skipDesign) {
+    // Explicit skipDesign -> advances directly to HUMAN_APPROVAL
     await runs.updateOne(
       { runId },
-      { $set: { status: PipelineRunStatus.REJECTED, updatedAt: new Date() } },
-    );
-    logger.info({ runId }, "run rejected by positioning agent (topic not relevant)");
-    return;
-  }
-
-  // Качественная обратная связь (Quality Loop): если SEO score < 80, возвращаем на доработку в WRITING (макс 2 раза)
-  if (stage === PipelineStage.SEO) {
-    const score = typeof result.score === "number" ? result.score : 0;
-    const recommendations = Array.isArray(result.recommendations) ? (result.recommendations as string[]) : [];
-    const seoImprovementsCount = run.seoImprovementsCount ?? 0;
-
-    if (score < 80 && seoImprovementsCount < 2) {
-      const nextImprovementsCount = seoImprovementsCount + 1;
-      await runs.updateOne(
-        { runId },
-        {
-          $set: {
-            currentStage: PipelineStage.WRITING,
-            seoImprovementsCount: nextImprovementsCount,
-            updatedAt: new Date(),
-          },
+      {
+        $set: {
+          status: PipelineRunStatus.AWAITING_APPROVAL,
+          currentStage: PipelineStage.HUMAN_APPROVAL,
+          updatedAt: new Date(),
         },
-      );
-
-      const strategyDoc = await getCollection<StageResultDoc>(Collections.STAGE_RESULTS).findOne({
-        runId,
-        stage: PipelineStage.STRATEGY,
-      });
-      const strategyResult = (strategyDoc?.result as Record<string, unknown>) ?? {};
-
-      const extraInstructions = `SEO Agent score was low (${score}/100). Please rewrite and improve the post text. Recommendations: ${recommendations.join("; ")}`;
-
-      await enqueueStage(queues, runId, PipelineStage.WRITING, strategyResult, extraInstructions);
-      logger.info(
-        { runId, score, attempt: nextImprovementsCount },
-        "SEO score is low, cycling back to WRITING stage for improvements"
-      );
-      return;
-    }
-  }
-
-  if (stage === PipelineStage.WRITING && (run as any).skipDesign) {
-    // Explicit skipDesign -> advances directly from WRITING to SEO
-    const next = PipelineStage.SEO;
-    await runs.updateOne({ runId }, { $set: { currentStage: next, updatedAt: new Date() } });
-    await enqueueStage(queues, runId, next, result);
-    logger.info({ runId, from: stage, to: next }, "advanced directly from WRITING to SEO (skipping DESIGN)");
+      },
+    );
+    logger.info({ runId }, "skipDesign active: advanced directly to human approval stage");
     return;
   }
 
-  const isDirectGrounded = Boolean((run as any).targetPillarId && ((run as any).batches || (run as any).topic));
-  const next = nextAgentStage(stage, run.tenantId, isDirectGrounded);
+  const next = nextAgentStage(stage);
 
   if (!next) {
-    // Прошли все agent-стадии (последняя — SEO) -> ждём ручного подтверждения.
+    // Прошли все agent-стадии (последняя — DESIGN) -> ждём ручного подтверждения.
     await runs.updateOne(
       { runId },
       {

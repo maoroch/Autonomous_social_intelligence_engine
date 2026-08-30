@@ -154,11 +154,8 @@ export class LogViewerService {
     try {
       const stages = [
         PipelineStage.TREND,
-        PipelineStage.POSITIONING,
-        PipelineStage.STRATEGY,
         PipelineStage.WRITING,
         PipelineStage.DESIGN,
-        PipelineStage.SEO,
         PipelineStage.PUBLISHING,
       ] as const;
 

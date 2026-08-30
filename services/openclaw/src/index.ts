@@ -27,11 +27,8 @@ async function main() {
 
   const queues: AgentQueues = {
     [PipelineStage.TREND]: createQueue<AgentJob>(QueueName.TREND, REDIS_URL),
-    [PipelineStage.POSITIONING]: createQueue<AgentJob>(QueueName.POSITIONING, REDIS_URL),
-    [PipelineStage.STRATEGY]: createQueue<AgentJob>(QueueName.STRATEGY, REDIS_URL),
     [PipelineStage.WRITING]: createQueue<AgentJob>(QueueName.WRITING, REDIS_URL),
     [PipelineStage.DESIGN]: createQueue<AgentJob>(QueueName.DESIGN, REDIS_URL),
-    [PipelineStage.SEO]: createQueue<AgentJob>(QueueName.SEO, REDIS_URL),
   };
 
   // Worker, реально потребляющий джобы из очереди событий, которые публикуют агенты

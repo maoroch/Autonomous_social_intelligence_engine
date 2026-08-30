@@ -59,11 +59,8 @@ export class TelegramBotApp {
     // Инициализация очередей BullMQ для взаимодействия с пайплайном
     this.queues = {
       [PipelineStage.TREND]: createQueue(QueueName.TREND, REDIS_URL),
-      [PipelineStage.POSITIONING]: createQueue(QueueName.POSITIONING, REDIS_URL),
-      [PipelineStage.STRATEGY]: createQueue(QueueName.STRATEGY, REDIS_URL),
       [PipelineStage.WRITING]: createQueue(QueueName.WRITING, REDIS_URL),
       [PipelineStage.DESIGN]: createQueue(QueueName.DESIGN, REDIS_URL),
-      [PipelineStage.SEO]: createQueue(QueueName.SEO, REDIS_URL),
       [PipelineStage.PUBLISHING]: createQueue(QueueName.PUBLISHING, REDIS_URL),
     };
 

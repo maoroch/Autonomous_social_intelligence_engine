@@ -8,13 +8,11 @@ COPY package.json package-lock.json* ./
 COPY shared-lib/package.json ./shared-lib/package.json
 COPY services/openclaw/package.json ./services/openclaw/package.json
 COPY services/agent-trend-intelligence/package.json ./services/agent-trend-intelligence/package.json
-COPY services/agent-positioning/package.json ./services/agent-positioning/package.json
-COPY services/agent-content-strategy/package.json ./services/agent-content-strategy/package.json
 COPY services/agent-writing/package.json ./services/agent-writing/package.json
 COPY services/agent-design/package.json ./services/agent-design/package.json
-COPY services/agent-seo/package.json ./services/agent-seo/package.json
 COPY services/agent-publishing/package.json ./services/agent-publishing/package.json
 COPY services/agent-evaluator/package.json ./services/agent-evaluator/package.json
+COPY services/telegram-bot/package.json ./services/telegram-bot/package.json
 RUN npm install
 
 FROM deps AS build

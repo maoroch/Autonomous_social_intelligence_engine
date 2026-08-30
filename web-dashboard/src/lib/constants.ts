@@ -52,10 +52,7 @@ export const TEMPLATE_BADGE_DEFAULTS: Record<string, { cover: string; card: stri
 
 export const PIPELINE_STAGES = [
   "trend",
-  "positioning",
-  "strategy",
   "writing",
   "design",
-  "seo",
   "human_approval",
 ] as const;

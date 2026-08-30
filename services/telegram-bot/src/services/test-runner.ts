@@ -10,11 +10,8 @@ const logger = createLogger("telegram-bot:test-runner");
 
 export interface BotQueues {
   [PipelineStage.TREND]: Queue<AgentJob>;
-  [PipelineStage.POSITIONING]: Queue<AgentJob>;
-  [PipelineStage.STRATEGY]: Queue<AgentJob>;
   [PipelineStage.WRITING]: Queue<AgentJob>;
   [PipelineStage.DESIGN]: Queue<AgentJob>;
-  [PipelineStage.SEO]: Queue<AgentJob>;
   [PipelineStage.PUBLISHING]: Queue<AgentJob>;
 }
 
@@ -41,11 +38,8 @@ export class TestRunnerService {
     try {
       const queueStages = [
         PipelineStage.TREND,
-        PipelineStage.POSITIONING,
-        PipelineStage.STRATEGY,
         PipelineStage.WRITING,
         PipelineStage.DESIGN,
-        PipelineStage.SEO,
         PipelineStage.PUBLISHING,
       ] as const;
 
@@ -57,7 +51,7 @@ export class TestRunnerService {
           return `${st}: ${waiting}w/${active}a`;
         })
       );
-      reports.push(`✅ *BullMQ Queues:* Все 7 очередей активны\n   \`${activeCounts.join(" | ")}\``);
+      reports.push(`✅ *BullMQ Queues:* Все 4 очереди активны\n   \`${activeCounts.join(" | ")}\``);
     } catch (err: any) {
       reports.push(`❌ *BullMQ Queues:* Ошибка (${err.message})`);
     }

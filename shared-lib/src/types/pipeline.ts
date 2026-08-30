@@ -23,11 +23,8 @@ export type PipelineStage = (typeof PipelineStage)[keyof typeof PipelineStage];
  */
 export const PIPELINE_ORDER: PipelineStage[] = [
   PipelineStage.TREND,
-  PipelineStage.POSITIONING,
-  PipelineStage.STRATEGY,
   PipelineStage.WRITING,
   PipelineStage.DESIGN,
-  PipelineStage.SEO,
   PipelineStage.HUMAN_APPROVAL,
   PipelineStage.PUBLISHING,
 ];

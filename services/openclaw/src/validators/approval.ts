@@ -256,11 +256,8 @@ export function createApprovalRouter(logger: Logger): Router {
 
       const queues: AgentQueues = {
         [PipelineStage.TREND]: createQueue<AgentJob>(QueueName.TREND, process.env.REDIS_URL ?? "redis://localhost:6379"),
-        [PipelineStage.POSITIONING]: createQueue<AgentJob>(QueueName.POSITIONING, process.env.REDIS_URL ?? "redis://localhost:6379"),
-        [PipelineStage.STRATEGY]: createQueue<AgentJob>(QueueName.STRATEGY, process.env.REDIS_URL ?? "redis://localhost:6379"),
         [PipelineStage.WRITING]: createQueue<AgentJob>(QueueName.WRITING, process.env.REDIS_URL ?? "redis://localhost:6379"),
         [PipelineStage.DESIGN]: createQueue<AgentJob>(QueueName.DESIGN, process.env.REDIS_URL ?? "redis://localhost:6379"),
-        [PipelineStage.SEO]: createQueue<AgentJob>(QueueName.SEO, process.env.REDIS_URL ?? "redis://localhost:6379"),
       };
 
       const { enqueueStage } = await import("../pipeline/runner.js");
@@ -330,60 +327,36 @@ export function createApprovalRouter(logger: Logger): Router {
         return res.status(404).json({ error: "run not found" });
       }
 
-      const strategyDoc = await stageResults().findOne({ runId, stage: PipelineStage.STRATEGY });
-      const strategyResult = (strategyDoc?.result as Record<string, unknown>) ?? null;
+      const trendDoc = await stageResults().findOne({ runId, stage: PipelineStage.TREND });
+      const trendResult = (trendDoc?.result as Record<string, unknown>) ?? {};
 
       const queues: AgentQueues = {
         [PipelineStage.TREND]: createQueue<AgentJob>(QueueName.TREND, process.env.REDIS_URL ?? "redis://localhost:6379"),
-        [PipelineStage.POSITIONING]: createQueue<AgentJob>(QueueName.POSITIONING, process.env.REDIS_URL ?? "redis://localhost:6379"),
-        [PipelineStage.STRATEGY]: createQueue<AgentJob>(QueueName.STRATEGY, process.env.REDIS_URL ?? "redis://localhost:6379"),
         [PipelineStage.WRITING]: createQueue<AgentJob>(QueueName.WRITING, process.env.REDIS_URL ?? "redis://localhost:6379"),
         [PipelineStage.DESIGN]: createQueue<AgentJob>(QueueName.DESIGN, process.env.REDIS_URL ?? "redis://localhost:6379"),
-        [PipelineStage.SEO]: createQueue<AgentJob>(QueueName.SEO, process.env.REDIS_URL ?? "redis://localhost:6379"),
       };
 
       const { enqueueStage } = await import("../pipeline/runner.js");
 
-      if (strategyResult) {
-        await runs().updateOne(
-          { runId },
-          {
-            $set: {
-              status: PipelineRunStatus.RUNNING,
-              currentStage: PipelineStage.WRITING,
-              retries: {},
-              updatedAt: new Date(),
-            },
-            $unset: { failedReason: "" }
-          }
-        );
-        await stageResults().deleteMany({
-          runId,
-          stage: { $in: [PipelineStage.WRITING, PipelineStage.DESIGN, PipelineStage.SEO] }
-        });
-        const extraInstructions = notes ? `Инструкции от пользователя по переделке: ${notes}` : "Пользователь попросил переделать публикацию.";
-        await enqueueStage(queues, runId, PipelineStage.WRITING, strategyResult, extraInstructions);
-        logger.info({ runId }, "successfully cycled run back to WRITING stage for manual reprocess");
-      } else {
-        await runs().updateOne(
-          { runId },
-          {
-            $set: {
-              status: PipelineRunStatus.RUNNING,
-              currentStage: PipelineStage.TREND,
-              retries: {},
-              updatedAt: new Date(),
-            },
-            $unset: { failedReason: "" }
-          }
-        );
-        await stageResults().deleteMany({ runId });
-        await enqueueStage(queues, runId, PipelineStage.TREND, {
-          profileId: run.profileId,
-          targetPillarId: run.contentPillarId
-        });
-        logger.info({ runId }, "restarted run from TREND stage");
-      }
+      await runs().updateOne(
+        { runId },
+        {
+          $set: {
+            status: PipelineRunStatus.RUNNING,
+            currentStage: PipelineStage.WRITING,
+            retries: {},
+            updatedAt: new Date(),
+          },
+          $unset: { failedReason: "" }
+        }
+      );
+      await stageResults().deleteMany({
+        runId,
+        stage: { $in: [PipelineStage.WRITING, PipelineStage.DESIGN] }
+      });
+      const extraInstructions = notes ? `Инструкции от пользователя по переделке: ${notes}` : undefined;
+      await enqueueStage(queues, runId, PipelineStage.WRITING, trendResult, extraInstructions);
+      logger.info({ runId }, "reprocessed run from WRITING stage");
 
       res.json({ ok: true });
     } catch (err: any) {
@@ -392,7 +365,6 @@ export function createApprovalRouter(logger: Logger): Router {
     }
   });
 
-  
   router.post("/runs/:runId/redesign", async (req, res) => {
     const { runId } = req.params;
     const { notes, tenantId, template_name } = req.body;
@@ -415,7 +387,7 @@ export function createApprovalRouter(logger: Logger): Router {
 
       await stageResults().deleteMany({
         runId,
-        stage: { "$in": [PipelineStage.DESIGN, PipelineStage.SEO] }
+        stage: PipelineStage.DESIGN
       });
 
       await runs().updateOne(
@@ -432,11 +404,8 @@ export function createApprovalRouter(logger: Logger): Router {
 
       const queues: AgentQueues = {
         [PipelineStage.TREND]: createQueue<AgentJob>(QueueName.TREND, process.env.REDIS_URL ?? "redis://localhost:6379"),
-        [PipelineStage.POSITIONING]: createQueue<AgentJob>(QueueName.POSITIONING, process.env.REDIS_URL ?? "redis://localhost:6379"),
-        [PipelineStage.STRATEGY]: createQueue<AgentJob>(QueueName.STRATEGY, process.env.REDIS_URL ?? "redis://localhost:6379"),
         [PipelineStage.WRITING]: createQueue<AgentJob>(QueueName.WRITING, process.env.REDIS_URL ?? "redis://localhost:6379"),
         [PipelineStage.DESIGN]: createQueue<AgentJob>(QueueName.DESIGN, process.env.REDIS_URL ?? "redis://localhost:6379"),
-        [PipelineStage.SEO]: createQueue<AgentJob>(QueueName.SEO, process.env.REDIS_URL ?? "redis://localhost:6379"),
       };
 
       const { enqueueStage } = await import("../pipeline/runner.js");
