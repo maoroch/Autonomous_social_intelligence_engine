@@ -4,6 +4,7 @@ import { createLogger } from "@pipeline/shared/logger";
 import { GridFSBucket, ObjectId } from "mongodb";
 import fs from "fs";
 import path from "path";
+import AdmZip from "adm-zip";
 import type { BotQueues, TestRunnerService } from "../services/test-runner.js";
 import type { LogViewerService } from "../services/log-viewer.js";
 import type { CinemaCuratorService } from "../services/cinema-curator.js";
@@ -79,7 +80,7 @@ export class CallbackHandler {
           attempt: 1,
           payload: { 
             text: (writingDoc?.result as any)?.text, 
-            images: (designDoc?.result as any)?.carouselImages,
+            images: (designDoc?.result as any)?.imageIds || (designDoc?.result as any)?.carouselImages,
             tenantId: currentRun?.tenantId 
           },
         } as AgentJob);
@@ -88,50 +89,116 @@ export class CallbackHandler {
           await this.editMessageCaption(chatId, messageId, (cb.message?.caption || "") + "\n\n✅ *ОТПРАВЛЕНО В КАНАЛ*", { inline_keyboard: [] });
         }
       } else if (action === "view_carousel") {
-        if (!chatId) return;
+        if (!chatId || !runId) return;
         await this.answerCallback(cb.id, "⏳ Загружаю слайды карусели...");
 
         try {
           const db = getDb();
-          const bucket = new GridFSBucket(db, { bucketName: "rendered_images" });
+          const bucket = new GridFSBucket(db, { bucketName: "carousel_images" });
           const stageResultsCol = getCollection<StageResultDoc>(Collections.STAGE_RESULTS);
           const designDoc = await stageResultsCol.findOne({ runId, stage: PipelineStage.DESIGN });
-          const carouselImages = (designDoc?.result as any)?.carouselImages || [];
+          const designResult = (designDoc?.result as any) || {};
 
-          if (carouselImages.length === 0) {
-            await this.sendMessage(chatId, "⚠️ Слайды карусели не найдены");
+          let imageIds: string[] = [];
+          if (Array.isArray(designResult.imageIds) && designResult.imageIds.length > 0) {
+            imageIds = designResult.imageIds;
+          } else if (Array.isArray(designResult.carouselImages) && designResult.carouselImages.length > 0) {
+            imageIds = designResult.carouselImages;
+          } else if (designResult.rendered_styles) {
+            const firstStyle = Object.values(designResult.rendered_styles)[0] as any;
+            if (firstStyle && Array.isArray(firstStyle.imageIds)) {
+              imageIds = firstStyle.imageIds;
+            }
+          }
+
+          const slideBuffers: { name: string; buffer: Buffer }[] = [];
+
+          if (imageIds.length > 0) {
+            for (let i = 0; i < imageIds.length; i++) {
+              try {
+                const chunks: Buffer[] = [];
+                const downloadStream = bucket.openDownloadStream(new ObjectId(imageIds[i]));
+                await new Promise<void>((resolve, reject) => {
+                  downloadStream.on("data", (chunk) => chunks.push(chunk));
+                  downloadStream.on("end", () => resolve());
+                  downloadStream.on("error", reject);
+                });
+                slideBuffers.push({
+                  name: `slide_${i + 1}.png`,
+                  buffer: Buffer.concat(chunks),
+                });
+              } catch (dlErr) {
+                logger.error({ dlErr, fileIdStr: imageIds[i] }, "Failed to stream slide from GridFS");
+              }
+            }
+          }
+
+          // Fallback на ZIP архив, если отдельные imageIds не найдены
+          if (slideBuffers.length === 0) {
+            const zipIdStr = designResult.zipId || designResult.imageId || designResult.zip_cover_1_id;
+            if (zipIdStr) {
+              try {
+                const chunks: Buffer[] = [];
+                const downloadStream = bucket.openDownloadStream(new ObjectId(zipIdStr));
+                await new Promise<void>((resolve, reject) => {
+                  downloadStream.on("data", (chunk) => chunks.push(chunk));
+                  downloadStream.on("end", () => resolve());
+                  downloadStream.on("error", reject);
+                });
+                const zipBuffer = Buffer.concat(chunks);
+                const zip = new AdmZip(zipBuffer);
+                const entries = zip
+                  .getEntries()
+                  .filter((e) => e.entryName.endsWith(".png"))
+                  .sort((a, b) => a.entryName.localeCompare(b.entryName));
+
+                entries.forEach((entry, idx) => {
+                  slideBuffers.push({
+                    name: `slide_${idx + 1}.png`,
+                    buffer: entry.getData(),
+                  });
+                });
+              } catch (zipErr) {
+                logger.error({ zipErr, zipIdStr }, "Failed to unzip carousel slides from GridFS");
+              }
+            }
+          }
+
+          if (slideBuffers.length === 0) {
+            await this.sendMessage(chatId, `⚠️ Слайды карусели для прогона \`${runId}\` не найдены в базе данных.`);
             return;
           }
 
-          const mediaGroup: any[] = [];
-          const filesToCleanup: string[] = [];
-
-          for (let i = 0; i < carouselImages.length; i++) {
-            const fileIdStr = carouselImages[i];
-            const tempFilePath = path.join("/tmp", `slide_${runId}_${i + 1}.png`);
-            const downloadStream = bucket.openDownloadStream(new ObjectId(fileIdStr));
-            const writeStream = fs.createWriteStream(tempFilePath);
-            await new Promise<void>((res, rej) => {
-              downloadStream.pipe(writeStream).on("finish", () => res()).on("error", rej);
-            });
-            filesToCleanup.push(tempFilePath);
-            mediaGroup.push({
-              type: "photo",
-              media: `attach://slide_${i + 1}`,
-              caption: i === 0 ? `🖼 *Карусель:* \`${runId}\`` : undefined,
-              parse_mode: "Markdown",
-            });
-          }
-
+          // Формируем multipart FormData для Telegram sendMediaGroup
           const formData = new FormData();
           formData.append("chat_id", String(chatId));
-          formData.append("media", JSON.stringify(mediaGroup));
-          filesToCleanup.forEach((p, idx) => formData.append(`slide_${idx + 1}`, new Blob([fs.readFileSync(p)])));
 
-          await fetch(`https://api.telegram.org/bot${this.botToken}/sendMediaGroup`, { method: "POST", body: formData as any });
-          filesToCleanup.forEach((p) => fs.unlinkSync(p));
+          const mediaArray = slideBuffers.map((slide, idx) => {
+            const attachName = `photo_${idx + 1}`;
+            formData.append(attachName, new Blob([slide.buffer]), slide.name);
+
+            return {
+              type: "photo",
+              media: `attach://${attachName}`,
+              caption: idx === 0 ? `🖼 *Карусель для прогона \`${runId}\`* (${slideBuffers.length} слайдов):` : undefined,
+              parse_mode: idx === 0 ? "Markdown" : undefined,
+            };
+          });
+
+          formData.append("media", JSON.stringify(mediaArray));
+
+          const res = await fetch(`https://api.telegram.org/bot${this.botToken}/sendMediaGroup`, {
+            method: "POST",
+            body: formData as any,
+          });
+
+          if (!res.ok) {
+            const errBody = await res.text();
+            throw new Error(`Telegram API error ${res.status}: ${errBody}`);
+          }
         } catch (err: any) {
-          await this.sendMessage(chatId, `⚠️ Ошибка: ${err.message}`);
+          logger.error({ err, runId }, "Failed to send carousel album");
+          await this.sendMessage(chatId, `⚠️ Ошибка при отправке альбома слайдов: ${err.message}`);
         }
       } else if (action === "view_full_text") {
         if (!chatId || !runId) return;

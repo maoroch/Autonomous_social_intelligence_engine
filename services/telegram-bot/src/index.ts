@@ -1,4 +1,5 @@
 import express from "express";
+import { GridFSBucket, ObjectId } from "mongodb";
 import { connectMongo, getCollection, Collections, type PipelineRunDoc, type StageResultDoc, getDb } from "@pipeline/shared/db";
 import { createLogger } from "@pipeline/shared/logger";
 import {
@@ -149,8 +150,13 @@ export class TelegramBotApp {
 
       const postText = (writingDoc?.result as any)?.text || "Нет текста";
       const topicTitle = runDoc.topic?.title || "Без темы";
-      const imageId =
-        (designDoc?.result as any)?.preview_cover_1_id || (designDoc?.result as any)?.imageId;
+
+      const designResult = (designDoc?.result as any) || {};
+      const coverImageId =
+        designResult.coverImageId ||
+        designResult.preview_cover_1_id ||
+        (Array.isArray(designResult.imageIds) && designResult.imageIds[0]) ||
+        designResult.imageId;
 
       const portalConfig =
         runDoc.tenantId === "testo"
@@ -182,24 +188,41 @@ export class TelegramBotApp {
       const inlineKeyboard = buildApprovalKeyboard(runId);
       let sentMessageId: number | undefined;
 
-      if (imageId) {
-        const photoUrl = `${OPENCLAW_URL}/api/illustrations/${imageId}`;
-        const formData = new FormData();
-        formData.append("chat_id", ADMIN_CHAT_ID);
-        formData.append("photo", photoUrl);
-        formData.append("caption", messageText);
-        formData.append("parse_mode", "Markdown");
-        formData.append("reply_markup", JSON.stringify(inlineKeyboard));
+      if (coverImageId) {
+        try {
+          const db = getDb();
+          const bucket = new GridFSBucket(db, { bucketName: "carousel_images" });
+          const downloadStream = bucket.openDownloadStream(new ObjectId(coverImageId));
+          const chunks: Buffer[] = [];
+          await new Promise<void>((resolve, reject) => {
+            downloadStream.on("data", (c: Buffer) => chunks.push(c));
+            downloadStream.on("end", () => resolve());
+            downloadStream.on("error", reject);
+          });
+          const imageBuffer = Buffer.concat(chunks);
 
-        const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-          method: "POST",
-          body: formData,
-        });
+          const formData = new FormData();
+          formData.append("chat_id", ADMIN_CHAT_ID);
+          formData.append("photo", new Blob([imageBuffer]), "cover.png");
+          formData.append("caption", messageText);
+          formData.append("parse_mode", "Markdown");
+          formData.append("reply_markup", JSON.stringify(inlineKeyboard));
 
-        if (res.ok) {
-          const data = (await res.json()) as any;
-          sentMessageId = data.result?.message_id;
-        } else {
+          const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+            method: "POST",
+            body: formData as any,
+          });
+
+          if (res.ok) {
+            const data = (await res.json()) as any;
+            sentMessageId = data.result?.message_id;
+          } else {
+            const errText = await res.text();
+            logger.warn({ errText }, "sendPhoto with GridFS buffer failed, falling back to sendMessage");
+            sentMessageId = await this.sendMessage(ADMIN_CHAT_ID, messageText, inlineKeyboard);
+          }
+        } catch (streamErr: any) {
+          logger.error({ streamErr }, "Failed to stream cover image from GridFS");
           sentMessageId = await this.sendMessage(ADMIN_CHAT_ID, messageText, inlineKeyboard);
         }
       } else {

@@ -1,4 +1,4 @@
-import { getCollection, Collections, type StageResultDoc } from "@pipeline/shared/db";
+import { getCollection, Collections, type StageResultDoc, type PipelineRunDoc } from "@pipeline/shared/db";
 import { PipelineStage } from "@pipeline/shared";
 import { createLogger } from "@pipeline/shared/logger";
 import type { BotQueues } from "../services/test-runner.js";
@@ -99,14 +99,27 @@ export class PhotoHandler {
         }
       );
 
+      const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
+      const runDoc = await runsCol.findOne({ runId });
+      const existingDesignResult = (designDoc?.result as any) || {};
+      const templateName =
+        existingDesignResult.template_name ||
+        (runDoc?.tenantId === "testo"
+          ? "testo-brand-orange"
+          : runDoc?.tenantId === "software-development-default"
+            ? "cover-2"
+            : "cinema-media");
+
       // 5. Отправляем задачу в очередь agent-design для мгновенного быстрого перерендера без LLM
       await this.queues[PipelineStage.DESIGN].add("design-job", {
         runId,
         stage: PipelineStage.DESIGN,
+        attempt: 1,
         payload: {
           isInlineEdit: true,
           customImages,
-          template_name: "cinema-media",
+          template_name: templateName,
+          tenantId: runDoc?.tenantId,
         },
       } as any);
 
