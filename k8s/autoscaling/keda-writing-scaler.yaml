@@ -14,5 +14,5 @@ spec:
     - type: redis
       metadata:
         address: redis.linkedin-pipeline.svc.cluster.local:6379
-        listName: bull:writing-queue:wait
+        listName: bull:queue-agent-writing:wait
         listLength: "1"
