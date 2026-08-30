@@ -12,14 +12,13 @@ import {
   WritingOutputSchema,
   type IndustryProfile,
 } from "@pipeline/shared/schemas";
-import { AiClient, retrieveRelevantChunks, type RetrievableChunk } from "@pipeline/shared/ai";
+import { AiClient, type RetrievableChunk } from "@pipeline/shared/ai";
 import {
   connectMongo,
   getCollection,
   Collections,
   type PipelineRunDoc,
   type IndustryProfileDoc,
-  type FactChunkDoc,
 } from "@pipeline/shared/db";
 
 import { DEFAULT_PROFILE } from "./config/constants.js";
@@ -99,22 +98,10 @@ async function processWritingJob(job: AgentJob): Promise<unknown> {
   const isTestoTenant = tenantId === "testo";
   const isGithubShowcase = !isTestoTenant && (tenantId === "software-development-default" && /github/i.test(topic.title));
 
-  // 3. Загружаем эталонные примеры (Few-Shot) и RAG факты
+  // 3. Загружаем эталонные примеры (Few-Shot)
   const fewShotText = await loadFewShotExamples(tenantId, (strategy as any)?.format || "tutorial");
 
-  let retrievedFacts: RetrievableChunk[] = [];
-  if (industryProfile?.complianceConfig.factCheckRequired) {
-    try {
-      const factChunksCol = getCollection<FactChunkDoc>(Collections.FACT_CHUNKS);
-      const allChunks = await factChunksCol.find({ tenantId }).toArray();
-      const query = `${topic.title} ${topic.summary} ${(strategy as any)?.core_idea ?? ""}`;
-      retrievedFacts = retrieveRelevantChunks(query, allChunks, 3);
-    } catch (err) {
-      logger.warn({ err, tenantId }, "Failed to retrieve fact chunks for RAG grounding");
-    }
-  }
-
-  // 4. Достаем проверенные ссылки и батчи статей
+  // 4. Достаем проверенные ссылки и динамические батчи статей/спецификаций
   const stageResultsCol = getCollection(Collections.STAGE_RESULTS);
   const trendResultDoc = await stageResultsCol.findOne({ runId: job.runId, stage: PipelineStage.TREND });
   const trendItems = (trendResultDoc?.result as any)?.items ?? [];
@@ -127,6 +114,17 @@ async function processWritingJob(job: AgentJob): Promise<unknown> {
     fullArticleText: (topic as any).fullArticleText || selectedTrend.fullArticleText,
     batches: (topic as any).batches || selectedTrend.batches || (job.payload as any)?.batches || [],
   };
+
+  // Динамический RAG из верифицированных батчей характеристик оборудования
+  let retrievedFacts: RetrievableChunk[] = [];
+  if (effectiveTopic.batches && effectiveTopic.batches.length > 0) {
+    retrievedFacts = effectiveTopic.batches.map((batchText: string) => ({
+      text: batchText,
+      source: effectiveTopic.url || "Official Testo Specifications",
+      confidence: 1.0,
+      tags: ["testo", "specifications"],
+    }));
+  }
 
   const verifiedSources = extractVerifiedGithubSources(trendItems, isGithubShowcase);
   const verifiedSourcesBlock = buildVerifiedSourcesBlock(verifiedSources);

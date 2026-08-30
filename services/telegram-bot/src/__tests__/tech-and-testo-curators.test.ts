@@ -68,8 +68,27 @@ describe("TestoCuratorService Unit Tests", () => {
     const mockArticles = service.getFallbackArticles("gas");
     const { text, replyMarkup } = service.formatArticleListMessage(mockArticles, "gas");
 
-    assert.ok(text.includes("Testo Kazakhstan Radar:"));
+    assert.ok(text.includes("Testo Dynamic Catalog & Radar:"));
     assert.ok(text.includes("1️⃣"));
     assert.ok(replyMarkup.inline_keyboard.length > 0);
+  });
+});
+
+describe("Testo Dynamic Catalog Grounding Unit Tests", () => {
+  it("resolveTestoDeviceGrounding should accurately match Testo 350, 300, Saveris, 190, 883", async () => {
+    const { resolveTestoDeviceGrounding, formatTestoDeviceBatches } = await import("../services/testo-catalog.js");
+
+    const spec350 = resolveTestoDeviceGrounding("Обзор газоанализатора Testo 350 для ТЭЦ");
+    assert.equal(spec350.model, "Testo 350");
+    assert.ok(spec350.keyFeatures.some((f: string) => f.includes("Пельтье")));
+
+    const specSaveris = resolveTestoDeviceGrounding("Фармацевтический мониторинг чистых помещений Testo Saveris Pharma");
+    assert.equal(specSaveris.model, "Testo Saveris Pharma");
+    assert.ok(specSaveris.certifications.includes("FDA 21 CFR Part 11"));
+
+    const batches = formatTestoDeviceBatches(spec350);
+    assert.ok(batches.length >= 4);
+    assert.ok(batches[0]?.includes("Testo 350"));
+    assert.ok(batches[1]?.includes("Метрологические параметры:"));
   });
 });
