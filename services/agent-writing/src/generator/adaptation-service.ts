@@ -17,14 +17,14 @@ export async function adaptPostForPlatform(
   text: string;
   hashtags: string[];
 }> {
-  const { runId, targetPlatform, topicTitle, topicSummary, existingText, textLength, pillarId } = params;
+  const { runId, targetPlatform, topicTitle, topicSummary, existingText, textLength } = params;
 
   let tenantId = params.tenantId;
   if (!tenantId && runId) {
     const runDoc = await getCollection(Collections.PIPELINE_RUNS).findOne({ runId });
     if (runDoc) tenantId = runDoc.tenantId;
   }
-  const isTesto = tenantId === "testo" || (pillarId && (pillarId.startsWith("pharma-") || pillarId.startsWith("industrial-") || pillarId.startsWith("gas-")));
+  const isTesto = tenantId === "testo";
   const platform = targetPlatform === "threads" ? "threads" : "telegram";
   const lengthMode = textLength === "short" ? "short" : "long";
 
@@ -38,8 +38,7 @@ export async function adaptPostForPlatform(
       : Collections.GOLDEN_RU_TELEGRAM;
 
     const col = getCollection(collectionName);
-    const query = pillarId ? { $or: [{ pillarId }, { pillarId: "all" }, { pillarId: { $exists: false } }] } : {};
-    const docs = await col.find(query).limit(3).toArray();
+    const docs = await col.find({}).limit(3).toArray();
     if (docs.length > 0) {
       goldenExamplesText =
         `\n\nЭТАЛОННЫЕ ПРИМЕРЫ (GOLDEN DATASET):\n` +

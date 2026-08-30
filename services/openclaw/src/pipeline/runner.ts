@@ -42,7 +42,6 @@ export async function startPipelineRun(
   initialTopic: { title: string; summary: string; url?: string; imageUrl?: string; fullArticleText?: string; batches?: string[] } = { title: "", summary: "" },
   profileId?: string,
   tenantId?: string,
-  targetPillarId?: string,
   skipDesign?: boolean
 ): Promise<string> {
   const runId = nanoid();
@@ -58,8 +57,6 @@ export async function startPipelineRun(
     topic: initialTopic,
     profileId,
     tenantId,
-    contentPillarId: targetPillarId,
-    targetPillarId,
     skipDesign: !!skipDesign,
     retries: {},
     createdAt: now,
@@ -69,7 +66,7 @@ export async function startPipelineRun(
   await getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS).insertOne(run);
 
   if (isDirectWriting) {
-    // Для выбранной темы/статьи фиксируем этап TREND и сразу переходим в WRITING (без Positioning и Strategy)
+    // Для выбранной темы/статьи фиксируем этап TREND и сразу переходим в WRITING
     await getCollection<StageResultDoc>(Collections.STAGE_RESULTS).insertOne({
       runId,
       stage: PipelineStage.TREND,
@@ -94,16 +91,15 @@ export async function startPipelineRun(
 
     await enqueueStage(queues, runId, PipelineStage.WRITING, {
       profileId,
-      targetPillarId,
       batches: initialTopic.batches,
     });
     logger.info(
-      { runId, tenantId, targetPillarId, topic: initialTopic.title },
-      "direct grounded pipeline run started at WRITING stage (skipping Positioning & Strategy)"
+      { runId, tenantId, topic: initialTopic.title },
+      "direct grounded pipeline run started at WRITING stage"
     );
   } else {
-    await enqueueStage(queues, runId, PipelineStage.TREND, { profileId, targetPillarId });
-    logger.info({ runId, tenantId, targetPillarId }, "automated trend discovery pipeline run started");
+    await enqueueStage(queues, runId, PipelineStage.TREND, { profileId });
+    logger.info({ runId, tenantId }, "automated trend discovery pipeline run started");
   }
 
   return runId;
@@ -121,18 +117,12 @@ export async function enqueueStage(
     throw new Error(`No queue mapped for stage "${stage}"`);
   }
 
-  const runDoc = await getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS).findOne({ runId });
-  const mergedPayload = {
-    ...payload,
-    targetPillarId: runDoc?.contentPillarId || (payload as any)?.targetPillarId,
-  };
-
   const queue = queues[stage as keyof AgentQueues];
   const job: AgentJob = {
     runId,
     stage,
     attempt: 1,
-    payload: mergedPayload,
+    payload,
     extraInstructions,
   };
 
@@ -290,10 +280,15 @@ export async function handleAgentFailed(
   const stageResultsCol = getCollection<StageResultDoc>(Collections.STAGE_RESULTS);
   let retryPayload: Record<string, unknown> = {};
 
-  if (stage === PipelineStage.POSITIONING) {
+  if (stage === PipelineStage.WRITING) {
     const trendStageDoc = await stageResultsCol.findOne({ runId, stage: PipelineStage.TREND });
     if (trendStageDoc?.result) {
       retryPayload = trendStageDoc.result as Record<string, unknown>;
+    }
+  } else if (stage === PipelineStage.DESIGN) {
+    const writingStageDoc = await stageResultsCol.findOne({ runId, stage: PipelineStage.WRITING });
+    if (writingStageDoc?.result) {
+      retryPayload = writingStageDoc.result as Record<string, unknown>;
     }
   }
 

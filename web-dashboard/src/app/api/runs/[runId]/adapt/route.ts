@@ -42,7 +42,6 @@ export async function POST(
         existingText,
         targetPlatform: "telegram",
         textLength,
-        pillarId: run.contentPillarId,
       }),
     });
     const tgData = await tgRes.json();
@@ -61,7 +60,6 @@ export async function POST(
         existingText,
         targetPlatform: "threads",
         textLength,
-        pillarId: run.contentPillarId,
       }),
     });
     const thData = await thRes.json();
@@ -77,7 +75,6 @@ export async function POST(
           tenantId: run.tenantId,
           platform: "telegram",
           text: tgData.text,
-          pillarId: run.contentPillarId,
           targetLanguage: "ru",
         }),
       });
@@ -99,7 +96,6 @@ export async function POST(
           tenantId: run.tenantId,
           platform: "threads",
           text: thData.text,
-          pillarId: run.contentPillarId,
           targetLanguage: "ru",
         }),
       });

@@ -14,7 +14,6 @@ export interface CuratedTechArticle {
   imageUrl?: string;
   source: string;
   publishedAt?: string;
-  pillarId: string;
   category: "popular" | "fresh";
 }
 
@@ -52,38 +51,6 @@ export class TechCuratorService {
     return batches;
   }
 
-  detectPillar(title: string, text: string): string {
-    const combined = `${title} ${text}`.toLowerCase();
-
-    if (
-      combined.includes("repo") ||
-      combined.includes("github") ||
-      combined.includes("open source") ||
-      combined.includes("библиотек") ||
-      combined.includes("инструмент") ||
-      combined.includes("tools")
-    ) {
-      return "github-trending-repos";
-    }
-
-    if (
-      combined.includes("architecture") ||
-      combined.includes("архитектур") ||
-      combined.includes("system design") ||
-      combined.includes("микросервис") ||
-      combined.includes("high-load") ||
-      combined.includes("database") ||
-      combined.includes("redis") ||
-      combined.includes("postgres") ||
-      combined.includes("keda") ||
-      combined.includes("kubernetes")
-    ) {
-      return "architecture-deep-dive";
-    }
-
-    return "pet-projects-showcase";
-  }
-
   getCuratorMenuKeyboard() {
     return {
       inline_keyboard: [
@@ -114,7 +81,7 @@ export class TechCuratorService {
       const numEmoji = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"][idx] || `${idx + 1}.`;
       message += `${numEmoji} *${article.title}*\n`;
       message += `📌 ${article.summary}\n`;
-      message += `📂 Рубрика: \`${article.pillarId}\` | 🔗 [${article.source}](${article.url})\n\n`;
+      message += `🔗 [${article.source}](${article.url})\n\n`;
     });
 
     return {
@@ -197,7 +164,6 @@ export class TechCuratorService {
         const url = linkMatch[1].trim();
         const rawDesc = descMatch && descMatch[1] ? descMatch[1].replace(/<[^>]+>/g, "").trim() : "";
         const summary = rawDesc.slice(0, 160) + (rawDesc.length > 160 ? "..." : "");
-        const pillarId = this.detectPillar(title, rawDesc);
         const batches = this.batchArticleContent(rawDesc || title, 400);
 
         items.push({
@@ -207,7 +173,6 @@ export class TechCuratorService {
           fullArticleText: rawDesc || title,
           batches,
           source: "Dev.to Tech",
-          pillarId,
           category: mode,
         });
       }
@@ -230,7 +195,6 @@ export class TechCuratorService {
             "RabbitMQ эффективнее при комплексном AMQP роутинге между разными языками программирования."
           ],
           source: "Architecture Insights",
-          pillarId: "architecture-deep-dive",
           category: "popular",
         },
         {
@@ -244,7 +208,6 @@ export class TechCuratorService {
             "EXPLAIN (ANALYZE, BUFFERS) помогает выявить узкие места в IO диска."
           ],
           source: "Database Engineering",
-          pillarId: "architecture-deep-dive",
           category: "popular",
         },
         {
@@ -258,7 +221,6 @@ export class TechCuratorService {
             "Cooldown период защищает от флаппинга подов при частых одиночных задачах."
           ],
           source: "DevOps & Cloud",
-          pillarId: "architecture-deep-dive",
           category: "popular",
         },
       ];
@@ -276,7 +238,6 @@ export class TechCuratorService {
           "AirLLM оптимизирует загрузку слоев нейросетей, позволяя запускать тяжелые LLM на скромном железе."
         ],
         source: "GitHub Trending",
-        pillarId: "github-trending-repos",
         category: "fresh",
       },
       {
@@ -290,7 +251,6 @@ export class TechCuratorService {
           "Запуск TypeScript без предварительной транспиляции ускоряет локальный цикл разработки."
         ],
         source: "JavaScript & Tooling",
-        pillarId: "github-trending-repos",
         category: "fresh",
       },
     ];
@@ -301,11 +261,10 @@ export class TechCuratorService {
     openclawUrl: string,
     queues: BotQueues
   ): Promise<string> {
-    logger.info({ title: article.title, pillarId: article.pillarId }, "Triggering grounded pipeline for Tech Portal");
+    logger.info({ title: article.title }, "Triggering grounded pipeline for Tech Portal");
 
     const payload = {
       tenantId: "software-development-default",
-      targetPillarId: article.pillarId,
       topic: {
         title: article.title,
         summary: article.summary,
@@ -341,10 +300,8 @@ export class TechCuratorService {
       await runsCol.insertOne({
         runId,
         tenantId: "software-development-default",
-        contentPillarId: article.pillarId,
         status: PipelineRunStatus.RUNNING,
         currentStage: PipelineStage.WRITING,
-        targetPillarId: article.pillarId,
         createdAt: now,
         updatedAt: now,
       } as any);
@@ -371,7 +328,6 @@ export class TechCuratorService {
         attempt: 1,
         payload: {
           batches: article.batches,
-          targetPillarId: article.pillarId,
         },
       } as AgentJob);
 

@@ -128,10 +128,10 @@ export function evaluateText(req: EvaluateRequest): { alignmentScore: number; dr
       details: "Соблюдено: готовый к публикации контент без заглушек",
     });
   }
-  // 5. Pharma Specific Validation Rules (Testo Pharma Rubrics)
-  const isPharmaRubric = pillarId?.startsWith("pharma-") || text.includes("GxP") || text.includes("21 CFR Part 11") || text.includes("холодовая цепь");
+  // 5. Pharma Specific Validation Rules (Testo Pharma)
+  const isPharma = text.includes("GxP") || text.includes("21 CFR Part 11") || text.includes("холодовая цепь") || text.includes("Saveris");
 
-  if (isPharmaRubric) {
+  if (isPharma) {
     const hasDisclaimer = text.toLowerCase().includes("документации производителя") || text.toLowerCase().includes("характеристики уточняйте");
     if (!hasDisclaimer) {
       deductions += 20;
@@ -146,40 +146,6 @@ export function evaluateText(req: EvaluateRequest): { alignmentScore: number; dr
         passed: true,
         details: "Соблюдено: обязательный дисклеймер производителю присутствует",
       });
-    }
-
-    if (pillarId === "pharma-compliance-explained") {
-      const hasTerms = /21 CFR Part 11|Audit Trail|ERES|FDA|EMA|GxP/i.test(text);
-      if (!hasTerms) {
-        deductions += 20;
-        driftReport.push({
-          rule: "gxp_terms_check",
-          passed: false,
-          details: "Отклонение: отсутствуют ключевые термины регуляторного комплаенса (21 CFR Part 11, Audit Trail, ERES)",
-        });
-      } else {
-        driftReport.push({
-          rule: "gxp_terms_check",
-          passed: true,
-          details: "Соблюдено: ключевые нормативные термины GxP присутствуют",
-        });
-      }
-    } else if (pillarId === "pharma-cold-chain-story") {
-      const hasColdTerms = /холодовая цепь|cold chain|GDP|температур|контроль/i.test(text);
-      if (!hasColdTerms) {
-        deductions += 20;
-        driftReport.push({
-          rule: "cold_chain_terms_check",
-          passed: false,
-          details: "Отклонение: отсутствуют ключевые термины холодовой цепи и GDP логистики",
-        });
-      } else {
-        driftReport.push({
-          rule: "cold_chain_terms_check",
-          passed: true,
-          details: "Соблюдено: терминология холодовой цепи присутствует",
-        });
-      }
     }
   }
 
@@ -201,14 +167,14 @@ export function evaluateText(req: EvaluateRequest): { alignmentScore: number; dr
 
   // 7. Dynamic Terminology Validation Engine (Niche Glossary & Mandatory Terms)
   if (terminologyRules) {
-    const termRes = validateTerminology(text, terminologyRules, pillarId);
+    const termRes = validateTerminology(text, terminologyRules);
     deductions += termRes.deductions;
     driftReport.push(...termRes.driftReport);
   }
 
   // 8. Bidirectional Cross-Tenant Hashtag Leak Validation
-  const isTesto = tenantId === "testo" || isPharmaRubric || pillarId === "testo-device-breakdown";
-  const isTech = tenantId === "software-development-default" || pillarId === "github-trending-repos" || pillarId === "pet-projects-showcase";
+  const isTesto = tenantId === "testo" || isPharma;
+  const isTech = tenantId === "software-development-default";
 
   if (isTesto) {
     const hasTechTags = /#(?:github|backend|softwareengineering|frontend|devops|typescript|python|code|repository|petprojects)\b/i.test(text);
@@ -255,21 +221,20 @@ app.get("/health", (req: Request, res: Response) => {
 
 app.post("/evaluate", async (req: Request, res: Response) => {
   try {
-    let { runId, tenantId, platform, text, pillarId, targetLanguage } = req.body as EvaluateRequest;
+    let { runId, tenantId, platform, text, targetLanguage } = req.body as EvaluateRequest;
     if (!text || !platform) {
       return res.status(400).json({ error: "Missing required fields: text, platform" });
     }
 
-    // Auto-fallback: if runId is provided but tenantId or pillarId are omitted, resolve from DB
-    if (runId && (!tenantId || !pillarId)) {
+    // Auto-fallback: if runId is provided but tenantId is omitted, resolve from DB
+    if (runId && !tenantId) {
       try {
         const runDoc = await getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS).findOne({ runId });
         if (runDoc) {
-          if (!tenantId) tenantId = runDoc.tenantId;
-          if (!pillarId) pillarId = runDoc.contentPillarId;
+          tenantId = runDoc.tenantId;
         }
       } catch (err) {
-        console.warn(`Failed to resolve tenantId/pillarId from pipeline_runs for runId: ${runId}`);
+        console.warn(`Failed to resolve tenantId from pipeline_runs for runId: ${runId}`);
       }
     }
 
@@ -285,7 +250,7 @@ app.post("/evaluate", async (req: Request, res: Response) => {
       }
     }
 
-    const { alignmentScore, driftReport } = evaluateText({ runId, tenantId, platform, text, pillarId, targetLanguage, terminologyRules });
+    const { alignmentScore, driftReport } = evaluateText({ runId, tenantId, platform, text, targetLanguage, terminologyRules });
 
     // Store evaluation log in MongoDB if runId provided
     if (runId) {

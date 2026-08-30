@@ -1,6 +1,5 @@
 import type { IndustryProfile } from "@pipeline/shared/schemas";
 import { formatFactsForPrompt, type RetrievableChunk } from "@pipeline/shared/ai";
-import { getRubricWritingInstruction } from "./rubric-instructions.js";
 
 export interface PromptBuilderParams {
   topic: { title: string; summary: string; url?: string; fullArticleText?: string; batches?: string[] };
@@ -14,7 +13,6 @@ export interface PromptBuilderParams {
   };
   industryProfile?: IndustryProfile;
   tenantId: string;
-  contentPillarId: string;
   retrievedFacts: RetrievableChunk[];
   verifiedSourcesBlock: string;
   fewShotText: string;
@@ -32,7 +30,6 @@ export function buildWritingPrompts(params: PromptBuilderParams): {
     authorProfile,
     industryProfile,
     tenantId,
-    contentPillarId,
     retrievedFacts,
     verifiedSourcesBlock,
     fewShotText,
@@ -41,14 +38,13 @@ export function buildWritingPrompts(params: PromptBuilderParams): {
   } = params;
 
   const isNicheVertical = !!industryProfile && industryProfile.verticalName !== "software-development";
-  const isTestoTenant = tenantId === "testo" || contentPillarId.startsWith("pharma-") || contentPillarId.startsWith("gas-");
+  const isTestoTenant = tenantId === "testo";
   const isRussianTenant = isTestoTenant || tenantId === "cinema-media" || (industryProfile?.language?.includes("ru") ?? false);
   const isGasAnalyzerTopic =
-    contentPillarId.startsWith("gas-") ||
-    (!contentPillarId.startsWith("pharma-") &&
-      /газоанализатор|выброс|пелтье|testo\s*350|testo\s*300|testo\s*340|testo\s*310|котельн|горелк/i.test(
-        `${topic.title} ${topic.summary}`
-      ));
+    isTestoTenant &&
+    /газоанализатор|выброс|пелтье|testo\s*350|testo\s*300|testo\s*340|testo\s*310|котельн|горелк/i.test(
+      `${topic.title} ${topic.summary}`
+    );
 
   let styleRulesBlock = "";
   let complianceBlock = "";
@@ -100,14 +96,8 @@ ${formatFactsForPrompt(retrievedFacts)}
     }
 
     if (industryProfile.glossary.length > 0) {
-      let filteredGlossary = industryProfile.glossary;
-      if (isGasAnalyzerTopic) {
-        filteredGlossary = industryProfile.glossary.filter((g) => !/21\s*CFR|GxP|холодов|лиофилиз/i.test(g.term));
-      } else if (contentPillarId.startsWith("pharma-")) {
-        filteredGlossary = industryProfile.glossary.filter((g) => !/избытка\s*воздуха|Пельтье|qA|расширение\s*диапазона/i.test(g.term));
-      }
       glossaryBlock = `\nINDUSTRY GLOSSARY (use these terms precisely):
-${filteredGlossary.map((g) => `- "${g.term}"${g.definition ? `: ${g.definition}` : ""}`).join("\n")}\n`;
+${industryProfile.glossary.map((g) => `- "${g.term}"${g.definition ? `: ${g.definition}` : ""}`).join("\n")}\n`;
     }
 
     if (adaptation) {
@@ -119,38 +109,19 @@ ${filteredGlossary.map((g) => `- "${g.term}"${g.definition ? `: ${g.definition}`
   if (tenantId === "cinema-media") {
     writerDomain = "Ты — главный редактор и ведущий кинообозреватель медиа-портала KinoPeek Media. Ты создаешь захватывающий, подробный, вирусный и кинематографичный контент для русскоязычной аудитории (Telegram, Threads, VK).";
   } else if (isTestoTenant) {
-    writerDomain = "Ты — профессиональный технический копирайтер и эксперт по промышленному оборудованию Testo. Ты пишешь экспертные технические статьи и посты на русском языке.";
+    writerDomain = "Ты — профессиональный технический копирайтер и эксперт по промышленному оборудованию Testo. Ты пишешь экспертные технические статьи и посты на русском языке от лица официального дистрибьютора в Казахстане ТОО «AZIA-TEST».";
   } else if (isNicheVertical) {
     writerDomain = `You are a professional social media copywriter specializing in B2B content for the "${industryProfile!.verticalName}" industry, writing for ${platformLabel}.`;
   } else {
     writerDomain = "You are a professional LinkedIn content writer specializing in tech/programming topics.";
   }
 
-  const rubricWritingInstruction = getRubricWritingInstruction(contentPillarId);
-
   let languageInstruction = "";
   if (isTestoTenant) {
-    let productValueProp = "In every post, you MUST explicitly demonstrate how Testo measurement equipment solves industry challenges.";
-    if (contentPillarId.startsWith("pharma-")) {
-      productValueProp =
-        "In every post, you MUST explicitly demonstrate how Testo measurement equipment (Testo Saveris Pharma, Testo 190 T3/T4 CFR, Testo 174T, thermal imagers, data loggers) solves pharmaceutical compliance challenges (automating 21 CFR Part 11, preventing batch loss in cold chain, audit readiness).\nSTRICT PILLAR ISOLATION: Do NOT mention boilers, burner tuning, flue gases, NOx, CO, SO2, or boiler analyzers (Testo 300, Testo 350)!";
-    } else if (isGasAnalyzerTopic) {
-      productValueProp =
-        "In every post, you MUST explicitly demonstrate how Testo Gas Analyzers (Testo 350, Testo 300, Testo 340, Testo 310 II, Testo 316) solve industrial emissions monitoring, boiler/burner tuning, Peltier gas sample preparation (+3°C), and gas safety in Kazakhstan.\nSTRICT PILLAR ISOLATION: Do NOT mention pharmaceuticals, biosensors, cleanroom GMP, or FDA 21 CFR Part 11!";
-    } else {
-      productValueProp =
-        "In every post, you MUST explicitly demonstrate how Testo measurement equipment solves industry challenges. Do NOT mix boiler flue gas into pharmaceutical cleanrooms.";
-    }
     languageInstruction = `\nCRITICAL LANGUAGE & TESTO BRAND REQUIREMENTS:
 1. Language: The target audience for this portal (${tenantId}) is EXCLUSIVELY RUSSIAN-SPEAKING. You MUST write ALL fields ("text", "hook", "cta", and "ru_post") STRICTLY IN HIGH-QUALITY RUSSIAN. Do NOT write any English text.
-2. Product Value Proposition: ${productValueProp}
-3. STRICT TITLE & HOOK ACCURACY (NO HYBRID CHIMERAS):
-- NEVER generate hybrid compound titles that pair an unrelated instrument with an unrelated standard (e.g. NEVER write "Testo 350: NFPA 70E...").
-- The instrument in the hook, title, and body MUST strictly match the assigned pillar:
-  * For gas leak detection: use Testo 316 (NOT Testo 350!).
-  * For boiler tuning: use Testo 300 (NOT Testo 350!).
-  * For industrial emissions: use Testo 350 or Testo 340.
-  * For pharma cleanrooms: use Testo Saveris Pharma, Testo 190, or Testo 174T.`;
+2. Product Value Proposition: In every post, you MUST explicitly demonstrate how Testo measurement equipment solves industry challenges.
+3. Brand Consistency: Mention official distributor in Kazakhstan ТОО «AZIA-TEST» for calibration, state verification, and maintenance where appropriate.`;
   } else if (tenantId === "cinema-media") {
     languageInstruction = `\nCRITICAL LANGUAGE & KINOPEEK BRAND REQUIREMENTS:
 1. Language: The target audience for KinoPeek is Russian-speaking cinema, comic, MCU, and pop-culture fans. You MUST write ALL fields ("text", "hook", "cta", and "ru_post") STRICTLY IN HIGH-QUALITY RUSSIAN.
@@ -193,7 +164,7 @@ Output format:
 
 Return ONLY valid raw JSON. Do NOT include markdown code blocks or conversational text.`;
   } else {
-    const isTestoGas = isTestoTenant && (contentPillarId.startsWith("gas-") || isGasAnalyzerTopic);
+    const isTestoGas = isTestoTenant && isGasAnalyzerTopic;
 
     const exampleHook =
       tenantId === "cinema-media"
@@ -237,7 +208,7 @@ Return ONLY valid raw JSON. Do NOT include markdown code blocks or conversationa
    - Хэштеги в конце.
 3. ТОН: ${authorProfile.tone}.
 4. ЗАПРЕЩЕННЫЕ СЛОВА: ${authorProfile.forbidden_words.length > 0 ? authorProfile.forbidden_words.join(", ") : "нет"}.
-${styleRulesBlock}${complianceBlock}${glossaryBlock}${platformBlock}${rubricWritingInstruction}${verifiedSourcesBlock}${fewShotText}${languageInstruction}
+${styleRulesBlock}${complianceBlock}${glossaryBlock}${platformBlock}${verifiedSourcesBlock}${fewShotText}${languageInstruction}
 
 Ты обязан вернуть один валидный JSON объект:
 {

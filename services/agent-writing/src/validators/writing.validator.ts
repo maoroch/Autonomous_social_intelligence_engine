@@ -21,7 +21,6 @@ export const AdaptationRequestSchema = z.object({
   existingText: z.string().optional(),
   targetPlatform: z.enum(["telegram", "threads", "linkedin"]),
   textLength: z.enum(["short", "long"]).default("long"),
-  pillarId: z.string().optional(),
 });
 
 export type RussianPostAdaptation = z.infer<typeof RussianPostAdaptationSchema>;

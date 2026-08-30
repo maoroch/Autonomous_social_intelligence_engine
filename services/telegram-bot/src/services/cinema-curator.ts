@@ -14,7 +14,6 @@ export interface CuratedArticle {
   imageUrl?: string;
   source: string;
   publishedAt?: string;
-  pillarId: string;
   category: "popular" | "fresh";
 }
 
@@ -57,79 +56,6 @@ export class CinemaCuratorService {
   }
 
   /**
-   * Определение контент-рубрики кино-медиа по ключевым словам в заголовке и тексте
-   */
-  detectPillar(title: string, text: string): string {
-    const combined = `${title} ${text}`.toLowerCase();
-
-    if (
-      combined.includes("marvel") ||
-      combined.includes("mcu") ||
-      combined.includes("avengers") ||
-      combined.includes("spider-man") ||
-      combined.includes("человек-паук") ||
-      combined.includes("мстител") ||
-      combined.includes("локи") ||
-      combined.includes("дедпул") ||
-      combined.includes("deadpool") ||
-      combined.includes("captain america") ||
-      combined.includes("dc") ||
-      combined.includes("batman") ||
-      combined.includes("бэтмен") ||
-      combined.includes("superman")
-    ) {
-      return "marvel-mcu-lore";
-    }
-
-    if (
-      combined.includes("box office") ||
-      combined.includes("бокс-офис") ||
-      combined.includes("кассов") ||
-      combined.includes("сбор") ||
-      combined.includes("million") ||
-      combined.includes("billion") ||
-      combined.includes("миллиард") ||
-      combined.includes("imax") ||
-      combined.includes("бюджет")
-    ) {
-      return "box-office-analytics";
-    }
-
-    if (
-      combined.includes("director") ||
-      combined.includes("режиссер") ||
-      combined.includes("нолан") ||
-      combined.includes("nolan") ||
-      combined.includes("вильнев") ||
-      combined.includes("villeneuve") ||
-      combined.includes("тарантино") ||
-      combined.includes("tarantino") ||
-      combined.includes("screenplay") ||
-      combined.includes("сценари") ||
-      combined.includes("съемк") ||
-      combined.includes("оператор")
-    ) {
-      return "directors-screenplay-breakdowns";
-    }
-
-    if (
-      combined.includes("anime") ||
-      combined.includes("аниме") ||
-      combined.includes("manga") ||
-      combined.includes("манга") ||
-      combined.includes("клинок") ||
-      combined.includes("миядзаки") ||
-      combined.includes("miyazaki") ||
-      combined.includes("ufotable") ||
-      combined.includes("crunchyroll")
-    ) {
-      return "anime-culture-adaptations";
-    }
-
-    return "cinema-history-curiosities";
-  }
-
-  /**
    * Очистка HTML тегов и сущностей в чистый текст
    */
   private cleanHtml(rawHtml: string): string {
@@ -138,34 +64,33 @@ export class CinemaCuratorService {
       .replace(/<!\[CDATA\[|\]\]>/g, "")
       .replace(/<script[\s\S]*?<\/script>/gi, " ")
       .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<figcaption[\s\S]*?<\/figcaption>/gi, " ")
       .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;/g, " ")
+      .replace(/&#8217;/g, "'")
+      .replace(/&#8216;/g, "'")
+      .replace(/&#8220;/g, '"')
+      .replace(/&#8221;/g, '"')
+      .replace(/&#8211;/g, "–")
+      .replace(/&#8212;/g, "—")
       .replace(/&amp;/g, "&")
       .replace(/&quot;/g, '"')
-      .replace(/&#039;|&apos;/g, "'")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
+      .replace(/&nbsp;/g, " ")
       .replace(/\s+/g, " ")
       .trim();
   }
 
   /**
-   * Парсинг RSS-элемента из XML
+   * Парсинг одной записи <item> из RSS-фида
    */
   private parseRssItem(itemXml: string, category: "popular" | "fresh"): CuratedArticle | null {
-    const titleMatch = itemXml.match(/<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/i);
-    const linkMatch =
-      itemXml.match(/<link(?:\s[^>]*)?>([\s\S]*?)<\/link>/i) ??
-      itemXml.match(/<link[^>]*href=["']([^"']+)["']/i);
-    const contentMatch =
-      itemXml.match(/<content:encoded(?:\s[^>]*)?>([\s\S]*?)<\/content:encoded>/i) ??
-      itemXml.match(/<description(?:\s[^>]*)?>([\s\S]*?)<\/description>/i);
-    const pubDateMatch = itemXml.match(/<pubDate(?:\s[^>]*)?>([\s\S]*?)<\/pubDate>/i);
+    const titleMatch = itemXml.match(/<title>([\s\S]*?)<\/title>/i);
+    const linkMatch = itemXml.match(/<link>([\s\S]*?)<\/link>/i);
+    const descMatch = itemXml.match(/<description>([\s\S]*?)<\/description>/i);
+    const contentMatch = itemXml.match(/<content:encoded>([\s\S]*?)<\/content:encoded>/i);
+    const pubDateMatch = itemXml.match(/<pubDate>([\s\S]*?)<\/pubDate>/i);
 
-    const rawTitle = titleMatch?.[1] ? this.cleanHtml(titleMatch[1]) : "";
-    const rawUrl = (linkMatch?.[1] ?? "").replace(/<!\[CDATA\[|\]\]>/g, "").trim();
-    const rawContent = contentMatch?.[1] ? this.cleanHtml(contentMatch[1]) : "";
+    const rawTitle = this.cleanHtml(titleMatch?.[1] ?? "");
+    const rawUrl = linkMatch?.[1]?.trim() ?? "";
+    const rawContent = this.cleanHtml(contentMatch?.[1] ?? descMatch?.[1] ?? "");
 
     if (!rawTitle || !rawUrl) return null;
     if (rawTitle.toLowerCase().includes("the latest movie reviews") || rawTitle === "Den of Geek") {
@@ -174,7 +99,6 @@ export class CinemaCuratorService {
 
     const fullText = rawContent.substring(0, 4000);
     const summary = fullText.length > 250 ? `${fullText.substring(0, 250)}...` : fullText;
-    const pillarId = this.detectPillar(rawTitle, fullText);
     const batches = this.batchArticleContent(fullText || summary);
 
     // Авто-захват реального постера/кадра из метаданных RSS или HTML контента
@@ -187,13 +111,13 @@ export class CinemaCuratorService {
     let imageUrl = mediaContentMatch?.[1] ? mediaContentMatch[1].trim() : undefined;
 
     if (!imageUrl) {
-      if (pillarId === "marvel-mcu-lore" || /spider-man|avengers|mcu|marvel|deadpool/i.test(rawTitle)) {
+      if (/spider-man|avengers|mcu|marvel|deadpool/i.test(rawTitle)) {
         imageUrl = "https://images.unsplash.com/photo-1635805737707-575885ab0820?q=80&w=1200&auto=format&fit=crop";
-      } else if (pillarId === "directors-screenplay-breakdowns" || /dune|nolan|director/i.test(rawTitle)) {
+      } else if (/dune|nolan|director/i.test(rawTitle)) {
         imageUrl = "https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=1200&auto=format&fit=crop";
-      } else if (pillarId === "anime-culture-adaptations" || /anime|demon slayer/i.test(rawTitle)) {
+      } else if (/anime|demon slayer/i.test(rawTitle)) {
         imageUrl = "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=1200&auto=format&fit=crop";
-      } else if (pillarId === "box-office-analytics" || /box office|billion/i.test(rawTitle)) {
+      } else if (/box office|billion/i.test(rawTitle)) {
         imageUrl = "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=1200&auto=format&fit=crop";
       } else {
         imageUrl = "https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=1200&auto=format&fit=crop";
@@ -209,7 +133,6 @@ export class CinemaCuratorService {
       imageUrl,
       source: "Den of Geek",
       publishedAt: pubDateMatch?.[1]?.trim(),
-      pillarId,
       category,
     };
   }
@@ -312,7 +235,6 @@ export class CinemaCuratorService {
           imageUrl: "https://images.unsplash.com/photo-1635805737707-575885ab0820?q=80&w=1200&auto=format&fit=crop",
           source: "Den of Geek",
           publishedAt: new Date().toUTCString(),
-          pillarId: "marvel-mcu-lore",
           category: "fresh",
         },
         {
@@ -327,7 +249,6 @@ export class CinemaCuratorService {
           imageUrl: "https://images.unsplash.com/photo-1551269901-5c5e14c25df7?q=80&w=1200&auto=format&fit=crop",
           source: "Den of Geek",
           publishedAt: new Date().toUTCString(),
-          pillarId: "cinema-history-curiosities",
           category: "fresh",
         },
         {
@@ -342,7 +263,6 @@ export class CinemaCuratorService {
           imageUrl: "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=1200&auto=format&fit=crop",
           source: "Den of Geek",
           publishedAt: new Date().toUTCString(),
-          pillarId: "anime-culture-adaptations",
           category: "fresh",
         },
       ];
@@ -362,7 +282,6 @@ export class CinemaCuratorService {
         imageUrl: "https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=1200&auto=format&fit=crop",
         source: "Den of Geek",
         publishedAt: new Date().toUTCString(),
-        pillarId: "directors-screenplay-breakdowns",
         category: "popular",
       },
       {
@@ -377,7 +296,6 @@ export class CinemaCuratorService {
         imageUrl: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=1200&auto=format&fit=crop",
         source: "Den of Geek",
         publishedAt: new Date().toUTCString(),
-        pillarId: "box-office-analytics",
         category: "popular",
       },
       {
@@ -392,7 +310,6 @@ export class CinemaCuratorService {
         imageUrl: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?q=80&w=1200&auto=format&fit=crop",
         source: "Den of Geek",
         publishedAt: new Date().toUTCString(),
-        pillarId: "marvel-mcu-lore",
         category: "popular",
       },
     ];
@@ -481,7 +398,6 @@ export class CinemaCuratorService {
 
   /**
    * Запуск пайплайна на основе конкретной выбранной статьи с полным заземлением (Grounding)
-   * Переходит НАПРЯМУЮ в WRITING, пропуская Positioning и Strategy!
    */
   async launchGroundedPipeline(
     article: CuratedArticle,
@@ -503,7 +419,6 @@ export class CinemaCuratorService {
     };
 
     const tenantId = "cinema-media";
-    const pillarId = article.pillarId;
 
     try {
       const res = await fetch(`${openclawUrl}/runs`, {
@@ -512,7 +427,6 @@ export class CinemaCuratorService {
         body: JSON.stringify({
           topic,
           tenantId,
-          targetPillarId: pillarId,
         }),
       });
 
@@ -520,8 +434,8 @@ export class CinemaCuratorService {
         const data = (await res.json()) as any;
         if (data.runId) {
           logger.info(
-            { runId: data.runId, tenantId, pillarId, title: article.title, batchCount: batches.length, imageUrl: article.imageUrl },
-            "Started direct grounded cinema run via OpenClaw /runs API (skipping Strategy/Positioning)"
+            { runId: data.runId, tenantId, title: article.title, batchCount: batches.length, imageUrl: article.imageUrl },
+            "Started direct grounded cinema run via OpenClaw /runs API"
           );
           return data.runId;
         }
@@ -541,7 +455,6 @@ export class CinemaCuratorService {
       status: PipelineRunStatus.RUNNING,
       currentStage: PipelineStage.WRITING,
       topic,
-      contentPillarId: pillarId,
       retries: {},
       createdAt: now,
       updatedAt: now,
@@ -574,11 +487,11 @@ export class CinemaCuratorService {
         runId,
         stage: PipelineStage.WRITING,
         tenantId,
-        payload: { targetPillarId: pillarId, batches },
+        payload: { batches },
       } as any);
     }
 
-    logger.info({ runId, tenantId, pillarId, title: article.title }, "Started direct grounded cinema run directly via DB into WRITING");
+    logger.info({ runId, tenantId, title: article.title }, "Started direct grounded cinema run directly via DB into WRITING");
     return runId;
   }
 }

@@ -33,10 +33,6 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState("");
   const [profileId, setProfileId] = useState("");
   const [profiles, setProfiles] = useState<any[]>([]);
-  const [targetPillarId, setTargetPillarId] = useState<string>("auto");
-  // Инициализируем пустым массивом — заполняется через tenant-info API (изолированно для каждого tenant).
-  // Это предотвращает мелькание Tech-рубрик для Testo-портала до загрузки данных из БД.
-  const [pillars, setPillars] = useState<any[]>([]);
 
   // Filters & Status
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -78,9 +74,6 @@ export default function DashboardPage() {
       setProfiles(data);
       if (data.length > 0) setProfileId(data[0]._id);
     });
-    fetch(`/api/tenant-info?tenantId=${encodeURIComponent(tenantId)}`).then(res => res.json()).then(data => {
-      if (data.contentPillars) setPillars(data.contentPillars);
-    }).catch(err => console.error("Failed to fetch tenant pillars:", err));
 
     // Poll runs and health every 8 seconds
     const interval = setInterval(() => {
@@ -107,7 +100,6 @@ export default function DashboardPage() {
             summary,
           },
           profileId,
-          targetPillarId: targetPillarId === "auto" ? undefined : targetPillarId,
           tenantId,
         }),
       });
@@ -295,24 +287,6 @@ export default function DashboardPage() {
                   <option value="" disabled>Выберите профиль</option>
                   {profiles.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
                 </select>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Рубрика контента (Стратегия)</label>
-                <select value={targetPillarId} onChange={e => setTargetPillarId(e.target.value)} style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--border)", background: "#ffffff", color: "var(--text-main)", fontWeight: 500 }}>
-                  <option value="auto">🤖 Автоматически (Выбор ИИ на основе трендов)</option>
-                  {pillars.map(p => (
-                    <option key={p.id} value={p.id}>{p.label}</option>
-                  ))}
-                </select>
-                {(() => {
-                  const currentPillar = pillars.find(p => p.id === targetPillarId);
-                  if (!currentPillar) return null;
-                  return (
-                    <div style={{ padding: "8px 12px", background: "rgba(59, 130, 246, 0.08)", border: "1px solid rgba(59, 130, 246, 0.2)", borderRadius: 6, fontSize: 12, color: "#1d4ed8", marginTop: 4 }}>
-                      ℹ️ <strong>{currentPillar.label}:</strong> {currentPillar.description}
-                    </div>
-                  );
-                })()}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Тема (опционально)</label>

@@ -99,7 +99,7 @@ function runWritingEvaluatorUnitTest() {
 
   for (const deck of testoDecks) {
     console.log(`📌 Testing ${deck.name}...`);
-    const evalRes = validateTerminology(deck.text, deck.rules, deck.rubricId);
+    const evalRes = validateTerminology(deck.text, deck.rules);
 
     console.log(`   Deductions: ${evalRes.deductions}`);
     evalRes.driftReport.forEach(r => {
@@ -107,10 +107,10 @@ function runWritingEvaluatorUnitTest() {
     });
 
     if (evalRes.deductions > 0 || evalRes.driftReport.some(r => !r.passed)) {
-      console.error(`❌ Failed rubric test for ${deck.rubricId}`);
+      console.error(`❌ Failed test for ${deck.name}`);
       totalFailures++;
     } else {
-      console.log(`✅ Rubric ${deck.rubricId} PASSED with 100% compliance!\n`);
+      console.log(`✅ ${deck.name} PASSED with 100% compliance!\n`);
     }
   }
 
@@ -120,7 +120,7 @@ function runWritingEvaluatorUnitTest() {
 
   for (const deck of techDecks) {
     console.log(`📌 Testing ${deck.name}...`);
-    const evalRes = validateTerminology(deck.text, deck.rules, deck.rubricId);
+    const evalRes = validateTerminology(deck.text, deck.rules);
 
     console.log(`   Deductions: ${evalRes.deductions}`);
     evalRes.driftReport.forEach(r => {
@@ -128,19 +128,21 @@ function runWritingEvaluatorUnitTest() {
     });
 
     if (evalRes.deductions > 0 || evalRes.driftReport.some(r => !r.passed)) {
-      console.error(`❌ Failed rubric test for ${deck.rubricId}`);
+      console.error(`❌ Failed test for ${deck.name}`);
       totalFailures++;
     } else {
-      console.log(`✅ Rubric ${deck.rubricId} PASSED with 100% compliance!\n`);
+      console.log(`✅ ${deck.name} PASSED with 100% compliance!\n`);
     }
   }
 
+  console.log("=========================================================");
   if (totalFailures > 0) {
-    console.error(`❌ Total rubric failures: ${totalFailures}`);
+    console.error(`💥 TEST SUITE COMPLETED WITH ${totalFailures} FAILURES.`);
     process.exit(1);
+  } else {
+    console.log("🎉 ALL TESTS PASSED! 100% Golden Dataset Alignment & 0 Terminology Drift.");
+    process.exit(0);
   }
-
-  console.log("🎉 ALL 6 Rubrics across BOTH Portals (Testo & Tech) PASSED with 100% compliance!");
 }
 
 runWritingEvaluatorUnitTest();

@@ -5,46 +5,6 @@ import { CinemaCuratorService, type CuratedArticle } from "../services/cinema-cu
 describe("CinemaCuratorService Unit Tests", () => {
   const curator = new CinemaCuratorService();
 
-  test("detectPillar should accurately map pop-culture topics to content pillars", () => {
-    // MCU Lore
-    assert.strictEqual(
-      curator.detectPillar("Человек-Паук 4: возвращение Черной Кошки", "Marvel Studios утвердили график съемок"),
-      "marvel-mcu-lore"
-    );
-    assert.strictEqual(
-      curator.detectPillar("Avengers: Secret Wars and Doctor Doom lore", "Multiverse incursion breakdown"),
-      "marvel-mcu-lore"
-    );
-
-    // Box Office Analytics
-    assert.strictEqual(
-      curator.detectPillar("Кассовые сборы 2026: рекорды IMAX", "Фильм преодолел планку в 1 миллиард долларов сборов"),
-      "box-office-analytics"
-    );
-
-    // Directors & Screenplays
-    assert.strictEqual(
-      curator.detectPillar("Дени Вильнев о финале Дюны 3", "Режиссер рассказал об изменениях в сценарии"),
-      "directors-screenplay-breakdowns"
-    );
-    assert.strictEqual(
-      curator.detectPillar("Кристофер Нолан и съемки на 70мм пленку", "Операторская работа и постановка кадров"),
-      "directors-screenplay-breakdowns"
-    );
-
-    // Anime Culture
-    assert.strictEqual(
-      curator.detectPillar("Клинок, рассекающий демонов: Бесконечный замок", "Студия ufotable готовит аниме трилогию"),
-      "anime-culture-adaptations"
-    );
-
-    // General Cinema History
-    assert.strictEqual(
-      curator.detectPillar("Гарри Поттер: кастинг золотого трио", "История создания первого сезона сериала"),
-      "cinema-history-curiosities"
-    );
-  });
-
   test("getFallbackArticles should provide structured grounding articles for fresh and popular modes", () => {
     const freshArticles = curator.getFallbackArticles("fresh");
     assert.ok(freshArticles.length >= 3, "Should have at least 3 fresh fallback articles");
@@ -79,7 +39,6 @@ describe("CinemaCuratorService Unit Tests", () => {
         summary: "Spider-Man summary",
         fullArticleText: "Full article text about Spider-Man",
         source: "Den of Geek",
-        pillarId: "marvel-mcu-lore",
         category: "fresh",
       },
       {
@@ -88,7 +47,6 @@ describe("CinemaCuratorService Unit Tests", () => {
         summary: "Dune summary",
         fullArticleText: "Full article text about Dune Messiah",
         source: "Den of Geek",
-        pillarId: "directors-screenplay-breakdowns",
         category: "popular",
       },
     ];
@@ -98,7 +56,6 @@ describe("CinemaCuratorService Unit Tests", () => {
     const article0 = curator.getArticleByIndex(userId, 0);
     assert.ok(article0);
     assert.strictEqual(article0?.title, "Test Spider-Man Article");
-    assert.strictEqual(article0?.pillarId, "marvel-mcu-lore");
 
     const article1 = curator.getArticleByIndex(userId, 1);
     assert.ok(article1);
@@ -116,7 +73,6 @@ describe("CinemaCuratorService Unit Tests", () => {
         summary: "Filming begins in NY with Black Cat",
         fullArticleText: "Full body text",
         source: "Den of Geek",
-        pillarId: "marvel-mcu-lore",
         category: "fresh",
       },
     ];

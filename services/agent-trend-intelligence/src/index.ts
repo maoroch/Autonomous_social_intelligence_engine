@@ -56,9 +56,8 @@ async function processTrendJob(job: AgentJob): Promise<unknown> {
     logger.warn({ err, tenantId }, "Failed to load IndustryProfile for trend agent");
   }
 
-  // 2. Fetch raw trends via Source Factory (Den of Geek for cinema, Adapters for Tech/Testo, Telegram @github for GitHub pillars)
-  const targetPillar = run?.targetPillarId || run?.contentPillarId || (job.payload as any)?.targetPillarId;
-  const rawTrends = await fetchTrendsForTenant(tenantId, industryProfile, targetPillar);
+  // 2. Fetch raw trends via Source Factory (Den of Geek for cinema, Adapters for Tech/Testo)
+  const rawTrends = await fetchTrendsForTenant(tenantId, industryProfile);
 
   if (rawTrends.length === 0) {
     logger.warn({ runId: job.runId, tenantId }, "No raw trends fetched from any source — returning empty list");
@@ -70,7 +69,7 @@ async function processTrendJob(job: AgentJob): Promise<unknown> {
   logger.info({ runId: job.runId, tenantId, rawCount: rawTrends.length, uniqueCount: deduplicated.length }, "Raw trends collected and deduplicated");
 
   // 4. LLM Analysis & Scoring
-  const analyzed = await analyzeTrendsWithLLM(aiClient, deduplicated, tenantId, industryProfile, targetPillar);
+  const analyzed = await analyzeTrendsWithLLM(aiClient, deduplicated, tenantId, industryProfile);
 
   // 5. Schema validation
   const validated = TrendAgentOutputSchema.parse(analyzed);

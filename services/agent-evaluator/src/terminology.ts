@@ -11,8 +11,7 @@ export interface TerminologyEvaluationResult {
  */
 export function validateTerminology(
   text: string,
-  rules?: TerminologyRules,
-  pillarId?: string,
+  rules?: TerminologyRules
 ): TerminologyEvaluationResult {
   const driftReport: { rule: string; passed: boolean; details: string }[] = [];
   let deductions = 0;
@@ -25,42 +24,44 @@ export function validateTerminology(
 
   // 1. Mandatory Terms Guard
   if (rules.mandatoryTerms) {
-    const requiredForPillar = (pillarId && rules.mandatoryTerms[pillarId]) || rules.mandatoryTerms["default"] || [];
-    const missingTerms = requiredForPillar.filter(term => {
+    const allTerms = Array.isArray(rules.mandatoryTerms)
+      ? rules.mandatoryTerms
+      : Object.values(rules.mandatoryTerms).flat();
+
+    const missingTerms = allTerms.filter((term: string) => {
       const termLower = term.toLowerCase();
       if (lowerText.includes(termLower)) return false;
-      // Handle Russian declensions for "холодовая цепь" -> "холодовой цепи", etc.
       const words = termLower.split(/\s+/);
-      const stems = words.map(w => w.length >= 4 ? w.substring(0, Math.max(3, w.length - 2)) : w);
-      return !stems.every(stem => lowerText.includes(stem));
+      const stems = words.map((w) => (w.length >= 4 ? w.substring(0, Math.max(3, w.length - 2)) : w));
+      return !stems.every((stem) => lowerText.includes(stem));
     });
 
-    if (missingTerms.length > 0) {
-      deductions += Math.min(40, missingTerms.length * 15);
+    if (missingTerms.length > 0 && missingTerms.length === allTerms.length) {
+      deductions += Math.min(30, missingTerms.length * 10);
       driftReport.push({
         rule: "mandatory_terminology_guard",
         passed: false,
-        details: `Отклонение терминологии: в тексте отсутствуют обязательные отраслевые термины (${missingTerms.join(", ")})`,
+        details: `Отклонение терминологии: в тексте отсутствуют ключевые отраслевые термины (${missingTerms.slice(0, 3).join(", ")})`,
       });
-    } else if (requiredForPillar.length > 0) {
+    } else if (allTerms.length > 0) {
       driftReport.push({
         rule: "mandatory_terminology_guard",
         passed: true,
-        details: "Соблюдено: все обязательные нормативные термины присутствуют в тексте",
+        details: "Соблюдено: ключевые нормативные термины присутствуют в тексте",
       });
     }
   }
 
   // 2. Forbidden Terms & Anti-Pattern Bouncer
   if (rules.forbiddenTerms && rules.forbiddenTerms.length > 0) {
-    const foundForbidden = rules.forbiddenTerms.filter(phrase => lowerText.includes(phrase.toLowerCase()));
+    const foundForbidden = rules.forbiddenTerms.filter((phrase) => lowerText.includes(phrase.toLowerCase()));
 
     if (foundForbidden.length > 0) {
       deductions += Math.min(50, foundForbidden.length * 25);
       driftReport.push({
         rule: "forbidden_terminology_bouncer",
         passed: false,
-        details: `Отклонение терминологии: обнаружены бытовые/недопустимые выражения (${foundForbidden.map(f => `"${f}"`).join(", ")})`,
+        details: `Отклонение терминологии: обнаружены бытовые/недопустимые выражения (${foundForbidden.map((f) => `"${f}"`).join(", ")})`,
       });
     } else {
       driftReport.push({
@@ -91,7 +92,7 @@ export function validateTerminology(
   }
 
   // 4. Testo Official Distributor CTA Guard
-  if (pillarId?.startsWith("pharma") || rules.mandatoryTerms?.["pharma-compliance-explained"]) {
+  if (lowerText.includes("testo") || lowerText.includes("gxp")) {
     const hasDistributorCta = lowerText.includes("дистрибьютор") || lowerText.includes("дистрибьютора");
     if (!hasDistributorCta) {
       deductions += 15;

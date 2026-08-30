@@ -96,19 +96,18 @@ async function processWritingJob(job: AgentJob): Promise<unknown> {
   }
 
   const strategy = job.payload ?? {};
-  const contentPillarId = (job.payload as any)?.targetPillarId || (run as any)?.targetPillarId || (strategy as any)?.content_pillar_id || run?.contentPillarId || "";
-  const isTestoTenant = tenantId === "testo" || contentPillarId.startsWith("pharma-") || contentPillarId.startsWith("gas-");
-  const isGithubShowcase = !isTestoTenant && (contentPillarId === "github-trending-repos" || contentPillarId === "pet-projects-showcase" || (tenantId === "software-development-default" && /github/i.test(topic.title)));
+  const isTestoTenant = tenantId === "testo";
+  const isGithubShowcase = !isTestoTenant && (tenantId === "software-development-default" && /github/i.test(topic.title));
 
   // 3. Загружаем эталонные примеры (Few-Shot) и RAG факты
-  const fewShotText = await loadFewShotExamples(tenantId, contentPillarId, (strategy as any)?.format || "tutorial");
+  const fewShotText = await loadFewShotExamples(tenantId, (strategy as any)?.format || "tutorial");
 
   let retrievedFacts: RetrievableChunk[] = [];
   if (industryProfile?.complianceConfig.factCheckRequired) {
     try {
       const factChunksCol = getCollection<FactChunkDoc>(Collections.FACT_CHUNKS);
       const allChunks = await factChunksCol.find({ tenantId }).toArray();
-      const query = `${topic.title} ${topic.summary} ${(strategy as any)?.core_idea ?? ""} ${contentPillarId}`;
+      const query = `${topic.title} ${topic.summary} ${(strategy as any)?.core_idea ?? ""}`;
       retrievedFacts = retrieveRelevantChunks(query, allChunks, 3);
     } catch (err) {
       logger.warn({ err, tenantId }, "Failed to retrieve fact chunks for RAG grounding");
@@ -140,7 +139,6 @@ async function processWritingJob(job: AgentJob): Promise<unknown> {
     authorProfile,
     industryProfile,
     tenantId,
-    contentPillarId,
     retrievedFacts,
     verifiedSourcesBlock,
     fewShotText,
@@ -152,7 +150,7 @@ async function processWritingJob(job: AgentJob): Promise<unknown> {
   const generated = await generatePostContent(aiClient, systemPrompt, userPrompt, isRegulated, job.runId, isRussianTenant);
 
   // 6. Инъекция официального CTA и подстановка URL
-  const withCta = injectPresetCta(generated.text, generated.cta, tenantId, contentPillarId);
+  const withCta = injectPresetCta(generated.text, generated.cta, tenantId);
   generated.text = withCta.text;
   generated.cta = withCta.cta;
 

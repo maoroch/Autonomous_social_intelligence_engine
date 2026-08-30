@@ -10,37 +10,9 @@ const logger = createLogger("agent-trend:source-factory");
 
 export async function fetchTrendsForTenant(
   tenantId: string,
-  industryProfile?: IndustryProfile,
-  targetPillarId?: string
+  industryProfile?: IndustryProfile
 ): Promise<RawTrendItem[]> {
-  // 1. GitHub Collection Rubrics -> Exclusively Telegram @github channel
-  const isGithubPillar = targetPillarId && (
-    targetPillarId === "github-trending-repos" ||
-    targetPillarId === "pet-projects-showcase" ||
-    targetPillarId.includes("github") ||
-    targetPillarId.includes("repo")
-  );
-
-  if (isGithubPillar) {
-    logger.info({ tenantId, targetPillarId }, "Fetching exclusive trending GitHub repositories from Telegram @github");
-    try {
-      const tgItems = await fetchTelegramGithub();
-      if (tgItems.length > 0) {
-        return tgItems.map((item) => ({
-          title: item.title,
-          url: item.url,
-          score: item.score || 95,
-          source: item.sourceName || "Telegram @github",
-          summary: item.summary,
-          fullArticleText: item.summary,
-        }));
-      }
-    } catch (err: any) {
-      logger.warn({ err: err.message }, "Telegram @github fetcher failed, proceeding to fallback sources");
-    }
-  }
-
-  // 2. Cinema Media Portal: Exclusively Den of Geek articles with full text
+  // 1. Cinema Media Portal: Exclusively Den of Geek articles with full text
   if (tenantId === "cinema-media") {
     logger.info({ tenantId }, "Fetching exclusive Den of Geek articles for cinema-media portal");
     const sources = industryProfile?.trendSources && industryProfile.trendSources.length > 0

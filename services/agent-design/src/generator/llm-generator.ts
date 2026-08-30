@@ -32,7 +32,6 @@ export async function generateSlideDeckWithLLM(
     writingCta?: string;
     strategyAngle?: string;
     strategyCoreIdea?: string;
-    strategyPillarId?: string;
     tenantId?: string;
     industryProfile?: IndustryProfile;
     styleConfigs: StyleConfig[];

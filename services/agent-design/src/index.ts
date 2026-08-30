@@ -103,13 +103,6 @@ async function processDesignJob(job: AgentJob, notifyQueue = true): Promise<Reco
     };
   } else {
     // 3. Первичная генерация текстового состава слайдов через LLM
-    const strategyPillarId =
-      (strategyResult as any)?.pillar ||
-      (strategyResult as any)?.content_pillar_id ||
-      (payload as any)?.targetPillarId ||
-      runDoc?.contentPillarId ||
-      "";
-
     slideDeck = await generateSlideDeckWithLLM(aiClient, {
       topicTitle,
       topicSummary,
@@ -118,7 +111,6 @@ async function processDesignJob(job: AgentJob, notifyQueue = true): Promise<Reco
       writingCta: writingResult?.cta || writingResult?.call_to_action,
       strategyAngle: strategyResult?.angle,
       strategyCoreIdea: strategyResult?.core_idea || writingResult?.hook || topicSummary,
-      strategyPillarId,
       tenantId,
       industryProfile,
       styleConfigs,

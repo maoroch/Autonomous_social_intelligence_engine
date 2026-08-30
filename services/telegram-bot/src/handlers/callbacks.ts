@@ -233,7 +233,6 @@ export class CallbackHandler {
             topic: trendDoc?.result || currentRun?.topic,
             strategy: strategyDoc?.result,
             batches: (trendDoc?.result as any)?.batches,
-            targetPillarId: (currentRun as any)?.contentPillarId || (currentRun as any)?.targetPillarId,
             tenantId: currentRun?.tenantId,
           },
           extraInstructions: "User requested full rewrite of the post copy.",
@@ -257,7 +256,6 @@ export class CallbackHandler {
             text: (writingDoc?.result as any)?.text,
             hook: (writingDoc?.result as any)?.hook,
             tenantId: currentRun?.tenantId,
-            targetPillarId: (currentRun as any)?.contentPillarId || (currentRun as any)?.targetPillarId,
           },
           extraInstructions: "User requested alternative visual design palette.",
         } as AgentJob);

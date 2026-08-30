@@ -14,7 +14,6 @@ export interface CuratedTestoArticle {
   imageUrl?: string;
   source: string;
   publishedAt?: string;
-  pillarId: string;
   category: "gas" | "pharma";
 }
 
@@ -52,56 +51,6 @@ export class TestoCuratorService {
     return batches;
   }
 
-  detectPillar(title: string, text: string): string {
-    const combined = `${title} ${text}`.toLowerCase();
-
-    if (
-      combined.includes("gxp") ||
-      combined.includes("21 cfr") ||
-      combined.includes("pharm") ||
-      combined.includes("фармацевт") ||
-      combined.includes("валидац") ||
-      combined.includes("saveris") ||
-      combined.includes("чистые помещения")
-    ) {
-      return "pharma-compliance-explained";
-    }
-
-    if (
-      combined.includes("cold chain") ||
-      combined.includes("холодов") ||
-      combined.includes("gdp") ||
-      combined.includes("логгер") ||
-      combined.includes("174t") ||
-      combined.includes("термокартирован")
-    ) {
-      return "pharma-cold-chain-story";
-    }
-
-    if (
-      combined.includes("утечк") ||
-      combined.includes("316") ||
-      combined.includes("метан") ||
-      combined.includes("взрывозащит") ||
-      combined.includes("ex")
-    ) {
-      return "gas-safety-leak-detection";
-    }
-
-    if (
-      combined.includes("котел") ||
-      combined.includes("котл") ||
-      combined.includes("горелк") ||
-      combined.includes("300") ||
-      combined.includes("кпд") ||
-      combined.includes("избыток воздуха")
-    ) {
-      return "gas-boiler-efficiency";
-    }
-
-    return "gas-industrial-emissions";
-  }
-
   getCuratorMenuKeyboard() {
     return {
       inline_keyboard: [
@@ -134,7 +83,7 @@ export class TestoCuratorService {
       const numEmoji = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"][idx] || `${idx + 1}.`;
       message += `${numEmoji} *${article.title}*\n`;
       message += `📌 ${article.summary}\n`;
-      message += `📂 Рубрика: \`${article.pillarId}\` | 🏢 AZIA-TEST LLP\n\n`;
+      message += `🏢 AZIA-TEST LLP | 🔗 [${article.source}](${article.url})\n\n`;
     });
 
     return {
@@ -189,7 +138,6 @@ export class TestoCuratorService {
             "Официальный дистрибьютор Testo в Казахстане ТОО AZIA-TEST обеспечивает первичную государственную поверку в реестре ГСИ РК."
           ],
           source: "Testo Industrial Engineering",
-          pillarId: "gas-industrial-emissions",
           category: "gas",
         },
         {
@@ -203,7 +151,6 @@ export class TestoCuratorService {
             "Быстрое формирование отчетов и отправка протоколов наладки по Wi-Fi прямо с объекта."
           ],
           source: "Testo Boiler Systems",
-          pillarId: "gas-boiler-efficiency",
           category: "gas",
         },
         {
@@ -217,7 +164,6 @@ export class TestoCuratorService {
             "Переключение между метаном, пропаном и водородом одной кнопкой."
           ],
           source: "Testo Safety Gas",
-          pillarId: "gas-safety-leak-detection",
           category: "gas",
         },
       ];
@@ -235,7 +181,6 @@ export class TestoCuratorService {
           "Сертифицированная валидация ПО и квалификация IQ/OQ от сертифицированных инженеров ТОО AZIA-TEST."
         ],
         source: "Testo Pharma Compliance",
-        pillarId: "pharma-compliance-explained",
         category: "pharma",
       },
       {
@@ -249,7 +194,6 @@ export class TestoCuratorService {
           "Программирование и считывание до 8 логгеров одновременно через удобный USB-интерфейс."
         ],
         source: "Testo Pharma Validation",
-        pillarId: "pharma-compliance-explained",
         category: "pharma",
       },
     ];
@@ -260,11 +204,10 @@ export class TestoCuratorService {
     openclawUrl: string,
     queues: BotQueues
   ): Promise<string> {
-    logger.info({ title: article.title, pillarId: article.pillarId }, "Triggering grounded pipeline for Testo Portal");
+    logger.info({ title: article.title }, "Triggering grounded pipeline for Testo Portal");
 
     const payload = {
       tenantId: "testo",
-      targetPillarId: article.pillarId,
       topic: {
         title: article.title,
         summary: article.summary,
@@ -300,10 +243,8 @@ export class TestoCuratorService {
       await runsCol.insertOne({
         runId,
         tenantId: "testo",
-        contentPillarId: article.pillarId,
         status: PipelineRunStatus.RUNNING,
         currentStage: PipelineStage.WRITING,
-        targetPillarId: article.pillarId,
         createdAt: now,
         updatedAt: now,
       } as any);
@@ -330,7 +271,6 @@ export class TestoCuratorService {
         attempt: 1,
         payload: {
           batches: article.batches,
-          targetPillarId: article.pillarId,
         },
       } as AgentJob);
 

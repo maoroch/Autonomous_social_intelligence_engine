@@ -152,9 +152,8 @@ async function main() {
     const topic = req.body?.topic ?? { title: "", summary: "" };
     const profileId = req.body?.profileId;
     const tenantId = req.body?.tenantId;
-    const targetPillarId = req.body?.targetPillarId;
     const skipDesign = !!req.body?.skipDesign;
-    const runId = await startPipelineRun(queues, logger, topic, profileId, tenantId, targetPillarId, skipDesign);
+    const runId = await startPipelineRun(queues, logger, topic, profileId, tenantId, skipDesign);
     res.status(201).json({ runId });
   });
 

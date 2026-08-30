@@ -56,7 +56,7 @@ describe("Tenant Trend Filters & Priority Ranking", () => {
     ];
 
     const formatted = formatHeadlinesForSelection(items, "testo");
-    assert.match(formatted, /\[★ ПРЯМОЕ УПОМИНАНИЕ TESTO \/ BRAND MATCH\]/);
+    assert.match(formatted, /\[★ TESTO BRAND \/ COMPLIANCE MATCH\]/);
     assert.match(formatted, /Optimizing combustion with Testo 300 analyzer/);
   });
 
@@ -94,28 +94,15 @@ describe("Tenant Trend Filters & Priority Ranking", () => {
     assert.match(getBrandTagForArticle(marvelItem, "cinema-media"), /CINEMA POP-CULTURE HIT/);
   });
 
-  it("should enforce strict pillar isolation between Pharma and Gas analyzers", () => {
-    const pharmaArticle: RawTrendItem = {
-      title: "Cleanroom temperature logging with Testo Saveris system",
-      summary: "FDA 21 CFR Part 11 validation",
-      url: "https://example.com/pharma",
-      source: "Pharma Tech",
+  it("should detect software development keywords for tech tenant", () => {
+    const techItem: RawTrendItem = {
+      title: "Building high-performance TypeScript microservices",
+      summary: "Kubernetes and Redis queues architecture",
+      url: "https://example.com/tech",
+      source: "Dev.to",
       score: 95,
     };
-    const gasArticle: RawTrendItem = {
-      title: "Boiler burner combustion tuning with Testo 350 analyzer",
-      summary: "Flue gas emissions NOx/CO",
-      url: "https://example.com/gas",
-      source: "Plant Eng",
-      score: 90,
-    };
-
-    // When pillar is Pharma:
-    assert.equal(hasBrandMention(pharmaArticle, "testo", "pharma-audit-ready"), true);
-    assert.equal(hasBrandMention(gasArticle, "testo", "pharma-audit-ready"), false);
-
-    // When pillar is Gas:
-    assert.equal(hasBrandMention(gasArticle, "testo", "gas-industrial-emissions"), true);
-    assert.equal(hasBrandMention(pharmaArticle, "testo", "gas-industrial-emissions"), false);
+    assert.equal(hasBrandMention(techItem, "software-development-default"), true);
+    assert.match(getBrandTagForArticle(techItem, "software-development-default"), /TECH HIGH-IMPACT/);
   });
 });

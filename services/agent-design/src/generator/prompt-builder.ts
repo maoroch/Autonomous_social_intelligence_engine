@@ -9,7 +9,6 @@ export function buildSlideGenerationPrompt(params: {
   writingCta?: string;
   strategyAngle?: string;
   strategyCoreIdea?: string;
-  strategyPillarId?: string;
   tenantId?: string;
   industryProfile?: IndustryProfile;
   styleConfigs: StyleConfig[];
@@ -23,7 +22,6 @@ export function buildSlideGenerationPrompt(params: {
     writingCta,
     strategyAngle,
     strategyCoreIdea,
-    strategyPillarId,
     tenantId,
     styleConfigs,
     fewShotExamples,
@@ -65,40 +63,34 @@ DESIGN SPECIFICATIONS:
 `;
 
   if (tenantId === "testo") {
-    const isPharma =
-      strategyPillarId?.startsWith("pharma-") ||
-      /pharma|fda|gxp|gmp|cleanroom|биос[еэ]нсор|препарат|медицин|saveris|abbott|lingo/i.test(
-        `${topicTitle} ${topicSummary} ${writingBody || ""}`
-      );
-    const isGas =
-      strategyPillarId?.startsWith("gas-") ||
-      /boiler|flue|combustion|котельн|газоанализ|горелк|выброс|пелтье/i.test(
-        `${topicTitle} ${topicSummary} ${writingBody || ""}`
-      );
+    const isPharma = /pharma|fda|gxp|gmp|cleanroom|биос[еэ]нсор|препарат|медицин|saveris|abbott|lingo/i.test(
+      `${topicTitle} ${topicSummary} ${writingBody || ""}`
+    );
+    const isGas = /boiler|flue|combustion|котельн|газоанализ|горелк|выброс|пелтье/i.test(
+      `${topicTitle} ${topicSummary} ${writingBody || ""}`
+    );
 
-    let pillarRules = "";
+    let domainRules = "";
     if (isPharma) {
-      pillarRules = `STRICT PILLAR ISOLATION (PHARMA & CLEANROOMS):
-- Focus EXCLUSIVELY on pharmaceutical production, cleanroom environment, cold chain (GDP), and regulatory compliance (FDA 21 CFR Part 11, GxP, GMP, ISO 13485).
+      domainRules = `FOCUS (PHARMA & CLEANROOMS):
+- Focus on pharmaceutical production, cleanroom environment, cold chain (GDP), and regulatory compliance (FDA 21 CFR Part 11, GxP, GMP, ISO 13485).
 - AUTHORIZED EQUIPMENT: Testo Saveris Pharma, Testo 190 (T3/T4 CFR), Testo 174T, Testo 883.
-- FORBIDDEN: NEVER mention boilers, combustion, burner tuning, flue gases, emissions, NOx, CO, SO2, lambda, or boiler analyzers (Testo 300, Testo 310, Testo 340, Testo 350)! Testo 300 is a flue gas analyzer and has NOTHING to do with pharma!
 - Slide Badges for Pharma: "СТАНДАРТЫ GXP", "ПРОБЛЕМА", "ОЦЕНКА РИСКОВ", "РЕШЕНИЕ", "СТАНДАРТ 21 CFR", "ЧЕК-ЛИСТ АУДИТА".`;
     } else if (isGas) {
-      pillarRules = `STRICT PILLAR ISOLATION (FLUE GAS & BOILER TUNING):
-- Focus EXCLUSIVELY on industrial flue gas analysis, boiler regime tuning, energy efficiency, lambda, heat losses qA, and emissions (NOx, CO, O2, SO2).
+      domainRules = `FOCUS (FLUE GAS & BOILER TUNING):
+- Focus on industrial flue gas analysis, boiler regime tuning, energy efficiency, lambda, heat losses qA, and emissions (NOx, CO, O2, SO2).
 - AUTHORIZED EQUIPMENT: Testo 300, Testo 310 II, Testo 316, Testo 340, Testo 350, Peltier gas cooler.
-- FORBIDDEN: NEVER mention pharmaceuticals, biosensors, FDA 21 CFR Part 11, GxP, GMP, or Testo Saveris!
 - Slide Badges for Gas: "ГАЗОАНАЛИЗ", "ПОТЕРИ ТЕПЛА", "РЕЖИМНАЯ НАЛАДКА", "ПРИБОР TESTO", "ВЫБРОСЫ NOX/CO", "РЕЗУЛЬТАТ".`;
     } else {
-      pillarRules = `STRICT PILLAR ISOLATION:
-- Keep cleanrooms/pharma and boiler combustion completely separate. Never mix boiler flue gas into pharma cleanrooms!`;
+      domainRules = `FOCUS:
+- Maintain high metrological precision and engineering facts.`;
     }
 
     prompt += `
 MANDATORY BRAND & LANGUAGE RULES (TESTO):
 - 100% STRICT RUSSIAN LANGUAGE: All titles, bullets, hooks, CTAs, and BADGES MUST be in natural, professional Russian.
 - RUSSIAN BADGES ONLY: Do NOT use English badges like "INDUSTRY REVIEW" or "PROBLEM".
-${pillarRules}
+${domainRules}
 - Tone: Professional, B2B, metrological precision, engineering-grade facts.
 `;
   }

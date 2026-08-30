@@ -177,8 +177,7 @@ export class TelegramBotApp {
       const messageText =
         `${portalConfig.emoji} *[${portalConfig.label}] Новый пост ожидает проверки!*\n\n` +
         `📌 *Тема:* ${topicTitle}\n` +
-        `🆔 *Run ID:* \`${runId}\`\n` +
-        `📂 *Рубрика:* ${(runDoc as any).contentPillarId || (runDoc as any).targetPillarId || "default"}\n\n` +
+        `🆔 *Run ID:* \`${runId}\`\n\n` +
         `📝 *Текст поста:*\n${previewText}\n\n` +
         `👇 *Выберите действие:*`;
 
