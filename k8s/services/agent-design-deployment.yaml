@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-design
+  namespace: linkedin-pipeline
+  labels:
+    app: agent-design
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agent-design
+  template:
+    metadata:
+      labels:
+        app: agent-design
+    spec:
+      containers:
+        - name: agent-design
+          image: ghcr.io/maoroch/linkedin-ai-agent-design:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4005
+          envFrom:
+            - configMapRef:
+                name: pipeline-config
+            - secretRef:
+                name: pipeline-secrets
+          env:
+            - name: PORT
+              value: "4005"
+            - name: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
+              value: "true"
+            - name: PUPPETEER_EXECUTABLE_PATH
+              value: "/usr/bin/chromium-browser"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 160Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4005
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4005
+            initialDelaySeconds: 5
+            periodSeconds: 10

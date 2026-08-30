@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-trend
+  namespace: linkedin-pipeline
+  labels:
+    app: agent-trend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agent-trend
+  template:
+    metadata:
+      labels:
+        app: agent-trend
+    spec:
+      containers:
+        - name: agent-trend
+          image: ghcr.io/maoroch/linkedin-ai-agent-trend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4001
+          envFrom:
+            - configMapRef:
+                name: pipeline-config
+            - secretRef:
+                name: pipeline-secrets
+          env:
+            - name: PORT
+              value: "4001"
+          resources:
+            requests:
+              cpu: 30m
+              memory: 80Mi
+            limits:
+              cpu: 200m
+              memory: 192Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4001
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4001
+            initialDelaySeconds: 5
+            periodSeconds: 10

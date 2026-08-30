@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-publishing
+  namespace: linkedin-pipeline
+  labels:
+    app: agent-publishing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agent-publishing
+  template:
+    metadata:
+      labels:
+        app: agent-publishing
+    spec:
+      containers:
+        - name: agent-publishing
+          image: ghcr.io/maoroch/linkedin-ai-agent-publishing:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4007
+          envFrom:
+            - configMapRef:
+                name: pipeline-config
+            - secretRef:
+                name: pipeline-secrets
+          env:
+            - name: PORT
+              value: "4007"
+          resources:
+            requests:
+              cpu: 30m
+              memory: 80Mi
+            limits:
+              cpu: 200m
+              memory: 192Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4007
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4007
+            initialDelaySeconds: 5
+            periodSeconds: 10

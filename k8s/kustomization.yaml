@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: linkedin-pipeline
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret-template.yaml
+  - storage/mongo-pvc.yaml
+  - storage/redis-pvc.yaml
+  - core/mongo-deployment.yaml
+  - core/redis-deployment.yaml
+  - core/openclaw-deployment.yaml
+  - core/telegram-bot-deployment.yaml
+  - services/agent-trend-deployment.yaml
+  - services/agent-writing-deployment.yaml
+  - services/agent-design-deployment.yaml
+  - services/agent-evaluator-deployment.yaml
+  - services/agent-publishing-deployment.yaml
+  - services/web-dashboard-deployment.yaml
+  - autoscaling/keda-writing-scaler.yaml
+  - autoscaling/keda-design-scaler.yaml
+  - ingress/traefik-ingress.yaml

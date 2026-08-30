@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: linkedin-pipeline
+  labels:
+    app.kubernetes.io/name: linkedin-pipeline
+    app.kubernetes.io/part-of: linkedin-ai-agent-tool
