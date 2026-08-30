@@ -181,7 +181,7 @@ export class TelegramBotApp {
         `📝 *Текст поста:*\n${previewText}\n\n` +
         `👇 *Выберите действие:*`;
 
-      const inlineKeyboard = buildApprovalKeyboard(runId);
+      const inlineKeyboard = buildApprovalKeyboard(runId, runDoc.tenantId || "cinema-media");
       let sentMessageId: number | undefined;
 
       if (coverImageId) {

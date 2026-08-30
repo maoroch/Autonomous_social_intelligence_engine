@@ -26,13 +26,6 @@ export default function DashboardPage() {
   const { tenantId } = useParams<{ tenantId: string }>();
   const [runs, setRuns] = useState<RunListItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-
-  // Form state
-  const [title, setTitle] = useState("");
-  const [summary, setSummary] = useState("");
-  const [profileId, setProfileId] = useState("");
-  const [profiles, setProfiles] = useState<any[]>([]);
 
   // Filters & Status
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -70,10 +63,6 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchRuns();
     fetchHealth();
-    fetch(`/api/profiles?tenantId=${encodeURIComponent(tenantId)}`).then(res => res.json()).then(data => {
-      setProfiles(data);
-      if (data.length > 0) setProfileId(data[0]._id);
-    });
 
     // Poll runs and health every 8 seconds
     const interval = setInterval(() => {
@@ -83,41 +72,6 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId]);
-
-  const [formError, setFormError] = useState<string | null>(null);
-
-  const handleStartRun = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setFormError(null);
-    try {
-      const res = await fetch(`/api/runs?tenantId=${encodeURIComponent(tenantId)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topic: {
-            title,
-            summary,
-          },
-          profileId,
-          tenantId,
-        }),
-      });
-      if (res.ok) {
-        setTitle("");
-        setSummary("");
-        fetchRuns();
-      } else {
-        const data = await res.json().catch(() => ({}));
-        setFormError(data.error || "Не удалось запустить пайплайн");
-      }
-    } catch (err: any) {
-      console.error("Failed to start run:", err);
-      setFormError(err.message || " Ошибка сети при запуске пайплайна");
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const handleRestartRun = async (runId: string) => {
     try {
@@ -270,47 +224,55 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Right Side: Form & Status */}
+        {/* Right Side: Launch Guidance & Status */}
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          {/* Create Run Form */}
-          <div className="card">
-            <h3 style={{ marginBottom: 16, fontSize: 18 }}>Запустить новый пайплайн</h3>
-            {formError && (
-              <div style={{ padding: "10px 14px", background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: 8, color: "var(--red)", fontSize: 13, marginBottom: 16 }}>
-                ⚠️ {formError}
+          {/* Telegram Bot Launch Guidance Card */}
+          <div className="card" style={{ background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)", border: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <span style={{ fontSize: 24 }}>🤖</span>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 17, color: "var(--text-main)" }}>Запуск пайплайна</h3>
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Human-in-the-Loop Curator</span>
               </div>
-            )}
-            <form onSubmit={handleStartRun} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Профиль автора</label>
-                <select value={profileId} onChange={e => setProfileId(e.target.value)} style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--border)", background: "#ffffff", color: "var(--text-main)" }}>
-                  <option value="" disabled>Выберите профиль</option>
-                  {profiles.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-                </select>
+            </div>
+
+            <p style={{ fontSize: 13, color: "var(--text-main)", lineHeight: 1.5, marginBottom: 16 }}>
+              Запуск генерации и сбор свежих инфоповодов происходит <strong>исключительно через Telegram-бота</strong>.
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+              <div style={{ padding: "10px 12px", background: "rgba(10, 102, 194, 0.06)", border: "1px solid rgba(10, 102, 194, 0.15)", borderRadius: 8 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, color: "#0A66C2", marginBottom: 2 }}>🎬 KinoPeek Radar</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Парсинг свежих и популярных инфоповодов кино и поп-культуры Den of Geek.</div>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Тема (опционально)</label>
-                <input
-                  type="text"
-                  placeholder={tenantId === "testo" ? "Например: Разбор системы Testo Saveris Pharma" : "Например: Переход на Node.js 22"}
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
+              <div style={{ padding: "10px 12px", background: "rgba(16, 185, 129, 0.06)", border: "1px solid rgba(16, 185, 129, 0.15)", borderRadius: 8 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, color: "#059669", marginBottom: 2 }}>💻 Tech & GitHub Radar</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Подборки трендовых open-source репозиториев и архитектурных инсайтов.</div>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Краткое описание / Заметки</label>
-                <textarea
-                  rows={3}
-                  placeholder={tenantId === "testo" ? "Дополнительные модели (Testo 174T, 883), требования B2B..." : "Дополнительные ключевые слова или контекст..."}
-                  value={summary}
-                  onChange={(e) => setSummary(e.target.value)}
-                  style={{ resize: "none" }}
-                />
+              <div style={{ padding: "10px 12px", background: "rgba(245, 158, 11, 0.06)", border: "1px solid rgba(245, 158, 11, 0.15)", borderRadius: 8 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, color: "#d97706", marginBottom: 2 }}>🏭 Testo Industry Radar</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Фармацевтический мониторинг (GxP/21 CFR Part 11) и газоанализ котельных.</div>
               </div>
-              <button type="submit" disabled={submitting} className="btn btn-primary" style={{ width: "100%" }}>
-                {submitting ? "Запуск..." : "Запустить пайплайн 🚀"}
-              </button>
-            </form>
+            </div>
+
+            <div style={{ padding: "12px", background: "#f1f5f9", borderRadius: 8, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 16 }}>
+              ℹ️ <strong>Веб-дашборд предназначен для:</strong>
+              <ul style={{ margin: "6px 0 0 18px", padding: 0 }}>
+                <li>Редактирования текстов и слайдов карусели</li>
+                <li>Смены шаблонов и предпросмотра рендера</li>
+                <li>Проверки комплаенса и аналитики постов</li>
+              </ul>
+            </div>
+
+            <a
+              href="https://t.me/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-primary"
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, textDecoration: "none", width: "100%", padding: "10px 16px", fontSize: 14 }}
+            >
+              💬 Открыть Telegram Бот
+            </a>
           </div>
 
           {/* Service Status Panel */}

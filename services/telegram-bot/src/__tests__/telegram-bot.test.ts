@@ -27,6 +27,12 @@ describe("Telegram Bot Unit Tests", () => {
     assert.ok(row3);
     assert.strictEqual(row3[0]?.callback_data, `view_full_text:${runId}`);
 
+    // Row 4: Upload cover & Edit in Dashboard URL
+    const row4 = keyboard.inline_keyboard[3];
+    assert.ok(row4);
+    assert.strictEqual(row4[0]?.callback_data, `upload_cover:${runId}`);
+    assert.match(row4[1]?.url || "", /dashboard\/runs\/test_run_12345/);
+
     // Last row: View run logs
     const lastRow = keyboard.inline_keyboard[keyboard.inline_keyboard.length - 1];
     assert.ok(lastRow);

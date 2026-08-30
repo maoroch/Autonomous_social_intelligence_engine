@@ -169,6 +169,7 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_ADMIN_CHAT_ID: ${TELEGRAM_ADMIN_CHAT_ID:-}
       OPENCLAW_PUBLIC_BASE_URL: http://openclaw:4000
+      DASHBOARD_PUBLIC_URL: ${DASHBOARD_PUBLIC_URL:-http://localhost:3005}
     depends_on:
       redis:
         condition: service_healthy

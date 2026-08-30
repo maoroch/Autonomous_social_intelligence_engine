@@ -2,7 +2,13 @@
  * Фирменные inline-клавиатуры для модерации и управления пайплайном KinoPeek.
  */
 
-export function buildApprovalKeyboard(runId: string) {
+export function buildApprovalKeyboard(
+  runId: string,
+  tenantId: string = "cinema-media",
+  dashboardBaseUrl: string = process.env.DASHBOARD_PUBLIC_URL || "http://localhost:3005"
+) {
+  const dashboardEditUrl = `${dashboardBaseUrl}/${tenantId}/dashboard/runs/${runId}`;
+
   return {
     inline_keyboard: [
       [
@@ -17,7 +23,7 @@ export function buildApprovalKeyboard(runId: string) {
       ],
       [
         { text: "📸 Загрузить свой кадр на обложку", callback_data: `upload_cover:${runId}` },
-        { text: "✏️ Редактировать текст", callback_data: `edit_text:${runId}` },
+        { text: "✏️ Редактировать в Dashboard", url: dashboardEditUrl },
       ],
       [
         { text: "🔄 Регенерация текста", callback_data: `regenerate_writing:${runId}` },

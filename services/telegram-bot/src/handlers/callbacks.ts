@@ -215,8 +215,16 @@ export class CallbackHandler {
         await this.sendMessage(chatId, "📸 Отправьте новое фото для обложки:");
       } else if (action === "edit_text") {
         if (!chatId || !runId) return;
-        this.textEditor.setPendingEdit(cb.from.id, runId);
-        await this.sendMessage(chatId, "✏️ Отправьте отредактированный текст:");
+        const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
+        const currentRun = await runsCol.findOne({ runId });
+        const tenantId = currentRun?.tenantId || "cinema-media";
+        const dashboardBaseUrl = process.env.DASHBOARD_PUBLIC_URL || "http://localhost:3005";
+        const editUrl = `${dashboardBaseUrl}/${tenantId}/dashboard/runs/${runId}`;
+        await this.sendMessage(
+          chatId,
+          `✏️ *Редактирование постов выполняется в Web Dashboard!*\n\n` +
+          `Перейдите в веб-интерфейс для удобного редактирования текста, слайдов и шаблонов:\n🔗 ${editUrl}`
+        );
       } else if (action === "regenerate_writing") {
         if (!runId) return;
         const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
