@@ -1,14 +1,17 @@
 # 🤖 LinkedIn & Multi-Platform AI Content Pipeline
 
-> **An autonomous, multi-tenant B2B & Media content generation, design & publishing platform powered by microservice AI agents, RAG fact-grounding, Puppeteer carousel rendering, and Telegram Human-in-the-Loop moderation.**
+> **An autonomous, multi-tenant B2B & Media content generation, design & publishing platform powered by microservice AI agents, RAG fact-grounding, Puppeteer carousel rendering, Telegram Human-in-the-Loop moderation, and Kubernetes (K3s + KEDA) cloud infrastructure.**
 
 ![LinkedIn & Multi-Platform AI Content Pipeline Banner](docs/banner.jpg)
 
 [![Node.js](https://img.shields.io/badge/Node.js-v20+-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 [![Next.js 15](https://img.shields.io/badge/Next.js-15.0+-black.svg)](https://nextjs.org/)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-K3s-326CE5.svg)](https://k3s.io/)
+[![KEDA](https://img.shields.io/badge/Autoscaling-KEDA-orange.svg)](https://keda.sh/)
 [![BullMQ](https://img.shields.io/badge/BullMQ-Redis-red.svg)](https://bullmq.io/)
-[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](https://www.docker.com/)
+[![Docker](https://img.shields.io/badge/Docker-GHCR-2496ED.svg)](https://github.com/features/packages)
+[![Microsoft Azure](https://img.shields.io/badge/Cloud-Microsoft_Azure-0078D4.svg)](https://azure.microsoft.com/)
 [![Telegram Bot](https://img.shields.io/badge/Telegram-Bot_API-2CA5E0.svg)](https://core.telegram.org/bots)
 
 ---
@@ -24,13 +27,18 @@
    - [Microservices Breakdown](#microservices-breakdown)
    - [Reliability & Brand Safety Mechanisms](#reliability--brand-safety-mechanisms)
 3. [📱 Telegram Bot: Mobile Human-in-the-Loop](#-telegram-bot-mobile-human-in-the-loop)
-4. [🚀 Quickstart & Setup Guide](#-quickstart--setup-guide)
+4. [☸️ Production Deployment: Microsoft Azure + K3s + KEDA](#️-production-deployment-microsoft-azure--k3s--keda)
+   - [Architecture & Scale-to-Zero](#architecture--scale-to-zero)
+   - [Automated Setup on Azure VM](#automated-setup-on-azure-vm)
+   - [GitHub Actions CI/CD Pipeline](#github-actions-cicd-pipeline)
+   - [Kubernetes Database Seeding](#kubernetes-database-seeding)
+5. [🐳 Local Quickstart: Docker Compose](#-local-quickstart-docker-compose)
    - [Prerequisites](#prerequisites)
    - [Environment Setup (.env)](#environment-setup-env)
-   - [Docker Compose Deployment](#docker-compose-deployment)
-   - [Database Seeding](#database-seeding)
-5. [🧪 Testing & API Reference](#-testing--api-reference)
-6. [📚 Documentation Index](#-documentation-index)
+   - [Docker Compose Run](#docker-compose-run)
+   - [Local Database Seeding](#local-database-seeding)
+6. [🧪 Testing & API Reference](#-testing--api-reference)
+7. [📚 Documentation Index](#-documentation-index)
 
 ---
 
@@ -45,6 +53,7 @@ This platform automates the end-to-end content engineering pipeline:
 - **Generates publish-ready posts with styled carousels in 20 seconds**.
 - **Guarantees 100% Brand Safety & Regulatory Compliance** — zero numeric hallucinations, strict adherence to FDA/EMA standards (21 CFR Part 11, GxP), zero forbidden terms, and zero cross-brand hashtag leakage.
 - **Human-in-the-Loop (HITL) via Telegram:** Approve, edit copy, or trigger re-generation in 1 tap directly from your phone.
+- **Cloud Scale-to-Zero:** Resource-heavy microservices (Puppeteer design renderer and AI writers) scale to 0 pods when idle using KEDA Redis triggers, running 24/7 on minimal cloud hardware.
 
 ---
 
@@ -55,7 +64,8 @@ This platform automates the end-to-end content engineering pipeline:
 - 📱 **Telegram Bot Workflow:** Full mobile moderation cockpit — album previews, inline editing, live container logs viewing, and interactive `/daily_cinema` RSS feed curator.
 - 📚 **RAG Fact Grounding:** Automatic verification of technical specs and regulatory numbers against a database of verified facts (`fact_chunks`).
 - 🤖 **Self-Correction & Quality Drift:** Evaluator agent audits alignment against Golden Datasets. If an alignment score is `< 85%`, the system automatically re-generates the post before human review.
-- ⚡ **High-Speed LPU Inference:** Powered by Groq (`qwen/qwen3.8-27b` & `openai/gpt-oss-120b`) and Google Gemini (`gemini-2.0-flash`) for sub-3-second generation and literary-grade Russian/English copywriting.
+- ⚡ **High-Speed LPU Inference:** Powered by Groq (`llama-3.3-70b-versatile` & `openai/gpt-oss-120b`) and Google Gemini (`gemini-2.0-flash`) for sub-3-second generation and literary-grade Russian/English copywriting.
+- ☸️ **Kubernetes Event-Driven Autoscaling (KEDA):** Dynamic pod scaling based on BullMQ queue depths in Redis.
 
 ---
 
@@ -111,8 +121,8 @@ flowchart TD
 | **`agent-trend-intelligence`**| `:4001` | Node.js, Jina API, Cheerio | Scrapes trends from GitHub, Hacker News, Dev.to, and cinema RSS feeds. Extracts article posters. |
 | **`agent-positioning`** | `:4002` | Node.js, LLM | Filters news & trends against the author's positioning matrix and company profile. |
 | **`agent-content-strategy`** | `:4003` | Node.js, LLM | Selects content pillar, carousel/text format, and post structure. |
-| **`agent-writing`** | `:4004` | Node.js, RAG Engine, MongoDB | Drafts post copy with prompt isolation, RAG fact verification, and Cyrillic fallback guard. |
-| **`agent-design`** | `:4005` | Node.js, Puppeteer Pool | Generates HTML/CSS templates and renders high-resolution PNG slides (1080x1350). |
+| **`agent-writing`** | `:4004` | Node.js, RAG Engine, MongoDB | Drafts post copy with prompt isolation, RAG fact verification, and Cyrillic fallback guard. Scales with KEDA. |
+| **`agent-design`** | `:4005` | Node.js, Puppeteer Pool | Generates HTML/CSS templates and renders high-resolution PNG slides (1080x1350). Scales with KEDA. |
 | **`agent-seo`** | `:4006` | Node.js, LLM | Audits readability, character counts, and platform-specific limits. |
 | **`agent-evaluator`** | `:4008` | Node.js, Zod Validator | Evaluates drift against Golden Datasets, verifies disclaimers & CTAs. |
 | **`agent-publishing`** | `:4007` | Node.js, REST APIs | Auto-publishes approved materials to social media platforms via official APIs. |
@@ -151,22 +161,95 @@ The Telegram Bot allows content managers and business owners to manage the entir
 
 ---
 
-## 🚀 Quickstart & Setup Guide
+## ☸️ Production Deployment: Microsoft Azure + K3s + KEDA
+
+The entire microservice pipeline is designed for cloud-native deployment on **Microsoft Azure** (compatible with Azure Free Trial $200 and Azure for Students $100 tier).
+
+### Architecture & Scale-to-Zero
+
+```mermaid
+flowchart LR
+    Ingress[Traefik Ingress :80/:443] --> Dashboard[web-dashboard Pod]
+    Ingress --> API[openclaw Orchestrator Pod]
+    
+    Bot[telegram-bot Pod] --> API
+    API --> Redis[(Redis BullMQ)]
+    API --> Mongo[(MongoDB PVC)]
+    
+    KEDA[KEDA ScaledObject] -->|Monitors BullMQ Queues| Redis
+    KEDA -->|Queue > 0: Scale 1..2| Writer[agent-writing Pods]
+    KEDA -->|Queue > 0: Scale 1..2| Designer[agent-design Puppeteer Pods]
+    KEDA -.->|Queue == 0: Scale 0| Writer
+    KEDA -.->|Queue == 0: Scale 0| Designer
+```
+
+### Automated Setup on Azure VM
+
+1. **Provision Virtual Machine** (`Ubuntu 24.04 LTS`, `Standard_B2s` or `Standard_B2ls_v2`):
+   ```bash
+   bash scripts/azure/provision-vm.sh
+   ```
+
+2. **Connect via SSH and Install K3s, Helm & KEDA**:
+   ```bash
+   ssh -i ~/.ssh/vm-key.pem azureuser@<YOUR_VM_IP>
+   
+   curl -sSL https://raw.githubusercontent.com/maoroch/Autonomous_social_intelligence_engine/main/scripts/azure/setup-k3s.sh | bash
+   ```
+
+3. **Configure Secrets & Deploy Cluster**:
+   ```bash
+   cd ~/linkedin_ai-agent_tool
+   nano k8s/secret-template.yaml   # Fill GROQ_API_KEY, TELEGRAM_BOT_TOKEN, etc.
+   bash scripts/azure/deploy-k8s.sh
+   ```
+
+4. **Detailed Guide**: See [docs/k8s-azure-deployment-guide.md](docs/k8s-azure-deployment-guide.md) for full step-by-step instructions with SSL and Ingress details.
+
+### GitHub Actions CI/CD Pipeline
+
+The repository includes complete GitHub Actions workflows:
+- **`.github/workflows/ci.yml`**: Runs TypeScript typechecks and all unit tests on every pull request.
+- **`.github/workflows/cd-deploy.yml`**: Builds and pushes Docker images to GitHub Container Registry (`ghcr.io`) and executes rolling deployment to the Azure K3s cluster.
+
+### Kubernetes Database Seeding
+
+Once deployed in Kubernetes, seed all portal data inside the cluster:
+
+```bash
+# Seed Organizations & Multi-Tenant Portals
+kubectl exec -n linkedin-pipeline -it deploy/openclaw -- npx tsx src/scripts/seed-organizations.ts
+
+# Seed RAG Fact Chunks (Testo Pharma & Gas Facts)
+kubectl exec -n linkedin-pipeline -it deploy/openclaw -- npx tsx src/scripts/seed-fact-chunks.ts
+
+# Seed Golden Datasets for Quality Evaluator
+kubectl exec -n linkedin-pipeline -it deploy/openclaw -- npx tsx src/scripts/seed-golden.ts
+
+# Seed Default Portal Users
+kubectl exec -n linkedin-pipeline -it deploy/openclaw -- npx tsx src/scripts/seed-users.ts
+```
+
+Default credentials:
+- **Tech Portal**: `http://<IP>/software-development-default/login` (`admin@tech.local` / `changeme-tech-2026`)
+- **Testo Portal**: `http://<IP>/testo/login` (`admin@testo.local` / `changeme-testo-2026`)
+- **Cinema Hub**: `http://<IP>/cinema-media`
+
+---
+
+## 🐳 Local Quickstart: Docker Compose
 
 ### Prerequisites
 
 - **Docker** & **Docker Compose** (v2.20+)
-- **Node.js** v20+ (for local development)
-- **MongoDB** 6.0+ & **Redis** 7.0+ (provisioned automatically in Docker)
-
----
+- **Node.js** v20+ (for local workspace development)
 
 ### Environment Setup (.env)
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/maoroch/linkedin_ai-agent_tool.git
-   cd linkedin_ai-agent_tool
+   git clone https://github.com/maoroch/Autonomous_social_intelligence_engine.git
+   cd Autonomous_social_intelligence_engine
    ```
 
 2. Copy the environment configuration template:
@@ -185,17 +268,15 @@ The Telegram Bot allows content managers and business owners to manage the entir
    
    # AI Provider Keys
    GROQ_API_KEY=your_groq_api_key_here
-   OPENROUTER_API_KEY=your_openrouter_api_key_here
-   GEMINI_API_KEY=your_gemini_api_key_here
+   GOOGLE_API_KEY=your_gemini_api_key_here
    
    # Telegram Bot Configuration
    TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
    TELEGRAM_ADMIN_CHAT_ID=your_chat_id_here
+   AUTH_SECRET=your_secret_string_here
    ```
 
----
-
-### Docker Compose Deployment
+### Docker Compose Run
 
 Spin up all microservices, MongoDB, and Redis in containers:
 
@@ -203,32 +284,21 @@ Spin up all microservices, MongoDB, and Redis in containers:
 docker compose up --build -d
 ```
 
-Verify that all containers are active and healthy:
+Verify status:
 ```bash
 docker compose ps
 ```
 
 > [!TIP]
-> Web Dashboard will be available at: **[http://localhost:3005](http://localhost:3005)**  
-> OpenClaw Orchestrator API will be available at: **[http://localhost:4000](http://localhost:4000)**
+> - Web Dashboard: **[http://localhost:3000](http://localhost:3000)** (or `:3005`)
+> - OpenClaw Orchestrator API: **[http://localhost:4000](http://localhost:4000)**
 
----
-
-### Database Seeding
-
-Upon initial startup, seed the database with organization profiles, fact chunks, and golden datasets:
+### Local Database Seeding
 
 ```bash
-# Seed Organizations, Tenants and Content Pillars
 docker compose exec openclaw npx tsx services/openclaw/src/scripts/seed-organizations.ts
-
-# Seed RAG Fact Chunks (Testo Pharma & Gas Facts)
 docker compose exec openclaw npx tsx services/openclaw/src/scripts/seed-fact-chunks.ts
-
-# Seed Golden Datasets for Quality Evaluator
 docker compose exec openclaw npx tsx services/openclaw/src/scripts/seed-golden.ts
-
-# Seed Default Users
 docker compose exec openclaw npx tsx services/openclaw/src/scripts/seed-users.ts
 ```
 
@@ -236,9 +306,18 @@ docker compose exec openclaw npx tsx services/openclaw/src/scripts/seed-users.ts
 
 ## 🧪 Testing & API Reference
 
+Run automated test suites locally:
+```bash
+# Run unit tests across all microservices
+npm run build -w shared-lib
+npx tsx --test services/telegram-bot/src/__tests__/*.test.ts \
+               services/agent-trend-intelligence/src/__tests__/*.test.ts \
+               services/agent-design/src/__tests__/*.test.ts
+```
+
 Trigger pipeline runs programmatically via `curl` or REST API:
 
-### 1. Trigger Run for Cinema Media Hub (Telegram / Movie Curiosities):
+### 1. Cinema Media Hub (Telegram / Movie Curiosities):
 ```bash
 curl -X POST http://localhost:4000/runs \
   -H "Content-Type: application/json" \
@@ -252,7 +331,7 @@ curl -X POST http://localhost:4000/runs \
   }'
 ```
 
-### 2. Trigger Run for Testo Industrial Gas Analyzers:
+### 2. Testo Industrial Gas Analyzers:
 ```bash
 curl -X POST http://localhost:4000/runs \
   -H "Content-Type: application/json" \
@@ -266,7 +345,7 @@ curl -X POST http://localhost:4000/runs \
   }'
 ```
 
-### 3. Trigger Run for Tech Portal (LinkedIn / GitHub Trending):
+### 3. Tech Portal (LinkedIn / GitHub Trending):
 ```bash
 curl -X POST http://localhost:4000/runs \
   -H "Content-Type: application/json" \
@@ -286,6 +365,7 @@ curl -X POST http://localhost:4000/runs \
 
 Detailed documentation and architectural blueprints are available in the [`docs/`](docs/README.md) directory:
 
+* ☸️ [Azure K3s & KEDA Deployment Guide](docs/k8s-azure-deployment-guide.md) — Comprehensive guide for production Azure VM deployment, K3s, KEDA, and CI/CD.
 * 🏛 [Architecture & System Design](docs/architecture.md) — Microservices, BullMQ queues, MongoDB/GridFS, LLM model policies.
 * ⚙️ [OpenClaw Orchestrator](docs/openclaw-orchestrator.md) — State machine, lifecycle stages, Quality Loop, and HITL.
 * 🤖 [Agents Specification](docs/agents-specification.md) — Full reference for all 7 AI agents: schemas, prompts, and isolation rules.
@@ -294,10 +374,10 @@ Detailed documentation and architectural blueprints are available in the [`docs/
 * 🧪 [Testo Pharma Strategy](docs/testo-pharma-strategy.md) — GxP, 21 CFR Part 11, cleanrooms, and RAG grounding.
 * 🏭 [Testo Gas Analyzers Strategy](docs/testo-gas-strategy.md) — Industrial boilers, power plants, and emissions monitoring.
 * 💻 [Tech Pillars Specification](docs/tech-pillars-spec.md) — Senior dev & software architecture content rubric.
-* ☸️ [Cloud Deployment & K8s Idea](docs/azure-k8s-deployment-idea.md) — Azure Student Tier ($100), K3s, Scale-to-Zero & KEDA.
+* 💡 [Cloud Deployment & K8s Idea](docs/azure-k8s-deployment-idea.md) — Azure Student Tier ($100), K3s, Scale-to-Zero & KEDA.
 
 ---
 
 ## 📄 License & Authors
 
-Designed & developed with modern microservice architecture and multi-tenant AI pipelines. All rights reserved.
+Designed & developed with modern microservice architecture, multi-tenant AI pipelines, and Kubernetes event-driven autoscaling. All rights reserved.
