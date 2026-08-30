@@ -1,0 +1,64 @@
+name: ☀️🌙 Azure VM Auto Start/Stop Schedule
+
+on:
+  schedule:
+    # ☀️ START every day at 09:00 (UTC+5 = 04:00 UTC)
+    - cron: '0 4 * * *'
+    # 🌙 STOP every day at 23:00 (UTC+5 = 18:00 UTC)
+    - cron: '0 18 * * *'
+  # Allow manual trigger from GitHub Actions UI
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'start'
+        type: choice
+        options:
+          - start
+          - stop
+
+env:
+  RESOURCE_GROUP: rg-linkedin-pipeline
+  VM_NAME: vm-linkedin-pipeline
+
+jobs:
+  manage-vm:
+    name: ${{ (github.event.schedule == '0 4 * * *' || github.event.inputs.action == 'start') && '☀️ Start VM' || '🌙 Stop VM' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🔑 Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: ☀️ Start VM (Morning)
+        if: github.event.schedule == '0 4 * * *' || github.event.inputs.action == 'start'
+        run: |
+          echo "☀️ Starting Azure VM: $VM_NAME..."
+          az vm start \
+            --resource-group $RESOURCE_GROUP \
+            --name $VM_NAME \
+            --no-wait
+          echo "✅ VM start command sent! It will be ready in ~2 minutes."
+
+      - name: 🌙 Stop VM (Night) — Deallocate to stop billing
+        if: github.event.schedule == '0 18 * * *' || github.event.inputs.action == 'stop'
+        run: |
+          echo "🌙 Stopping and deallocating Azure VM: $VM_NAME..."
+          az vm deallocate \
+            --resource-group $RESOURCE_GROUP \
+            --name $VM_NAME \
+            --no-wait
+          echo "✅ VM deallocate command sent! Billing stops in ~1 minute."
+
+      - name: 📊 VM Status
+        run: |
+          sleep 5
+          STATUS=$(az vm get-instance-view \
+            --resource-group $RESOURCE_GROUP \
+            --name $VM_NAME \
+            --query "instanceView.statuses[1].displayStatus" \
+            --output tsv 2>/dev/null || echo "Unknown")
+          echo "VM Status: $STATUS"
