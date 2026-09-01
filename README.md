@@ -1,8 +1,8 @@
-# 🤖 LinkedIn & Multi-Platform AI Content Pipeline
+# 🤖 Autonomous Social Media AI Pipeline
 
-> **An autonomous, multi-tenant B2B & Media content generation, design & publishing platform powered by microservice AI agents, RAG fact-grounding, Puppeteer carousel rendering, Telegram Human-in-the-Loop moderation, and Kubernetes (K3s + KEDA) cloud infrastructure.**
+> **An autonomous, multi-tenant content generation, design & publishing platform for LinkedIn, Instagram, Threads, Telegram, VK and beyond — powered by microservice AI agents, RAG fact-grounding, Puppeteer carousel rendering, Telegram Human-in-the-Loop moderation, and Kubernetes (K3s + KEDA) cloud infrastructure.**
 
-![LinkedIn & Multi-Platform AI Content Pipeline Banner](docs/banner.jpg)
+![Autonomous Social Media AI Pipeline Banner](docs/banner.jpg)
 
 [![Node.js](https://img.shields.io/badge/Node.js-v20+-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
