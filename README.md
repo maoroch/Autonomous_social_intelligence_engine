@@ -51,7 +51,7 @@ Creating high-performing B2B and media content (**LinkedIn, Telegram, Threads, V
 This platform automates the end-to-end content engineering pipeline:
 - **Reduces content marketing costs by up to 90%**.
 - **Generates publish-ready posts with styled carousels in 20 seconds**.
-- **Guarantees 100% Brand Safety & Regulatory Compliance** — zero numeric hallucinations, strict adherence to FDA/EMA standards (21 CFR Part 11, GxP), zero forbidden terms, and zero cross-brand hashtag leakage.
+- **Strong Brand Safety & Regulatory Compliance** — near-zero numeric hallucinations on our internal eval set (RAG-grounded facts, validated against golden datasets), strict adherence to FDA/EMA standards (21 CFR Part 11, GxP), with automated checks blocking forbidden terms and cross-brand hashtag leakage.
 - **Human-in-the-Loop (HITL) via Telegram:** Approve, edit copy, or trigger re-generation in 1 tap directly from your phone.
 - **Cloud Scale-to-Zero:** Resource-heavy microservices (Puppeteer design renderer and AI writers) scale to 0 pods when idle using KEDA Redis triggers, running 24/7 on minimal cloud hardware.
 
@@ -230,9 +230,13 @@ kubectl exec -n linkedin-pipeline -it deploy/openclaw -- npx tsx src/scripts/see
 kubectl exec -n linkedin-pipeline -it deploy/openclaw -- npx tsx src/scripts/seed-users.ts
 ```
 
-Default credentials:
-- **Tech Portal**: `http://<IP>/software-development-default/login` (`admin@tech.local` / `changeme-tech-2026`)
-- **Testo Portal**: `http://<IP>/testo/login` (`admin@testo.local` / `changeme-testo-2026`)
+> [!WARNING]
+> **These are seed credentials for local development only. Change all passwords before any internet-facing deployment.**
+> Never use these values in staging or production.
+
+Default credentials (local/demo only):
+- **Tech Portal**: `http://<IP>/software-development-default/login` — email: `admin@tech.local`, password: `changeme-tech-2026`
+- **Testo Portal**: `http://<IP>/testo/login` — email: `admin@testo.local`, password: `changeme-testo-2026`
 - **Cinema Hub**: `http://<IP>/cinema-media`
 
 ---
