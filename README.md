@@ -169,18 +169,18 @@ The entire microservice pipeline is designed for cloud-native deployment on **Mi
 
 ```mermaid
 flowchart LR
-    Ingress[Traefik Ingress :80/:443] --> Dashboard[web-dashboard Pod]
-    Ingress --> API[openclaw Orchestrator Pod]
-    
-    Bot[telegram-bot Pod] --> API
-    API --> Redis[(Redis BullMQ)]
-    API --> Mongo[(MongoDB PVC)]
-    
-    KEDA[KEDA ScaledObject] -->|Monitors BullMQ Queues| Redis
-    KEDA -->|Queue > 0: Scale 1..2| Writer[agent-writing Pods]
-    KEDA -->|Queue > 0: Scale 1..2| Designer[agent-design Puppeteer Pods]
-    KEDA -.->|Queue == 0: Scale 0| Writer
-    KEDA -.->|Queue == 0: Scale 0| Designer
+    Ingress["Traefik Ingress :80/:443"] --> Dashboard["web-dashboard Pod"]
+    Ingress --> API["openclaw Orchestrator Pod"]
+
+    Bot["telegram-bot Pod"] --> API
+    API --> Redis[("Redis BullMQ")]
+    API --> Mongo[("MongoDB PVC")]
+
+    KEDA["KEDA ScaledObject"] -->|"Monitors BullMQ Queues"| Redis
+    KEDA -->|"Queue > 0: Scale 1→2"| Writer["agent-writing Pods"]
+    KEDA -->|"Queue > 0: Scale 1→2"| Designer["agent-design Puppeteer Pods"]
+    KEDA -.->|"Queue == 0: Scale 0"| Writer
+    KEDA -.->|"Queue == 0: Scale 0"| Designer
 ```
 
 ### Automated Setup on Azure VM
