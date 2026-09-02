@@ -272,31 +272,86 @@ export class CallbackHandler {
           await this.sendMessage(chatId, `🎨 *Агент дизайна перерисовывает карусель (${currentRun?.tenantId || "default"})...*\nRun ID: \`${runId}\``);
         }
       } else if (action === "cinema_mode") {
+        if (param === "menu") {
+          await this.answerCallback(cb.id);
+          if (chatId) {
+            await this.sendMessage(
+              chatId,
+              `🎬 *KinoPeek News Radar — Выберите категорию тем:*\n\n` +
+              `Какой тип тем вы хотите получить от краулера перед запуском пайплайна?`,
+              this.cinemaCurator.getCuratorMenuKeyboard()
+            );
+          }
+          return;
+        }
+        await this.answerCallback(cb.id, "🔎 Собираю темы KinoPeek...");
+        const mode = param === "popular" ? "popular" : "fresh";
+        const articles = await this.cinemaCurator.fetchCuratedTopics(mode);
+        this.cinemaCurator.saveUserArticles(cb.from.id, articles);
+        const { text, replyMarkup } = this.cinemaCurator.formatArticleListMessage(articles, mode);
+        await this.sendMessage(chatId!, text, replyMarkup);
+      } else if (action === "cinema_pick") {
+        await this.answerCallback(cb.id, "🎬 Запуск кино-пайплайна...");
+        const article = this.cinemaCurator.getArticleByIndex(cb.from.id, Number(param));
+        if (!article) {
+          await this.sendMessage(chatId!, "❌ Статья не найдена в кэше. Пожалуйста, обновите подборку тем кнопкой 🔄.");
+          return;
+        }
+        const runId = await this.cinemaCurator.launchGroundedPipeline(article, this.openclawUrl, this.queues);
+        await this.sendMessage(chatId!, `🚀 *Запущен кино-пайплайн (KinoPeek)*: \`${runId}\`\n\n🎬 *Тема:* ${article.title}\n📖 *Источник:* ${article.source}`);
+      } else if (action === "cinema_refresh") {
+        await this.answerCallback(cb.id, "🔄 Обновляю подборку KinoPeek...");
         const mode = param === "popular" ? "popular" : "fresh";
         const articles = await this.cinemaCurator.fetchCuratedTopics(mode);
         this.cinemaCurator.saveUserArticles(cb.from.id, articles);
         const { text, replyMarkup } = this.cinemaCurator.formatArticleListMessage(articles, mode);
         await this.sendMessage(chatId!, text, replyMarkup);
       } else if (action === "tech_mode") {
+        await this.answerCallback(cb.id, "🔎 Собираю IT-тренды...");
         const mode = param === "popular" ? "popular" : "fresh";
         const articles = await this.techCurator.fetchCuratedTopics(mode);
         this.techCurator.saveUserArticles(cb.from.id, articles);
         const { text, replyMarkup } = this.techCurator.formatArticleListMessage(articles, mode);
         await this.sendMessage(chatId!, text, replyMarkup);
       } else if (action === "tech_pick") {
+        await this.answerCallback(cb.id, "🚀 Запуск пайплайна...");
         const article = this.techCurator.getArticleByIndex(cb.from.id, Number(param));
-        const runId = await this.techCurator.launchGroundedPipeline(article!, this.openclawUrl, this.queues);
-        await this.sendMessage(chatId!, `🚀 Запущен пайплайн: \`${runId}\``);
+        if (!article) {
+          await this.sendMessage(chatId!, "❌ Тема не найдена в кэше. Пожалуйста, обновите подборку.");
+          return;
+        }
+        const runId = await this.techCurator.launchGroundedPipeline(article, this.openclawUrl, this.queues);
+        await this.sendMessage(chatId!, `🚀 *Запущен пайплайн*: \`${runId}\`\n\n💻 *Тема:* ${article.title}`);
+      } else if (action === "tech_refresh") {
+        await this.answerCallback(cb.id, "🔄 Обновляю подборку Tech Radar...");
+        const mode = param === "popular" ? "popular" : "fresh";
+        const articles = await this.techCurator.fetchCuratedTopics(mode);
+        this.techCurator.saveUserArticles(cb.from.id, articles);
+        const { text, replyMarkup } = this.techCurator.formatArticleListMessage(articles, mode);
+        await this.sendMessage(chatId!, text, replyMarkup);
       } else if (action === "testo_mode") {
+        await this.answerCallback(cb.id, "🏭 Загружаю каталог Testo...");
         const mode = param === "gas" ? "gas" : "pharma";
         const articles = await this.testoCurator.fetchCuratedTopics(mode);
         this.testoCurator.saveUserArticles(cb.from.id, articles);
         const { text, replyMarkup } = this.testoCurator.formatArticleListMessage(articles, mode);
         await this.sendMessage(chatId!, text, replyMarkup);
       } else if (action === "testo_pick") {
+        await this.answerCallback(cb.id, "🚀 Запуск пайплайна Testo...");
         const article = this.testoCurator.getArticleByIndex(cb.from.id, Number(param));
-        const runId = await this.testoCurator.launchGroundedPipeline(article!, this.openclawUrl, this.queues);
-        await this.sendMessage(chatId!, `🚀 Запущен пайплайн Testo: \`${runId}\``);
+        if (!article) {
+          await this.sendMessage(chatId!, "❌ Оборудование не найдено в кэше. Пожалуйста, обновите подборку.");
+          return;
+        }
+        const runId = await this.testoCurator.launchGroundedPipeline(article, this.openclawUrl, this.queues);
+        await this.sendMessage(chatId!, `🚀 *Запущен пайплайн Testo*: \`${runId}\`\n\n🏭 *Тема:* ${article.title}`);
+      } else if (action === "testo_refresh") {
+        await this.answerCallback(cb.id, "🔄 Обновляю каталог Testo...");
+        const mode = param === "gas" ? "gas" : "pharma";
+        const articles = await this.testoCurator.fetchCuratedTopics(mode);
+        this.testoCurator.saveUserArticles(cb.from.id, articles);
+        const { text, replyMarkup } = this.testoCurator.formatArticleListMessage(articles, mode);
+        await this.sendMessage(chatId!, text, replyMarkup);
       } else if (action === "cmd") {
         await this.answerCallback(cb.id);
         const command = param;

@@ -17,4 +17,5 @@ data:
   MONGO_DB_NAME: "linkedin_pipeline"
   REDIS_URL: "redis://redis.linkedin-pipeline.svc.cluster.local:6379"
   OPENCLAW_PUBLIC_BASE_URL: "http://openclaw.linkedin-pipeline.svc.cluster.local:4000"
-  DASHBOARD_PUBLIC_URL: "http://dashboard.local"
+  OPENCLAW_URL: "http://openclaw.linkedin-pipeline.svc.cluster.local:4000"
+  DASHBOARD_PUBLIC_URL: "http://172.198.64.94"

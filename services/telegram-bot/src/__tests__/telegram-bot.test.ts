@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { buildApprovalKeyboard, buildMainMenuKeyboard } from "../keyboards/inline.js";
 import { TextEditorHandler } from "../handlers/text-editor.js";
 import { LogViewerService } from "../services/log-viewer.js";
+import { CallbackHandler } from "../handlers/callbacks.js";
 
 describe("Telegram Bot Unit Tests", () => {
   test("buildApprovalKeyboard should contain valid action callbacks including logs", () => {
@@ -73,5 +74,52 @@ describe("Telegram Bot Unit Tests", () => {
     assert.strictEqual(typeof viewer.getRecentErrors, "function");
     assert.strictEqual(typeof viewer.getQueueStats, "function");
     assert.strictEqual(typeof viewer.getRecentRunsSummary, "function");
+  });
+
+  test("CallbackHandler should handle cinema_pick callback and launch pipeline", async () => {
+    let launched = false;
+    let sentMessage = "";
+
+    const mockCinemaCurator: any = {
+      getArticleByIndex: () => ({
+        title: "Test Cinema Movie",
+        summary: "Movie summary",
+        url: "https://example.com/movie",
+        fullArticleText: "Full article text",
+        source: "Den of Geek",
+        category: "popular",
+      }),
+      launchGroundedPipeline: async () => {
+        launched = true;
+        return "kino_test123";
+      },
+    };
+
+    const handler = new CallbackHandler(
+      {} as any,
+      "dummy_token",
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      mockCinemaCurator,
+      {} as any,
+      {} as any,
+      "http://openclaw:4000",
+      async (_chatId, text) => {
+        sentMessage = text;
+      }
+    );
+
+    await handler.handleCallback({
+      id: "cb_1",
+      from: { id: 12345 },
+      message: { message_id: 1, chat: { id: 999 } },
+      data: "cinema_pick:0",
+    });
+
+    assert.ok(launched, "Should have called launchGroundedPipeline");
+    assert.ok(sentMessage.includes("kino_test123"), "Sent message should contain runId");
+    assert.ok(sentMessage.includes("Test Cinema Movie"), "Sent message should contain movie title");
   });
 });
