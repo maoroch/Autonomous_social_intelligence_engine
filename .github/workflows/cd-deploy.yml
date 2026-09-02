@@ -76,7 +76,7 @@ jobs:
     name: Deploy to Azure K3s Cluster
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: "${{ vars.AZURE_VM_HOST != '' && secrets.AZURE_VM_SSH_KEY != '' }}"
+    if: vars.AZURE_VM_HOST != ''
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
