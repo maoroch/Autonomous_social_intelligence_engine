@@ -6,7 +6,7 @@ metadata:
 spec:
   scaleTargetRef:
     name: agent-writing
-  minReplicaCount: 0
+  minReplicaCount: 1
   maxReplicaCount: 2
   cooldownPeriod: 60
   pollingInterval: 5
