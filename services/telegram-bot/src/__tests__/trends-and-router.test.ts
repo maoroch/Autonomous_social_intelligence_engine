@@ -5,7 +5,6 @@ import { parseCommand } from "../validation/command.schema.js";
 import { CallbackAction } from "../types/actions.types.js";
 import { CallbackHandler } from "../handlers/callbacks.js";
 import { CommandHandler } from "../handlers/commands.js";
-import { TREND_TOPICS, TrendsController } from "../controllers/trends.controller.js";
 
 describe("Trends and Router Architecture Unit Tests", () => {
   test("parseCallbackData should correctly validate and parse known actions", () => {
@@ -14,15 +13,15 @@ describe("Trends and Router Architecture Unit Tests", () => {
     assert.strictEqual(res1.data.action, CallbackAction.CMD);
     assert.strictEqual(res1.data.param, "trends");
 
-    const res2 = parseCallbackData("trend_pick:spider_man_4");
+    const res2 = parseCallbackData("cinema_pick:0");
     assert.ok(res2.success);
-    assert.strictEqual(res2.data.action, CallbackAction.TREND_PICK);
-    assert.strictEqual(res2.data.param, "spider_man_4");
+    assert.strictEqual(res2.data.action, CallbackAction.CINEMA_PICK);
+    assert.strictEqual(res2.data.param, "0");
 
-    const res3 = parseCallbackData("cinema_pick:2");
+    const res3 = parseCallbackData("cinema_mode:popular");
     assert.ok(res3.success);
-    assert.strictEqual(res3.data.action, CallbackAction.CINEMA_PICK);
-    assert.strictEqual(res3.data.param, "2");
+    assert.strictEqual(res3.data.action, CallbackAction.CINEMA_MODE);
+    assert.strictEqual(res3.data.param, "popular");
   });
 
   test("parseCallbackData should reject invalid or unknown actions", () => {
@@ -53,63 +52,30 @@ describe("Trends and Router Architecture Unit Tests", () => {
     assert.strictEqual(notCmd, null);
   });
 
-  test("TREND_TOPICS dictionary should have complete metadata for all hot topics", () => {
-    const requiredKeys = ["spider_man_4", "harry_potter", "dune_3", "demon_slayer", "box_office_1b"];
-    for (const key of requiredKeys) {
-      const topic = TREND_TOPICS[key];
-      assert.ok(topic, `Missing topic metadata for key: ${key}`);
-      assert.ok(topic.title.length > 5, "Topic should have a descriptive title");
-      assert.ok(topic.summary.length > 10, "Topic should have a summary");
-      assert.ok(topic.source.length > 0, "Topic should have a source");
-      assert.ok(topic.pillar.length > 0, "Topic should map to a content pillar");
-      assert.ok(topic.fullArticleText.length > 20, "Topic should have grounding article text");
-    }
-  });
-
-  test("CallbackHandler should route cmd:trends to showTrendsMenu", async () => {
+  test("CallbackHandler should route cmd:trends to live media crawler and send detailed article breakdown", async () => {
     let sentText = "";
     let sentMarkup: any = null;
 
-    const handler = new CallbackHandler(
-      {} as any,
-      "dummy_token",
-      {} as any,
-      {} as any,
-      {} as any,
-      {} as any,
-      {} as any,
-      {} as any,
-      {} as any,
-      "http://openclaw:4000",
-      async (_chatId, text, markup) => {
-        sentText = text;
-        sentMarkup = markup;
-      }
-    );
-
-    await handler.handleCallback({
-      id: "cb_trends_menu",
-      from: { id: 11111 },
-      message: { message_id: 10, chat: { id: 777 } },
-      data: "cmd:trends",
-    });
-
-    assert.ok(sentText.includes("Топ горячих трендов кино"), "Should send trends header text");
-    assert.ok(sentMarkup?.inline_keyboard?.length >= 5, "Should return trends buttons");
-    assert.strictEqual(sentMarkup.inline_keyboard[0][0].callback_data, "trend_pick:spider_man_4");
-  });
-
-  test("CallbackHandler should route trend_pick:spider_man_4 and trigger grounded cinema pipeline", async () => {
-    let launched = false;
-    let launchedArticle: any = null;
-    let sentMessage = "";
-
     const mockCinemaCurator: any = {
-      launchGroundedPipeline: async (article: any) => {
-        launched = true;
-        launchedArticle = article;
-        return "kino_trend_run_999";
-      },
+      fetchCuratedTopics: async (mode: string) => [
+        {
+          title: "Spider-Man: Brand New Day Proves Video Games Can Be Action Movie Storyboards",
+          url: "https://www.denofgeek.com/movies/spider-man/",
+          summary: "Marvel sucks at following its comic source material...",
+          source: "Den of Geek",
+          category: mode,
+        },
+      ],
+      saveUserArticles: () => {},
+      formatArticleListMessage: (articles: any[], mode: string) => ({
+        text: `🍿 🔥 ПОПУЛЯРНЫЕ ТЕМЫ И РАЗБОРЫ ЛОРА\n\n1️⃣ ${articles[0].title}\n📖 ${articles[0].summary}\n🔗 Источник (${articles[0].source})`,
+        replyMarkup: {
+          inline_keyboard: [
+            [{ text: "1️⃣ Spider-Man: Brand New Day...", callback_data: "cinema_pick:0" }],
+            [{ text: "🔄 Обновить подборку", callback_data: "cinema_refresh:popular" }],
+          ],
+        },
+      }),
     };
 
     const handler = new CallbackHandler(
@@ -123,33 +89,54 @@ describe("Trends and Router Architecture Unit Tests", () => {
       {} as any,
       {} as any,
       "http://openclaw:4000",
-      async (_chatId, text) => {
-        sentMessage = text;
+      async (_chatId, text, markup) => {
+        sentText = text;
+        sentMarkup = markup;
       }
     );
 
     await handler.handleCallback({
-      id: "cb_trend_pick",
-      from: { id: 22222 },
-      message: { message_id: 20, chat: { id: 888 } },
-      data: "trend_pick:spider_man_4",
+      id: "cb_trends_live",
+      from: { id: 11111 },
+      message: { message_id: 10, chat: { id: 777 } },
+      data: "cmd:trends",
     });
 
-    assert.ok(launched, "Should launch pipeline via cinemaCurator");
-    assert.ok(launchedArticle.title.includes("Человек-Паук 4"), "Should use Spider-Man topic title");
-    assert.ok(sentMessage.includes("kino_trend_run_999"), "Confirmation message should include Run ID");
-    assert.ok(sentMessage.includes("Человек-Паук 4"), "Confirmation message should include topic title");
+    assert.ok(sentText.includes("ПОПУЛЯРНЫЕ ТЕМЫ И РАЗБОРЫ ЛОРА"), "Should display parsed crawler header");
+    assert.ok(sentText.includes("Spider-Man: Brand New Day"), "Should contain full parsed article title");
+    assert.ok(sentText.includes("Источник (Den of Geek)"), "Should contain media source citation");
+    assert.ok(sentMarkup?.inline_keyboard?.length >= 2, "Should provide selection buttons");
+    assert.strictEqual(sentMarkup.inline_keyboard[0][0].callback_data, "cinema_pick:0");
   });
 
-  test("CommandHandler should handle /trends command and show trends keyboard", async () => {
+  test("CommandHandler should handle /trends command by fetching real media trends", async () => {
     let sentText = "";
     let sentMarkup: any = null;
+
+    const mockCinemaCurator: any = {
+      fetchCuratedTopics: async () => [
+        {
+          title: "HBO Harry Potter Series Cast Updates",
+          url: "https://www.denofgeek.com/tv/harry-potter/",
+          summary: "HBO begins casting for golden trio...",
+          source: "Den of Geek",
+          category: "popular",
+        },
+      ],
+      saveUserArticles: () => {},
+      formatArticleListMessage: (articles: any[]) => ({
+        text: `🍿 🔥 ПОПУЛЯРНЫЕ ТЕМЫ И РАЗБОРЫ ЛОРА\n\n1️⃣ ${articles[0].title}`,
+        replyMarkup: {
+          inline_keyboard: [[{ text: "1️⃣ Harry Potter...", callback_data: "cinema_pick:0" }]],
+        },
+      }),
+    };
 
     const handler = new CommandHandler(
       {} as any,
       {} as any,
       {} as any,
-      {} as any,
+      mockCinemaCurator,
       {} as any,
       {} as any,
       async (_chatId, text, markup) => {
@@ -165,7 +152,7 @@ describe("Trends and Router Architecture Unit Tests", () => {
       text: "/trends",
     });
 
-    assert.ok(sentText.includes("Топ горячих трендов кино"), "Should send trends text");
-    assert.ok(sentMarkup?.inline_keyboard?.length >= 5, "Should provide trend buttons");
+    assert.ok(sentText.includes("ПОПУЛЯРНЫЕ ТЕМЫ И РАЗБОРЫ ЛОРА"), "Should send crawler parsed output");
+    assert.strictEqual(sentMarkup.inline_keyboard[0][0].callback_data, "cinema_pick:0");
   });
 });

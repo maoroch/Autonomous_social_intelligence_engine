@@ -33,7 +33,7 @@ export class CommandRouter {
         break;
 
       case "/trends":
-        await this.trendsController.showTrendsMenu(chatId);
+        await this.trendsController.showTrendsMenu(chatId, msg.from?.id || 0);
         break;
 
       case "/daily_cinema":

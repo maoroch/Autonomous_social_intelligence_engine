@@ -68,10 +68,11 @@ export class CallbackRouter {
           await this.approvalController.handleViewLogs(cb, param);
           break;
 
-        // === TRENDS ACTIONS ===
+        // === TRENDS & CINEMA ACTIONS ===
         case CallbackAction.TREND_PICK:
+        case CallbackAction.CINEMA_PICK:
           if (!chatId) return;
-          await this.trendsController.handleTrendPick(chatId, userId, param, cb.id);
+          await this.curatorController.handleCinemaPick(chatId, userId, param, cb.id);
           break;
 
         // === CINEMA CURATOR ===
@@ -79,10 +80,7 @@ export class CallbackRouter {
           if (!chatId) return;
           await this.curatorController.handleCinemaMode(chatId, userId, param, cb.id);
           break;
-        case CallbackAction.CINEMA_PICK:
-          if (!chatId) return;
-          await this.curatorController.handleCinemaPick(chatId, userId, param, cb.id);
-          break;
+
         case CallbackAction.CINEMA_REFRESH:
           if (!chatId) return;
           await this.curatorController.handleCinemaRefresh(chatId, userId, param, cb.id);
@@ -139,7 +137,7 @@ export class CallbackRouter {
 
     switch (command) {
       case "trends":
-        await this.trendsController.showTrendsMenu(chatId);
+        await this.trendsController.showTrendsMenu(chatId, cb.from.id);
         break;
       case "daily_cinema":
         await this.curatorController.showCinemaMenu(chatId);

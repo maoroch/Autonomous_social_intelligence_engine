@@ -71,10 +71,7 @@ export class CallbackHandler {
 
     this.trendsController = new TrendsController(
       this.telegramApi,
-      this.testRunner,
-      this.cinemaCurator,
-      this.queues,
-      this.openclawUrl
+      this.cinemaCurator
     );
 
     this.systemController = new SystemController(
