@@ -7,6 +7,7 @@ import type { ApprovalController } from "../controllers/approval.controller.js";
 import type { CuratorController } from "../controllers/curator.controller.js";
 import type { TrendsController } from "../controllers/trends.controller.js";
 import type { SystemController } from "../controllers/system.controller.js";
+import type { TestoController } from "../controllers/testo.controller.js";
 import type { AccessControlService } from "../services/access-control.service.js";
 
 const logger = createLogger("telegram-bot:callback-router");
@@ -18,7 +19,8 @@ export class CallbackRouter {
     private curatorController: CuratorController,
     private trendsController: TrendsController,
     private systemController: SystemController,
-    private accessControl: AccessControlService
+    private accessControl: AccessControlService,
+    private testoController?: TestoController
   ) {}
 
   async route(cb: TelegramCallbackQuery): Promise<void> {
@@ -128,6 +130,32 @@ export class CallbackRouter {
           await this.curatorController.handleTestoRefresh(chatId, userId, param, cb.id);
           break;
 
+        // === TESTO MEDIA & CASES ISOLATED ACTIONS ===
+        case CallbackAction.TESTO_MEDIA_PICK:
+          if (!chatId) return;
+          if (this.testoController) {
+            await this.testoController.handleMediaPick(chatId, userId, param, cb.id);
+          }
+          break;
+        case CallbackAction.TESTO_MEDIA_REFRESH:
+          if (!chatId) return;
+          if (this.testoController) {
+            await this.testoController.handleMediaRefresh(chatId, userId, cb.id);
+          }
+          break;
+        case CallbackAction.TESTO_CASES_PICK:
+          if (!chatId) return;
+          if (this.testoController) {
+            await this.testoController.handleCasesPick(chatId, userId, param, cb.id);
+          }
+          break;
+        case CallbackAction.TESTO_CASES_REFRESH:
+          if (!chatId) return;
+          if (this.testoController) {
+            await this.testoController.handleCasesRefresh(chatId, userId, cb.id);
+          }
+          break;
+
         // === TESTO ACCESS MANAGEMENT ===
         case CallbackAction.REVOKE_TESTO:
           if (!chatId) return;
@@ -162,6 +190,20 @@ export class CallbackRouter {
       case "add_testo_prompt":
         await this.systemController.promptAddTestoAdmin(chatId, cb.from.id);
         break;
+      case "testo_media":
+        if (this.testoController) {
+          await this.testoController.showMediaMenu(chatId, cb.from.id);
+        } else {
+          await this.trendsController.showTestoTrends(chatId, cb.from.id);
+        }
+        break;
+      case "testo_cases":
+        if (this.testoController) {
+          await this.testoController.showCasesMenu(chatId, cb.from.id);
+        } else {
+          await this.trendsController.showTestoTrends(chatId, cb.from.id);
+        }
+        break;
       case "trends":
         await this.trendsController.showTrendsMenu(chatId, cb.from.id);
         break;
@@ -172,7 +214,11 @@ export class CallbackRouter {
         await this.curatorController.showTechMenu(chatId);
         break;
       case "daily_testo":
-        await this.curatorController.showTestoMenu(chatId);
+        if (this.testoController) {
+          await this.testoController.showTestoMenu(chatId);
+        } else {
+          await this.curatorController.showTestoMenu(chatId);
+        }
         break;
       case "main_menu":
         await this.systemController.showMainMenu(chatId, cb.from.id);

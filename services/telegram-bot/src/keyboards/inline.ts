@@ -46,6 +46,10 @@ export function buildMainMenuKeyboard(role: UserRole = UserRole.SUPERADMIN) {
           { text: "🏭 Testo (B2B / Промышленность)", callback_data: "cmd:daily_testo" },
         ],
         [
+          { text: "📰 Testo в мировых СМИ", callback_data: "cmd:testo_media" },
+          { text: "📑 Кейсы применения", callback_data: "cmd:testo_cases" },
+        ],
+        [
           { text: "📋 Статус прогонов Testo", callback_data: "cmd:status" },
           { text: "👤 Мой профиль", callback_data: "cmd:my_role" },
         ],
