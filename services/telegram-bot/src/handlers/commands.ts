@@ -58,7 +58,9 @@ export class CommandHandler {
 
     this.trendsController = new TrendsController(
       this.telegramApi,
-      this.cinemaCurator
+      this.cinemaCurator,
+      this.testoCurator,
+      this.accessControl
     );
 
     this.router = new CommandRouter(

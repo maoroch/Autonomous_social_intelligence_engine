@@ -157,14 +157,14 @@ export class AccessControlService {
 
     // Роль: Testo Admin
     if (role === UserRole.TESTO_ADMIN) {
-      const allowedTestoCommands = ["/daily_testo", "/curate_testo", "/post_testo"];
+      const allowedTestoCommands = ["/daily_testo", "/curate_testo", "/post_testo", "/testo_trends", "/trends"];
       if (allowedTestoCommands.includes(command)) {
         return { allowed: true };
       }
       return {
         allowed: false,
         reason:
-          "⛔ *Доступ ограничен*: Ваш аккаунт назначен администратором портала *Testo Казахстан*. Вы можете управлять только задачами Testo (`/daily_testo`, `/post_testo`).",
+          "⛔ *Доступ ограничен*: Ваш аккаунт назначен администратором портала *Testo Казахстан*. Вы можете управлять только задачами Testo (`/daily_testo`, `/testo_trends`, `/post_testo`).",
       };
     }
 
@@ -235,10 +235,15 @@ export class AccessControlService {
           ? { allowed: true }
           : { allowed: false, reason: "⛔ Портал Testo Казахстан доступен только Testo-администраторам." };
       }
-      if (param === "daily_cinema" || param === "trends") {
+      if (param === "daily_cinema") {
         return role === UserRole.CINEMA_ADMIN
           ? { allowed: true }
           : { allowed: false, reason: "⛔ Доступ к порталу KinoPeek ограничен вашей ролью." };
+      }
+      if (param === "trends") {
+        return role === UserRole.CINEMA_ADMIN || role === UserRole.TESTO_ADMIN
+          ? { allowed: true }
+          : { allowed: false, reason: "⛔ Доступ к трендам ограничен вашей ролью." };
       }
       if (param === "daily_tech") {
         return role === UserRole.TECH_ADMIN

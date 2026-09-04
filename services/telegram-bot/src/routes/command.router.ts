@@ -76,6 +76,10 @@ export class CommandRouter {
         await this.trendsController.showTrendsMenu(chatId, userId);
         break;
 
+      case "/testo_trends":
+        await this.trendsController.showTestoTrends(chatId, userId);
+        break;
+
       case "/daily_cinema":
       case "/curate_cinema":
         await this.curatorController.showCinemaMenu(chatId);

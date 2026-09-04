@@ -205,10 +205,11 @@ export class CuratorController {
     modeParam: string,
     callbackQueryId?: string
   ): Promise<void> {
+    const mode = modeParam === "trends" ? "trends" : modeParam === "gas" ? "gas" : "pharma";
     if (callbackQueryId) {
-      await this.telegramApi.answerCallbackQuery(callbackQueryId, "🏭 Загружаю каталог Testo...");
+      const msg = mode === "trends" ? "🌍 Загружаю тренды и кейсы СМИ Testo..." : "🏭 Загружаю каталог Testo...";
+      await this.telegramApi.answerCallbackQuery(callbackQueryId, msg);
     }
-    const mode = modeParam === "gas" ? "gas" : "pharma";
     const articles = await this.testoCurator.fetchCuratedTopics(mode);
     this.testoCurator.saveUserArticles(userId, articles);
     const { text, replyMarkup } = this.testoCurator.formatArticleListMessage(articles, mode);
@@ -229,7 +230,7 @@ export class CuratorController {
 
     if (!article) {
       logger.info({ userId, indexStr }, "Testo topic not in session cache, auto-refreshing topics");
-      const fallbackList = await this.testoCurator.fetchCuratedTopics("pharma");
+      const fallbackList = await this.testoCurator.fetchCuratedTopics("trends");
       this.testoCurator.saveUserArticles(userId, fallbackList);
       if (!isNaN(idx) && fallbackList[idx]) {
         article = fallbackList[idx];
@@ -263,10 +264,11 @@ export class CuratorController {
     modeParam: string,
     callbackQueryId?: string
   ): Promise<void> {
+    const mode = modeParam === "trends" ? "trends" : modeParam === "gas" ? "gas" : "pharma";
     if (callbackQueryId) {
-      await this.telegramApi.answerCallbackQuery(callbackQueryId, "🔄 Обновляю каталог Testo...");
+      const msg = mode === "trends" ? "🔄 Обновляю тренды СМИ Testo..." : "🔄 Обновляю каталог Testo...";
+      await this.telegramApi.answerCallbackQuery(callbackQueryId, msg);
     }
-    const mode = modeParam === "gas" ? "gas" : "pharma";
     const articles = await this.testoCurator.fetchCuratedTopics(mode);
     this.testoCurator.saveUserArticles(userId, articles);
     const { text, replyMarkup } = this.testoCurator.formatArticleListMessage(articles, mode);

@@ -51,6 +51,22 @@ describe("TestoCuratorService Unit Tests", () => {
     const pharma = service.getFallbackArticles("pharma");
     assert.ok(pharma.length >= 2);
     assert.ok(pharma[0] && pharma[0].batches && pharma[0].batches.length > 0);
+
+    const trends = service.getFallbackArticles("trends");
+    assert.ok(trends.length >= 4);
+    assert.ok(trends[0] && trends[0].batches && trends[0].batches.length > 0);
+    assert.ok(trends.some((a) => a.source.includes("Power Engineering")));
+    assert.ok(trends.some((a) => a.source.includes("Pharma Manufacturing")));
+    assert.ok(trends.some((a) => a.instrumentModel && a.instrumentModel.includes("Testo 350")));
+    assert.ok(trends.some((a) => a.instrumentModel && a.instrumentModel.includes("Testo 190")));
+  });
+
+  it("getCuratorMenuKeyboard should include foreign media trends button", () => {
+    const kb = service.getCuratorMenuKeyboard();
+    const allButtons = kb.inline_keyboard.flat();
+    assert.ok(allButtons.some((b) => b.callback_data === "testo_mode:trends"));
+    assert.ok(allButtons.some((b) => b.callback_data === "testo_mode:gas"));
+    assert.ok(allButtons.some((b) => b.callback_data === "testo_mode:pharma"));
   });
 
   it("saveUserArticles and getArticleByIndex should manage user session caching accurately", () => {
@@ -71,6 +87,12 @@ describe("TestoCuratorService Unit Tests", () => {
     assert.ok(text.includes("Testo Dynamic Catalog & Radar:"));
     assert.ok(text.includes("1️⃣"));
     assert.ok(replyMarkup.inline_keyboard.length > 0);
+
+    const trendsArticles = service.getFallbackArticles("trends");
+    const trendsResult = service.formatArticleListMessage(trendsArticles, "trends");
+    assert.ok(trendsResult.text.includes("Зарубежные СМИ"));
+    assert.ok(trendsResult.text.includes("🛠 *Прибор:*"));
+    assert.ok(trendsResult.replyMarkup.inline_keyboard.length > 0);
   });
 });
 

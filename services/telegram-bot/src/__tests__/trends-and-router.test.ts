@@ -155,4 +155,60 @@ describe("Trends and Router Architecture Unit Tests", () => {
     assert.ok(sentText.includes("ПОПУЛЯРНЫЕ ТЕМЫ И РАЗБОРЫ ЛОРА"), "Should send crawler parsed output");
     assert.strictEqual(sentMarkup.inline_keyboard[0][0].callback_data, "cinema_pick:0");
   });
+
+  test("CommandHandler should route /trends to Testo Foreign Media Trends for Testo Admin", async () => {
+    let sentText = "";
+    let sentMarkup: any = null;
+
+    const mockTestoCurator: any = {
+      fetchCuratedTopics: async (mode: string) => [
+        {
+          title: "Power Engineering: Оптимизация сжигания топлива с Testo 350",
+          url: "https://www.power-eng.com/emissions/testo-350",
+          summary: "Практический кейс ТЭЦ: настройка горелок котла...",
+          source: "Power Engineering Magazine",
+          category: mode,
+          instrumentModel: "Testo 350",
+        },
+      ],
+      saveUserArticles: () => {},
+      formatArticleListMessage: (articles: any[]) => ({
+        text: `🏭 *Testo Dynamic Catalog & Radar: 🌍 Зарубежные СМИ*\n\n1️⃣ ${articles[0].title}\n🛠 *Прибор:* ${articles[0].instrumentModel}`,
+        replyMarkup: {
+          inline_keyboard: [[{ text: "1️⃣ Выбрать", callback_data: "testo_pick:0" }]],
+        },
+      }),
+    };
+
+    const mockAccessControl: any = {
+      canExecuteCommand: async () => ({ allowed: true }),
+      getUserRole: async () => "testo_admin",
+    };
+
+    const handler = new CommandHandler(
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      mockTestoCurator,
+      async (_chatId, text, markup) => {
+        sentText = text;
+        sentMarkup = markup;
+      },
+      mockAccessControl
+    );
+
+    await handler.handleCommand({
+      message_id: 40,
+      from: { id: 777999 },
+      chat: { id: 888 },
+      text: "/trends",
+    });
+
+    assert.ok(sentText.includes("Testo Dynamic Catalog & Radar"), "Should route Testo Admin to Testo Radar");
+    assert.ok(sentText.includes("Power Engineering"), "Should display foreign media publication");
+    assert.ok(sentText.includes("Testo 350"), "Should display Testo instrument");
+    assert.strictEqual(sentMarkup.inline_keyboard[0][0].callback_data, "testo_pick:0");
+  });
 });

@@ -51,8 +51,8 @@ describe("Telegram Bot Access Control and Testo Admin Role Unit Tests", () => {
     assert.strictEqual(cinemaCheck.allowed, false);
     assert.match(cinemaCheck.reason || "", /Testo/);
 
-    const trendsCheck = await accessControl.canExecuteCommand(TESTO_ADMIN_ID, "/trends");
-    assert.strictEqual(trendsCheck.allowed, false);
+    assert.strictEqual((await accessControl.canExecuteCommand(TESTO_ADMIN_ID, "/testo_trends")).allowed, true);
+    assert.strictEqual((await accessControl.canExecuteCommand(TESTO_ADMIN_ID, "/trends")).allowed, true);
 
     const techCheck = await accessControl.canExecuteCommand(TESTO_ADMIN_ID, "/daily_tech");
     assert.strictEqual(techCheck.allowed, false);
