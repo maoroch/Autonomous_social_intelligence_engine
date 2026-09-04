@@ -11,6 +11,8 @@ import { TrendsController } from "../controllers/trends.controller.js";
 import { CommandRouter } from "../routes/command.router.js";
 import type { TelegramMessage } from "../types/telegram.types.js";
 
+import { AccessControlService } from "../services/access-control.service.js";
+
 const logger = createLogger("telegram-bot:commands");
 
 export class CommandHandler {
@@ -19,6 +21,7 @@ export class CommandHandler {
   private systemController: SystemController;
   private curatorController: CuratorController;
   private trendsController: TrendsController;
+  private accessControl: AccessControlService;
 
   constructor(
     private queues: BotQueues,
@@ -27,8 +30,10 @@ export class CommandHandler {
     private cinemaCurator: CinemaCuratorService,
     private techCurator: TechCuratorService,
     private testoCurator: TestoCuratorService,
-    private sendMessage: (chatId: number | string, text: string, replyMarkup?: any) => Promise<any>
+    private sendMessage: (chatId: number | string, text: string, replyMarkup?: any) => Promise<any>,
+    accessControl?: AccessControlService
   ) {
+    this.accessControl = accessControl || new AccessControlService();
     this.telegramApi = new TelegramApiService("");
     if (sendMessage) {
       this.telegramApi.sendMessage = async (chatId, text, markup) => sendMessage(chatId, text, markup);
@@ -38,7 +43,8 @@ export class CommandHandler {
       this.telegramApi,
       this.logViewer,
       this.testRunner,
-      this.queues
+      this.queues,
+      this.accessControl
     );
 
     this.curatorController = new CuratorController(
@@ -59,7 +65,8 @@ export class CommandHandler {
       this.telegramApi,
       this.systemController,
       this.curatorController,
-      this.trendsController
+      this.trendsController,
+      this.accessControl
     );
   }
 

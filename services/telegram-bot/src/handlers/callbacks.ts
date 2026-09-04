@@ -14,6 +14,8 @@ import { SystemController } from "../controllers/system.controller.js";
 import { CallbackRouter } from "../routes/callback.router.js";
 import type { TelegramCallbackQuery } from "../types/telegram.types.js";
 
+import { AccessControlService } from "../services/access-control.service.js";
+
 const logger = createLogger("telegram-bot:callbacks");
 
 export class CallbackHandler {
@@ -23,6 +25,7 @@ export class CallbackHandler {
   private curatorController: CuratorController;
   private trendsController: TrendsController;
   private systemController: SystemController;
+  private accessControl: AccessControlService;
 
   constructor(
     private queues: BotQueues,
@@ -37,8 +40,10 @@ export class CallbackHandler {
     private openclawUrl: string,
     private sendMessage: (chatId: number | string, text: string, replyMarkup?: any) => Promise<any>,
     private editMessageCaption?: (chatId: number | string, messageId: number, caption: string, replyMarkup?: any) => Promise<void>,
-    private editMessageReplyMarkup?: (chatId: number | string, messageId: number, replyMarkup?: any) => Promise<void>
+    private editMessageReplyMarkup?: (chatId: number | string, messageId: number, replyMarkup?: any) => Promise<void>,
+    accessControl?: AccessControlService
   ) {
+    this.accessControl = accessControl || new AccessControlService();
     this.telegramApi = new TelegramApiService(botToken);
 
     // Если передан кастомный sendMessage/editMessage (например, в мок-тестах), подменяем методы API клиента
@@ -57,7 +62,8 @@ export class CallbackHandler {
       this.queues,
       this.textEditor,
       this.photoHandler,
-      this.logViewer
+      this.logViewer,
+      this.accessControl
     );
 
     this.curatorController = new CuratorController(
@@ -78,7 +84,8 @@ export class CallbackHandler {
       this.telegramApi,
       this.logViewer,
       this.testRunner,
-      this.queues
+      this.queues,
+      this.accessControl
     );
 
     this.router = new CallbackRouter(
@@ -86,7 +93,8 @@ export class CallbackHandler {
       this.approvalController,
       this.curatorController,
       this.trendsController,
-      this.systemController
+      this.systemController,
+      this.accessControl
     );
   }
 

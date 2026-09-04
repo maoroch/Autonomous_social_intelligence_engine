@@ -21,6 +21,16 @@ export enum CallbackAction {
   TREND_PICK = "trend_pick",
 }
 
+export enum UserRole {
+  SUPERADMIN = "superadmin",
+  TESTO_ADMIN = "testo_admin",
+  TECH_ADMIN = "tech_admin",
+  CINEMA_ADMIN = "cinema_admin",
+  GUEST = "guest",
+}
+
+export type PortalTenant = "testo" | "software-development-default" | "cinema-media";
+
 export type MenuCommand =
   | "daily_cinema"
   | "daily_tech"
@@ -29,10 +39,12 @@ export type MenuCommand =
   | "main_menu"
   | "status"
   | "logs"
-  | "queues";
+  | "queues"
+  | "my_role";
 
 export interface ParsedCallback {
   action: CallbackAction;
   param: string;
   raw: string;
 }
+

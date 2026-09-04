@@ -5,6 +5,7 @@ import type { TelegramApiService } from "../services/telegram-api.service.js";
 import type { SystemController } from "../controllers/system.controller.js";
 import type { CuratorController } from "../controllers/curator.controller.js";
 import type { TrendsController } from "../controllers/trends.controller.js";
+import type { AccessControlService } from "../services/access-control.service.js";
 
 const logger = createLogger("telegram-bot:command-router");
 
@@ -13,7 +14,8 @@ export class CommandRouter {
     private telegramApi: TelegramApiService,
     private systemController: SystemController,
     private curatorController: CuratorController,
-    private trendsController: TrendsController
+    private trendsController: TrendsController,
+    private accessControl: AccessControlService
   ) {}
 
   async route(msg: TelegramMessage): Promise<void> {
@@ -23,17 +25,42 @@ export class CommandRouter {
 
     const { command, args } = parsed;
     const chatId = msg.chat.id;
+    const userId = msg.from?.id || 0;
 
-    logger.info({ command, args, chatId, userId: msg.from?.id }, "Routing bot command");
+    logger.info({ command, args, chatId, userId }, "Routing bot command");
+
+    // Проверка прав доступа через RBAC
+    const accessCheck = await this.accessControl.canExecuteCommand(userId, command);
+    if (!accessCheck.allowed) {
+      logger.warn({ userId, command, reason: accessCheck.reason }, "Command execution blocked by RBAC");
+      await this.telegramApi.sendMessage(
+        chatId,
+        accessCheck.reason || "⛔ У вашего аккаунта нет прав на выполнение данной команды."
+      );
+      return;
+    }
 
     switch (command) {
       case "/start":
       case "/help":
-        await this.systemController.showWelcome(chatId);
+        await this.systemController.showWelcome(chatId, userId);
+        break;
+
+      case "/my_role":
+      case "/profile":
+        await this.systemController.showMyRole(chatId, userId, msg.from?.username);
+        break;
+
+      case "/grant_role":
+        await this.systemController.handleGrantRole(chatId, userId, args);
+        break;
+
+      case "/roles":
+        await this.systemController.handleListRoles(chatId, userId);
         break;
 
       case "/trends":
-        await this.trendsController.showTrendsMenu(chatId, msg.from?.id || 0);
+        await this.trendsController.showTrendsMenu(chatId, userId);
         break;
 
       case "/daily_cinema":
@@ -90,3 +117,4 @@ export class CommandRouter {
     }
   }
 }
+

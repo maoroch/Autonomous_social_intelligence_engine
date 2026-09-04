@@ -1,3 +1,5 @@
+import { UserRole } from "../types/actions.types.js";
+
 /**
  * Фирменные inline-клавиатуры для модерации и управления пайплайном KinoPeek.
  */
@@ -36,7 +38,63 @@ export function buildApprovalKeyboard(
   };
 }
 
-export function buildMainMenuKeyboard() {
+export function buildMainMenuKeyboard(role: UserRole = UserRole.SUPERADMIN) {
+  if (role === UserRole.TESTO_ADMIN) {
+    return {
+      inline_keyboard: [
+        [
+          { text: "🏭 Testo (B2B / Промышленность)", callback_data: "cmd:daily_testo" },
+        ],
+        [
+          { text: "📋 Статус прогонов Testo", callback_data: "cmd:status" },
+          { text: "👤 Мой профиль", callback_data: "cmd:my_role" },
+        ],
+      ],
+    };
+  }
+
+  if (role === UserRole.TECH_ADMIN) {
+    return {
+      inline_keyboard: [
+        [
+          { text: "💻 IT & Tech (Dev / GitHub)", callback_data: "cmd:daily_tech" },
+        ],
+        [
+          { text: "📋 Статус прогонов Tech", callback_data: "cmd:status" },
+          { text: "👤 Мой профиль", callback_data: "cmd:my_role" },
+        ],
+      ],
+    };
+  }
+
+  if (role === UserRole.CINEMA_ADMIN) {
+    return {
+      inline_keyboard: [
+        [
+          { text: "🎬 Кино-медиа (KinoPeek)", callback_data: "cmd:daily_cinema" },
+        ],
+        [
+          { text: "🔥 Тренды кино", callback_data: "cmd:trends" },
+          { text: "📋 Статус прогонов", callback_data: "cmd:status" },
+        ],
+        [
+          { text: "👤 Мой профиль", callback_data: "cmd:my_role" },
+        ],
+      ],
+    };
+  }
+
+  if (role === UserRole.GUEST) {
+    return {
+      inline_keyboard: [
+        [
+          { text: "👤 Проверить роль / Запросить доступ", callback_data: "cmd:my_role" },
+        ],
+      ],
+    };
+  }
+
+  // SUPERADMIN: Все порталы и инструменты
   return {
     inline_keyboard: [
       [
@@ -54,6 +112,10 @@ export function buildMainMenuKeyboard() {
         { text: "📜 Журнал логов", callback_data: "cmd:logs" },
         { text: "📊 Очереди задач", callback_data: "cmd:queues" },
       ],
+      [
+        { text: "👤 Управление ролями", callback_data: "cmd:my_role" },
+      ],
     ],
   };
 }
+

@@ -7,6 +7,7 @@ import type { TelegramApiService } from "../services/telegram-api.service.js";
 import type { TextEditorHandler } from "../handlers/text-editor.js";
 import type { PhotoHandler } from "../handlers/photo-handler.js";
 import type { LogViewerService } from "../services/log-viewer.js";
+import type { AccessControlService } from "../services/access-control.service.js";
 import type { BotQueues } from "../types/bot.types.js";
 import type { TelegramCallbackQuery } from "../types/telegram.types.js";
 
@@ -18,10 +19,32 @@ export class ApprovalController {
     private queues: BotQueues,
     private textEditor: TextEditorHandler,
     private photoHandler: PhotoHandler,
-    private logViewer: LogViewerService
+    private logViewer: LogViewerService,
+    private accessControl?: AccessControlService
   ) {}
 
+  private async checkTenantAccess(userId: number, runId: string, callbackId?: string): Promise<boolean> {
+    if (!this.accessControl) return true;
+    const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
+    const run = await runsCol.findOne({ runId });
+    if (run?.tenantId) {
+      const allowed = await this.accessControl.canAccessTenant(userId, run.tenantId);
+      if (!allowed) {
+        if (callbackId) {
+          await this.telegramApi.answerCallbackQuery(
+            callbackId,
+            `⛔ Доступ ограничен: ваш профиль не имеет прав на модерацию портала "${run.tenantId}".`,
+            true
+          );
+        }
+        return false;
+      }
+    }
+    return true;
+  }
+
   async handleApproveRun(cb: TelegramCallbackQuery, runId: string): Promise<void> {
+    if (!await this.checkTenantAccess(cb.from.id, runId, cb.id)) return;
     await this.telegramApi.answerCallbackQuery(cb.id, "🚀 Пост утвержден! Отправляю на публикацию...");
 
     const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
@@ -63,6 +86,7 @@ export class ApprovalController {
   }
 
   async handleRejectRun(cb: TelegramCallbackQuery, runId: string): Promise<void> {
+    if (!await this.checkTenantAccess(cb.from.id, runId, cb.id)) return;
     await this.telegramApi.answerCallbackQuery(cb.id, "❌ Прогон отклонен");
 
     const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
@@ -224,6 +248,7 @@ export class ApprovalController {
   }
 
   async handleRegenerateWriting(cb: TelegramCallbackQuery, runId: string): Promise<void> {
+    if (!await this.checkTenantAccess(cb.from.id, runId, cb.id)) return;
     await this.telegramApi.answerCallbackQuery(cb.id, "🔄 Запускаю регенерацию текста...");
 
     const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);
@@ -253,6 +278,7 @@ export class ApprovalController {
   }
 
   async handleRegenerateDesign(cb: TelegramCallbackQuery, runId: string): Promise<void> {
+    if (!await this.checkTenantAccess(cb.from.id, runId, cb.id)) return;
     await this.telegramApi.answerCallbackQuery(cb.id, "🎨 Запускаю редизайн карусели...");
 
     const runsCol = getCollection<PipelineRunDoc>(Collections.PIPELINE_RUNS);

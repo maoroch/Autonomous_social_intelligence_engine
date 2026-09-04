@@ -21,6 +21,7 @@ import { LogViewerService } from "./services/log-viewer.js";
 import { CinemaCuratorService } from "./services/cinema-curator.js";
 import { TechCuratorService } from "./services/tech-curator.js";
 import { TestoCuratorService } from "./services/testo-curator.js";
+import { AccessControlService } from "./services/access-control.service.js";
 
 const logger = createLogger("telegram-bot");
 
@@ -44,6 +45,7 @@ export class TelegramBotApp {
   private cinemaCurator!: CinemaCuratorService;
   private techCurator!: TechCuratorService;
   private testoCurator!: TestoCuratorService;
+  private accessControl!: AccessControlService;
   private queues!: BotQueues;
   private activeApprovalNotifs = new Set<string>();
 
@@ -64,6 +66,7 @@ export class TelegramBotApp {
       [PipelineStage.PUBLISHING]: createQueue(QueueName.PUBLISHING, REDIS_URL),
     };
 
+    this.accessControl = new AccessControlService();
     this.logViewer = new LogViewerService();
     this.cinemaCurator = new CinemaCuratorService();
     this.techCurator = new TechCuratorService();
@@ -79,7 +82,8 @@ export class TelegramBotApp {
       this.cinemaCurator,
       this.techCurator,
       this.testoCurator,
-      this.sendMessage.bind(this)
+      this.sendMessage.bind(this),
+      this.accessControl
     );
 
     this.callbackHandler = new CallbackHandler(
@@ -95,7 +99,8 @@ export class TelegramBotApp {
       OPENCLAW_URL,
       this.sendMessage.bind(this),
       this.editMessageCaption.bind(this),
-      this.editMessageReplyMarkup.bind(this)
+      this.editMessageReplyMarkup.bind(this),
+      this.accessControl
     );
 
     // Подписка на очередь уведомлений для согласования контента

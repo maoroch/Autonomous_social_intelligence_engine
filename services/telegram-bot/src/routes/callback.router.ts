@@ -7,6 +7,7 @@ import type { ApprovalController } from "../controllers/approval.controller.js";
 import type { CuratorController } from "../controllers/curator.controller.js";
 import type { TrendsController } from "../controllers/trends.controller.js";
 import type { SystemController } from "../controllers/system.controller.js";
+import type { AccessControlService } from "../services/access-control.service.js";
 
 const logger = createLogger("telegram-bot:callback-router");
 
@@ -16,7 +17,8 @@ export class CallbackRouter {
     private approvalController: ApprovalController,
     private curatorController: CuratorController,
     private trendsController: TrendsController,
-    private systemController: SystemController
+    private systemController: SystemController,
+    private accessControl: AccessControlService
   ) {}
 
   async route(cb: TelegramCallbackQuery): Promise<void> {
@@ -36,6 +38,18 @@ export class CallbackRouter {
     const userId = cb.from.id;
 
     logger.info({ action, param, userId, chatId }, "Routing callback query");
+
+    // Проверка прав доступа через RBAC
+    const accessCheck = await this.accessControl.canExecuteAction(userId, action, param);
+    if (!accessCheck.allowed) {
+      logger.warn({ userId, action, param, reason: accessCheck.reason }, "Callback blocked by RBAC");
+      await this.telegramApi.answerCallbackQuery(
+        cb.id,
+        accessCheck.reason || "⛔ Действие запрещено вашей ролью.",
+        true
+      );
+      return;
+    }
 
     try {
       switch (action) {
@@ -149,7 +163,10 @@ export class CallbackRouter {
         await this.curatorController.showTestoMenu(chatId);
         break;
       case "main_menu":
-        await this.systemController.showMainMenu(chatId);
+        await this.systemController.showMainMenu(chatId, cb.from.id);
+        break;
+      case "my_role":
+        await this.systemController.showMyRole(chatId, cb.from.id, cb.from.username);
         break;
       case "status":
         await this.systemController.showStatus(chatId);

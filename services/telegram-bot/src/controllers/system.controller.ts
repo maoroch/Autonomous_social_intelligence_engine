@@ -1,7 +1,9 @@
 import { buildMainMenuKeyboard } from "../keyboards/inline.js";
+import { UserRole } from "../types/actions.types.js";
 import type { TelegramApiService } from "../services/telegram-api.service.js";
 import type { LogViewerService } from "../services/log-viewer.js";
 import type { TestRunnerService } from "../services/test-runner.js";
+import type { AccessControlService } from "../services/access-control.service.js";
 import type { BotQueues } from "../types/bot.types.js";
 
 export class SystemController {
@@ -9,38 +11,196 @@ export class SystemController {
     private telegramApi: TelegramApiService,
     private logViewer: LogViewerService,
     private testRunner: TestRunnerService,
-    private queues: BotQueues
+    private queues: BotQueues,
+    private accessControl: AccessControlService
   ) {}
 
-  async showWelcome(chatId: number | string): Promise<void> {
-    const welcome =
-      `🤖 *Добро пожаловать в Multi-Portal AI Content Hub!* 🚀\n\n` +
-      `Управляйте генерацией контента, интерактивным отбором тем и модерацией для всех 3 порталов прямо из Telegram.\n\n` +
-      `📌 *Команды кураторов тем:*\n` +
-      `• \`/daily_cinema\` — Радар тем кино и Marvel (Популярные vs Свежие)\n` +
-      `• \`/daily_tech\` — Радар IT & Tech (Архитектура, Open-Source репозитории)\n` +
-      `• \`/daily_testo\` — Радар Testo (Газоанализаторы ТЭЦ, Фармацевтика GxP)\n\n` +
-      `✍️ *Создание постов по своей теме:*\n` +
-      `• \`/post_cinema <тема>\` — Создать пост по теме кино\n` +
-      `• \`/post_tech <тема>\` — Создать пост по IT-теме\n` +
-      `• \`/post_testo <тема>\` — Создать пост по оборудованию Testo\n\n` +
-      `⚙️ *Системные команды:*\n` +
-      `• \`/trends\` — Горячие тренды кино\n` +
-      `• \`/status\` — Статус последних прогонов\n` +
-      `• \`/logs\` — Журнал последних прогонов и детальные логи\n` +
-      `• \`/logs queues\` — Состояние очередей задач BullMQ\n` +
-      `• \`/test_pipeline\` — Тестовый запуск генерации карточки`;
+  async showWelcome(chatId: number | string, userId: number = 0): Promise<void> {
+    const role = await this.accessControl.getUserRole(userId);
 
-    await this.telegramApi.sendMessage(chatId, welcome, buildMainMenuKeyboard());
+    if (role === UserRole.TESTO_ADMIN) {
+      const testoWelcome =
+        `🏭 *Добро пожаловать в Testo Kazakhstan B2B Portal!* 🇰🇿\n\n` +
+        `Вы авторизованы как *Testo Admin*. Вам доступно управление публикациями по измерительному оборудованию Testo (газоанализаторы ТЭЦ, термолокаторы, фармацевтика GxP/Saveris).\n\n` +
+        `📌 *Команды Testo Казахстан:*\n` +
+        `• \`/daily_testo\` — Радар приборов (Фармацевтика vs Газоанализ)\n` +
+        `• \`/post_testo <тема>\` — Создать публикацию по конкретному оборудованию\n` +
+        `• \`/my_role\` — Информация о вашей роли и правах\n` +
+        `• \`/status\` — Статус последних прогонов карточек\n\n` +
+        `🔒 *Изоляция*: Доступ к развлекательному и IT контенту отключен для вашего профиля.`;
+
+      await this.telegramApi.sendMessage(chatId, testoWelcome, buildMainMenuKeyboard(role));
+      return;
+    }
+
+    if (role === UserRole.TECH_ADMIN) {
+      const techWelcome =
+        `💻 *Добро пожаловать в IT & Tech Content Hub!* 🚀\n\n` +
+        `Вы авторизованы как *Tech Admin*. Доступ к созданию постов по архитектуре и трендам разработки.\n\n` +
+        `📌 *Команды:*\n` +
+        `• \`/daily_tech\` — Радар IT & Tech (Архитектура, Open-Source)\n` +
+        `• \`/post_tech <тема>\` — Создать пост по IT-теме\n` +
+        `• \`/my_role\` — Ваша роль\n` +
+        `• \`/status\` — Статус прогонов`;
+
+      await this.telegramApi.sendMessage(chatId, techWelcome, buildMainMenuKeyboard(role));
+      return;
+    }
+
+    if (role === UserRole.CINEMA_ADMIN) {
+      const cinemaWelcome =
+        `🎬 *Добро пожаловать в KinoPeek Media Hub!* 🍿\n\n` +
+        `Вы авторизованы как *Cinema Admin*. Доступ к аналитике кино, лора Marvel и кассовых сборов.\n\n` +
+        `📌 *Команды:*\n` +
+        `• \`/daily_cinema\` — Радар тем кино\n` +
+        `• \`/trends\` — Горячие тренды СМИ (Den of Geek)\n` +
+        `• \`/post_cinema <тема>\` — Пост по теме кино\n` +
+        `• \`/my_role\` — Ваша роль\n` +
+        `• \`/status\` — Статус прогонов`;
+
+      await this.telegramApi.sendMessage(chatId, cinemaWelcome, buildMainMenuKeyboard(role));
+      return;
+    }
+
+    if (role === UserRole.GUEST) {
+      const guestWelcome =
+        `🔒 *Multi-Portal AI Content Engine*\n\n` +
+        `Ваш Telegram ID: \`${userId}\`\n` +
+        `Статус: *Гость (без прав доступа)*\n\n` +
+        `Чтобы получить доступ к управлению публикациями (например, стать *Testo Admin*), обратитесь к главному администратору с вашим Telegram ID.`;
+
+      await this.telegramApi.sendMessage(chatId, guestWelcome, buildMainMenuKeyboard(role));
+      return;
+    }
+
+    // SUPERADMIN
+    const welcome =
+      `🤖 *Добро пожаловать в Multi-Portal AI Content Hub!* 👑\n\n` +
+      `Вы авторизованы как *Super Administrator*. Полный доступ ко всем порталам и администрированию.\n\n` +
+      `📌 *Команды кураторов тем:*\n` +
+      `• \`/daily_cinema\` — Радар тем кино и Marvel\n` +
+      `• \`/daily_tech\` — Радар IT & Tech (Архитектура, Open-Source)\n` +
+      `• \`/daily_testo\` — Радар Testo (Газоанализаторы ТЭЦ, Фармацевтика GxP)\n\n` +
+      `✍️ *Создание постов:*\n` +
+      `• \`/post_cinema <тема>\`\n` +
+      `• \`/post_tech <тема>\`\n` +
+      `• \`/post_testo <тема>\`\n\n` +
+      `⚙️ *Системные команды и роли:*\n` +
+      `• \`/my_role\` — Текущая роль\n` +
+      `• \`/roles\` — Список назначенных ролей\n` +
+      `• \`/grant_role <userId> <role>\` — Назначить роль (superadmin, testo_admin, tech_admin, cinema_admin)\n` +
+      `• \`/trends\` — Тренды кино\n` +
+      `• \`/status\` — Статус прогонов\n` +
+      `• \`/logs\` — Журнал логов`;
+
+    await this.telegramApi.sendMessage(chatId, welcome, buildMainMenuKeyboard(role));
   }
 
-  async showMainMenu(chatId: number | string): Promise<void> {
+  async showMainMenu(chatId: number | string, userId: number = 0): Promise<void> {
+    const role = await this.accessControl.getUserRole(userId);
+    const title =
+      role === UserRole.TESTO_ADMIN
+        ? `🏭 *Меню Testo Казахстан B2B:*`
+        : `🤖 *Главное меню Multi-Portal AI Hub:*`;
+    await this.telegramApi.sendMessage(chatId, title, buildMainMenuKeyboard(role));
+  }
+
+  async showMyRole(chatId: number | string, userId: number, username?: string): Promise<void> {
+    const role = await this.accessControl.getUserRole(userId);
+    const roleTitle = this.accessControl.formatRoleTitle(role);
+    const allowed = this.accessControl.getAllowedPortals(role);
+
+    const portalsList =
+      allowed.length > 0
+        ? allowed.map((p) => `• \`${p}\``).join("\n")
+        : "_Нет разрешенных порталов_";
+
+    const text =
+      `👤 *Информация о профиле Telegram:*\n\n` +
+      `• *ID пользователя:* \`${userId}\`\n` +
+      `• *Username:* ${username ? `@${username}` : "_не указан_"}\n` +
+      `• *Текущая роль:* ${roleTitle}\n\n` +
+      `🏢 *Разрешенные порталы:*\n${portalsList}`;
+
+    await this.telegramApi.sendMessage(chatId, text);
+  }
+
+  async handleGrantRole(
+    chatId: number | string,
+    requesterId: number,
+    args: string
+  ): Promise<void> {
+    const requesterRole = await this.accessControl.getUserRole(requesterId);
+    if (requesterRole !== UserRole.SUPERADMIN) {
+      await this.telegramApi.sendMessage(
+        chatId,
+        "⛔ Назначать роли может только главный администратор (Superadmin)."
+      );
+      return;
+    }
+
+    const parts = args.trim().split(/\s+/);
+    if (parts.length < 2) {
+      await this.telegramApi.sendMessage(
+        chatId,
+        "⚠️ *Формат команды:*\n`/grant_role <userId> <role>`\n\nДоступные роли:\n• `testo_admin`\n• `tech_admin`\n• `cinema_admin`\n• `superadmin`\n• `guest`\n\nПример:\n`/grant_role 123456789 testo_admin`"
+      );
+      return;
+    }
+
+    const targetUserId = Number(parts[0]);
+    const targetRole = parts[1]?.toLowerCase() as UserRole;
+
+    if (isNaN(targetUserId) || targetUserId <= 0) {
+      await this.telegramApi.sendMessage(chatId, "❌ Некорректный Telegram User ID.");
+      return;
+    }
+
+    const validRoles = Object.values(UserRole);
+    if (!validRoles.includes(targetRole)) {
+      await this.telegramApi.sendMessage(
+        chatId,
+        `❌ Неизвестная роль \`${targetRole}\`. Допустимые: ${validRoles.join(", ")}`
+      );
+      return;
+    }
+
+    await this.accessControl.grantRole(targetUserId, targetRole, requesterId);
     await this.telegramApi.sendMessage(
       chatId,
-      `🤖 *Главное меню Multi-Portal AI Hub:*`,
-      buildMainMenuKeyboard()
+      `✅ *Роль успешно обновлена!*\nПользователю \`${targetUserId}\` назначена роль: ${this.accessControl.formatRoleTitle(targetRole)}`
     );
   }
+
+  async handleListRoles(chatId: number | string, requesterId: number): Promise<void> {
+    const requesterRole = await this.accessControl.getUserRole(requesterId);
+    if (requesterRole !== UserRole.SUPERADMIN) {
+      await this.telegramApi.sendMessage(
+        chatId,
+        "⛔ Просматривать список всех ролей может только Superadmin."
+      );
+      return;
+    }
+
+    const rolesList = await this.accessControl.listRoles();
+    if (rolesList.length === 0) {
+      await this.telegramApi.sendMessage(
+        chatId,
+        "📋 В базе MongoDB нет явно сохраненных ролей (используются базовые роли из переменных окружения)."
+      );
+      return;
+    }
+
+    const lines = ["📋 *Назначенные роли пользователей в MongoDB:*\n"];
+    rolesList.forEach((r, idx) => {
+      lines.push(
+        `${idx + 1}. \`${r.userId}\` (${r.username ? "@" + r.username : "ID"}) — *${r.role}* (Обновлен: ${new Date(r.updatedAt).toLocaleDateString()})`
+      );
+    });
+
+    await this.telegramApi.sendMessage(chatId, lines.join("\n"));
+  }
+
 
   async showStatus(chatId: number | string): Promise<void> {
     const summary = await this.logViewer.getRecentRunsSummary(5);
