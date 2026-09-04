@@ -53,11 +53,26 @@ export class CuratorController {
     if (callbackQueryId) {
       await this.telegramApi.answerCallbackQuery(callbackQueryId, "🚀 Запуск пайплайна...");
     }
-    const article = this.cinemaCurator.getArticleByIndex(userId, Number(indexStr));
+    const idx = Number(indexStr);
+    let article = !isNaN(idx) ? this.cinemaCurator.getArticleByIndex(userId, idx) : undefined;
+
+    // Автоматическое восстановление при перезапуске бота или устаревшем кэше
+    if (!article) {
+      logger.info({ userId, indexStr }, "Cinema topic not in session cache, auto-refreshing topics");
+      const fallbackList = await this.cinemaCurator.fetchCuratedTopics("popular");
+      this.cinemaCurator.saveUserArticles(userId, fallbackList);
+      if (!isNaN(idx) && fallbackList[idx]) {
+        article = fallbackList[idx];
+      } else {
+        const normalized = indexStr.toLowerCase().replace(/_/g, " ");
+        article = fallbackList.find((a) => a.title.toLowerCase().includes(normalized)) || fallbackList[0];
+      }
+    }
+
     if (!article) {
       await this.telegramApi.sendMessage(
         chatId,
-        "❌ Тема не найдена в кэше сессии. Пожалуйста, обновите подборку."
+        "❌ Не удалось загрузить тему. Пожалуйста, нажмите /trends для обновления подборки."
       );
       return;
     }
@@ -124,11 +139,25 @@ export class CuratorController {
     if (callbackQueryId) {
       await this.telegramApi.answerCallbackQuery(callbackQueryId, "🚀 Запуск пайплайна...");
     }
-    const article = this.techCurator.getArticleByIndex(userId, Number(indexStr));
+    const idx = Number(indexStr);
+    let article = !isNaN(idx) ? this.techCurator.getArticleByIndex(userId, idx) : undefined;
+
+    if (!article) {
+      logger.info({ userId, indexStr }, "Tech topic not in session cache, auto-refreshing topics");
+      const fallbackList = await this.techCurator.fetchCuratedTopics("popular");
+      this.techCurator.saveUserArticles(userId, fallbackList);
+      if (!isNaN(idx) && fallbackList[idx]) {
+        article = fallbackList[idx];
+      } else {
+        const normalized = indexStr.toLowerCase().replace(/_/g, " ");
+        article = fallbackList.find((a) => a.title.toLowerCase().includes(normalized)) || fallbackList[0];
+      }
+    }
+
     if (!article) {
       await this.telegramApi.sendMessage(
         chatId,
-        "❌ Тема не найдена в кэше. Пожалуйста, обновите подборку."
+        "❌ Не удалось загрузить тему. Пожалуйста, нажмите /daily_tech для обновления."
       );
       return;
     }
@@ -195,11 +224,25 @@ export class CuratorController {
     if (callbackQueryId) {
       await this.telegramApi.answerCallbackQuery(callbackQueryId, "🚀 Запуск пайплайна Testo...");
     }
-    const article = this.testoCurator.getArticleByIndex(userId, Number(indexStr));
+    const idx = Number(indexStr);
+    let article = !isNaN(idx) ? this.testoCurator.getArticleByIndex(userId, idx) : undefined;
+
+    if (!article) {
+      logger.info({ userId, indexStr }, "Testo topic not in session cache, auto-refreshing topics");
+      const fallbackList = await this.testoCurator.fetchCuratedTopics("pharma");
+      this.testoCurator.saveUserArticles(userId, fallbackList);
+      if (!isNaN(idx) && fallbackList[idx]) {
+        article = fallbackList[idx];
+      } else {
+        const normalized = indexStr.toLowerCase().replace(/_/g, " ");
+        article = fallbackList.find((a) => a.title.toLowerCase().includes(normalized)) || fallbackList[0];
+      }
+    }
+
     if (!article) {
       await this.telegramApi.sendMessage(
         chatId,
-        "❌ Оборудование не найдено в кэше. Пожалуйста, обновите подборку."
+        "❌ Не удалось загрузить тему. Пожалуйста, нажмите /daily_testo для обновления."
       );
       return;
     }
