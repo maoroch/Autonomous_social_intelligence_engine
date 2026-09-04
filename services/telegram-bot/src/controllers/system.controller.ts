@@ -201,6 +201,138 @@ export class SystemController {
     await this.telegramApi.sendMessage(chatId, lines.join("\n"));
   }
 
+  /**
+   * Панель динамического управления доступом к Testo Казахстан
+   */
+  async showTestoAccessPanel(chatId: number | string, requesterId: number): Promise<void> {
+    const requesterRole = await this.accessControl.getUserRole(requesterId);
+    if (requesterRole !== UserRole.SUPERADMIN) {
+      await this.telegramApi.sendMessage(
+        chatId,
+        "⛔ Управлять доступом к порталу Testo может только главный администратор (Superadmin)."
+      );
+      return;
+    }
+
+    const admins = await this.accessControl.getTestoAdmins();
+    const lines = [
+      `🏭 *Управление доступом к порталу Testo Казахстан* 🇰🇿\n`,
+      `_Только указанные ниже пользователи имеют право запускать генерацию, выбирать приборы и модерировать публикации Testo:_\n`,
+    ];
+
+    const keyboardRows: any[][] = [];
+
+    if (admins.length === 0) {
+      lines.push(`_Текущих Testo-администраторов не назначено._\n`);
+    } else {
+      admins.forEach((admin, idx) => {
+        const usernameStr = admin.username ? ` (@${admin.username})` : "";
+        lines.push(`${idx + 1}️⃣ ID: \`${admin.userId}\`${usernameStr}`);
+        keyboardRows.push([
+          {
+            text: `❌ Отозвать доступ у ID ${admin.userId}`,
+            callback_data: `revoke_testo:${admin.userId}`,
+          },
+        ]);
+      });
+      lines.push("");
+    }
+
+    lines.push(`👇 *Быстрые действия:*`);
+    lines.push(`• Нажмите кнопку ниже или используйте команды:\n  \`/add_testo <userId>\`\n  \`/remove_testo <userId>\``);
+
+    keyboardRows.push([
+      { text: "➕ Добавить Testo-админа по ID", callback_data: "cmd:add_testo_prompt" },
+      { text: "🔄 Обновить список", callback_data: "cmd:manage_testo" },
+    ]);
+    keyboardRows.push([
+      { text: "🔙 Главное меню", callback_data: "cmd:main_menu" },
+    ]);
+
+    await this.telegramApi.sendMessage(chatId, lines.join("\n"), {
+      inline_keyboard: keyboardRows,
+    });
+  }
+
+  /**
+   * Запрос ID нового Testo-администратора
+   */
+  async promptAddTestoAdmin(chatId: number | string, requesterId: number): Promise<void> {
+    const requesterRole = await this.accessControl.getUserRole(requesterId);
+    if (requesterRole !== UserRole.SUPERADMIN) {
+      await this.telegramApi.sendMessage(chatId, "⛔ Действие доступно только Superadmin.");
+      return;
+    }
+
+    this.accessControl.setPendingAction(requesterId, "add_testo");
+
+    await this.telegramApi.sendMessage(
+      chatId,
+      `✍️ *Добавление Testo-администратора*\n\n` +
+      `Пришлите в ответ Telegram ID пользователя (например: \`123456789\`), которому нужно открыть доступ к порталу Testo Казахстан.\n\n` +
+      `_Пользователь может узнать свой ID в этом боте через команду /my_role._\n` +
+      `_Или отправьте команду \`/add_testo <ID>\`._`
+    );
+  }
+
+  /**
+   * Добавление Testo-администратора по введенному ID
+   */
+  async handleAddTestoAdminById(
+    chatId: number | string,
+    requesterId: number,
+    targetUserIdStr: string,
+    username?: string
+  ): Promise<void> {
+    const cleanId = targetUserIdStr.trim().replace(/^@/, "");
+    const targetUserId = Number(cleanId);
+
+    if (isNaN(targetUserId) || targetUserId <= 0) {
+      await this.telegramApi.sendMessage(
+        chatId,
+        `❌ Некорректный Telegram ID: "${targetUserIdStr}". ID должен быть положительным числом.`
+      );
+      return;
+    }
+
+    await this.accessControl.addTestoAdmin(targetUserId, requesterId, username);
+    await this.telegramApi.sendMessage(
+      chatId,
+      `✅ *Доступ к порталу Testo Казахстан успешно предоставлен!*\n\n` +
+      `• Пользователь: \`${targetUserId}\`\n` +
+      `• Роль: 🏭 *Testo Kazakhstan Admin*\n\n` +
+      `Теперь пользователь видит только портал Testo и может управлять приборами.`
+    );
+
+    await this.showTestoAccessPanel(chatId, requesterId);
+  }
+
+  /**
+   * Отзыв доступа Testo-администратора
+   */
+  async handleRevokeTestoAdmin(
+    chatId: number | string,
+    requesterId: number,
+    targetUserIdStr: string,
+    callbackQueryId?: string
+  ): Promise<void> {
+    const targetUserId = Number(targetUserIdStr.trim());
+    if (isNaN(targetUserId)) return;
+
+    if (callbackQueryId) {
+      await this.telegramApi.answerCallbackQuery(callbackQueryId, "Отозван доступ к Testo");
+    }
+
+    await this.accessControl.removeTestoAdmin(targetUserId, requesterId);
+    await this.telegramApi.sendMessage(
+      chatId,
+      `🚫 *Доступ к Testo Казахстан отозван* у пользователя с ID \`${targetUserId}\`.`
+    );
+
+    await this.showTestoAccessPanel(chatId, requesterId);
+  }
+
+
 
   async showStatus(chatId: number | string): Promise<void> {
     const summary = await this.logViewer.getRecentRunsSummary(5);

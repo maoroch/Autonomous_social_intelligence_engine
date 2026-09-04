@@ -4,6 +4,8 @@ import type { CommandRouter } from "./command.router.js";
 import type { TextEditorHandler } from "../handlers/text-editor.js";
 import type { PhotoHandler } from "../handlers/photo-handler.js";
 import type { TelegramApiService } from "../services/telegram-api.service.js";
+import type { AccessControlService } from "../services/access-control.service.js";
+import type { SystemController } from "../controllers/system.controller.js";
 
 const logger = createLogger("telegram-bot:message-router");
 
@@ -12,7 +14,9 @@ export class MessageRouter {
     private commandRouter: CommandRouter,
     private textEditor: TextEditorHandler,
     private photoHandler: PhotoHandler,
-    private telegramApi: TelegramApiService
+    private telegramApi: TelegramApiService,
+    private accessControl?: AccessControlService,
+    private systemController?: SystemController
   ) {}
 
   async route(msg: TelegramMessage): Promise<void> {
@@ -26,7 +30,15 @@ export class MessageRouter {
       return;
     }
 
-    // 2. Обработка загрузки фото-кавера
+    // 2. Обработка ввода ID для добавления Testo-админа
+    if (text && userId && this.accessControl?.getPendingAction(userId) === "add_testo" && this.systemController) {
+      this.accessControl.clearPendingAction(userId);
+      logger.info({ userId, targetText: text }, "Processing pending add_testo text input in MessageRouter");
+      await this.systemController.handleAddTestoAdminById(chatId, userId, text);
+      return;
+    }
+
+    // 3. Обработка загрузки фото-кавера
     if (msg.photo && msg.photo.length > 0 && userId) {
       if (this.photoHandler.getPendingPhoto(userId)) {
         logger.info({ userId }, "Routing photo to PhotoHandler");
@@ -35,7 +47,7 @@ export class MessageRouter {
       }
     }
 
-    // 3. Обработка текстового ввода (режим редактирования поста)
+    // 4. Обработка текстового ввода (режим редактирования поста)
     if (text && userId) {
       const pendingEdit = this.textEditor.getPendingEdit(userId);
       if (pendingEdit) {

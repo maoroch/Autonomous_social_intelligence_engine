@@ -381,6 +381,13 @@ export class TelegramBotApp {
       const text = msg.text.trim();
       const userId = msg.from.id;
 
+      // Проверка стейта добавления Testo-администратора по ID
+      if (this.accessControl.getPendingAction(userId) === "add_testo" && !text.startsWith("/")) {
+        this.accessControl.clearPendingAction(userId);
+        await this.commandHandler.handleAddTestoAdminInput(msg.chat.id, userId, text);
+        return;
+      }
+
       // Проверка стейта редактирования текста
       const pending = this.textEditor.getPendingEdit(userId);
       if (pending && !text.startsWith("/")) {

@@ -128,6 +128,12 @@ export class CallbackRouter {
           await this.curatorController.handleTestoRefresh(chatId, userId, param, cb.id);
           break;
 
+        // === TESTO ACCESS MANAGEMENT ===
+        case CallbackAction.REVOKE_TESTO:
+          if (!chatId) return;
+          await this.systemController.handleRevokeTestoAdmin(chatId, userId, param, cb.id);
+          break;
+
         // === MENU COMMANDS ===
         case CallbackAction.CMD:
           await this.handleMenuCommand(cb, param);
@@ -150,6 +156,12 @@ export class CallbackRouter {
     if (!chatId) return;
 
     switch (command) {
+      case "manage_testo":
+        await this.systemController.showTestoAccessPanel(chatId, cb.from.id);
+        break;
+      case "add_testo_prompt":
+        await this.systemController.promptAddTestoAdmin(chatId, cb.from.id);
+        break;
       case "trends":
         await this.trendsController.showTrendsMenu(chatId, cb.from.id);
         break;

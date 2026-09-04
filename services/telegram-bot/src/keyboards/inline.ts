@@ -113,7 +113,8 @@ export function buildMainMenuKeyboard(role: UserRole = UserRole.SUPERADMIN) {
         { text: "📊 Очереди задач", callback_data: "cmd:queues" },
       ],
       [
-        { text: "👤 Управление ролями", callback_data: "cmd:my_role" },
+        { text: "👥 Доступ к Testo (Админы)", callback_data: "cmd:manage_testo" },
+        { text: "👤 Моя роль", callback_data: "cmd:my_role" },
       ],
     ],
   };

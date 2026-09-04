@@ -186,4 +186,31 @@ describe("Telegram Bot Access Control and Testo Admin Role Unit Tests", () => {
 
     assert.match(answeredAlertText, /ограничен/);
   });
+
+  test("Dynamic Testo Admin management: adding, listing, and revoking by ID", async () => {
+    const NEW_TESTO_ID = 555666;
+
+    // Изначально пользователь является Guest
+    const initialRole = await accessControl.getUserRole(NEW_TESTO_ID);
+    assert.strictEqual(initialRole, UserRole.GUEST);
+
+    // Superadmin динамически выдает роль Testo Admin
+    await accessControl.addTestoAdmin(NEW_TESTO_ID, SUPERADMIN_ID, "new_testo_user");
+
+    const updatedRole = await accessControl.getUserRole(NEW_TESTO_ID);
+    assert.strictEqual(updatedRole, UserRole.TESTO_ADMIN);
+    assert.strictEqual(await accessControl.canAccessTenant(NEW_TESTO_ID, "testo"), true);
+    assert.strictEqual(await accessControl.canAccessTenant(NEW_TESTO_ID, "cinema-media"), false);
+
+    // Проверка отображения в списке
+    const admins = await accessControl.getTestoAdmins();
+    assert.ok(admins.some((a) => a.userId === NEW_TESTO_ID));
+
+    // Отзыв доступа
+    await accessControl.removeTestoAdmin(NEW_TESTO_ID, SUPERADMIN_ID);
+    const revokedRole = await accessControl.getUserRole(NEW_TESTO_ID);
+    assert.strictEqual(revokedRole, UserRole.GUEST);
+    assert.strictEqual(await accessControl.canAccessTenant(NEW_TESTO_ID, "testo"), false);
+  });
 });
+

@@ -59,6 +59,19 @@ export class CommandRouter {
         await this.systemController.handleListRoles(chatId, userId);
         break;
 
+      case "/manage_testo":
+      case "/testo_admins":
+        await this.systemController.showTestoAccessPanel(chatId, userId);
+        break;
+
+      case "/add_testo":
+        await this.systemController.handleAddTestoAdminById(chatId, userId, args);
+        break;
+
+      case "/remove_testo":
+        await this.systemController.handleRevokeTestoAdmin(chatId, userId, args);
+        break;
+
       case "/trends":
         await this.trendsController.showTrendsMenu(chatId, userId);
         break;

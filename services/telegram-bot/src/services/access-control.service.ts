@@ -216,6 +216,15 @@ export class AccessControlService {
       return { allowed: true };
     }
 
+    // Управление ролями доступно только Superadmin
+    if (
+      action === CallbackAction.REVOKE_TESTO ||
+      action === CallbackAction.REVOKE_ROLE ||
+      (action === CallbackAction.CMD && (param === "manage_testo" || param === "add_testo_prompt"))
+    ) {
+      return { allowed: false, reason: "⛔ Управление доступом к порталам разрешено только Superadmin." };
+    }
+
     // Общие действия меню
     if (action === CallbackAction.CMD) {
       if (param === "main_menu" || param === "status" || param === "my_role") {
@@ -282,6 +291,108 @@ export class AccessControlService {
     }
 
     return { allowed: true };
+  }
+
+  // === DYNAMIC TESTO ADMIN MANAGEMENT ===
+
+  private pendingActions = new Map<number, string>();
+
+  setPendingAction(userId: number, action: string): void {
+    this.pendingActions.set(userId, action);
+  }
+
+  getPendingAction(userId: number): string | undefined {
+    return this.pendingActions.get(userId);
+  }
+
+  clearPendingAction(userId: number): void {
+    this.pendingActions.delete(userId);
+  }
+
+  /**
+   * Добавление Testo-администратора по ID
+   */
+  async addTestoAdmin(userId: number, grantedBy: number, username?: string): Promise<void> {
+    await this.grantRole(userId, UserRole.TESTO_ADMIN, grantedBy, username);
+  }
+
+  /**
+   * Отзыв доступа Testo-администратора по ID
+   */
+  async removeTestoAdmin(userId: number, revokedBy: number): Promise<void> {
+    this.inMemoryRoles.set(userId, UserRole.GUEST);
+    this.testoAdminIds.delete(userId);
+
+    try {
+      const db = getDb();
+      if (db) {
+        await db.collection<TelegramUserRoleDoc>(TELEGRAM_ROLES_COLLECTION).updateOne(
+          { userId },
+          {
+            $set: {
+              role: UserRole.GUEST,
+              grantedBy: revokedBy,
+              updatedAt: new Date(),
+            },
+          },
+          { upsert: true }
+        );
+        logger.info({ userId, revokedBy }, "Successfully revoked Testo admin access");
+      }
+    } catch (err) {
+      logger.error({ err, userId }, "Failed to revoke Testo admin in MongoDB");
+    }
+  }
+
+  /**
+   * Получение списка всех действующих Testo-администраторов
+   */
+  async getTestoAdmins(): Promise<TelegramUserRoleDoc[]> {
+    const list: TelegramUserRoleDoc[] = [];
+
+    // 1. Из MongoDB
+    try {
+      const db = getDb();
+      if (db) {
+        const docs = await db
+          .collection<TelegramUserRoleDoc>(TELEGRAM_ROLES_COLLECTION)
+          .find({ role: UserRole.TESTO_ADMIN })
+          .sort({ updatedAt: -1 })
+          .toArray();
+        list.push(...docs);
+      }
+    } catch {
+      // MongoDB may not be connected
+    }
+
+    // 2. Из inMemoryRoles (кэш сессии)
+    for (const [userId, role] of this.inMemoryRoles.entries()) {
+      if (role === UserRole.TESTO_ADMIN && !list.some((doc) => doc.userId === userId)) {
+        list.push({
+          userId,
+          role: UserRole.TESTO_ADMIN,
+          grantedAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+    }
+
+    // 3. Из ENV (если ещё нет в списке и не отозван в кэше)
+    for (const envId of this.testoAdminIds) {
+      if (
+        this.inMemoryRoles.get(envId) !== UserRole.GUEST &&
+        !list.some((doc) => doc.userId === envId)
+      ) {
+        list.push({
+          userId: envId,
+          role: UserRole.TESTO_ADMIN,
+          grantedAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+    }
+
+    return list;
   }
 
   /**
@@ -376,3 +487,4 @@ export class AccessControlService {
     }
   }
 }
+

@@ -78,4 +78,9 @@ export class CommandHandler {
   }): Promise<void> {
     await this.router.route(msg as TelegramMessage);
   }
+
+  async handleAddTestoAdminInput(chatId: number | string, userId: number, text: string): Promise<void> {
+    await this.systemController.handleAddTestoAdminById(chatId, userId, text);
+  }
 }
+

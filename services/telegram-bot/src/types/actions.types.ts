@@ -19,6 +19,8 @@ export enum CallbackAction {
   TESTO_PICK = "testo_pick",
   TESTO_REFRESH = "testo_refresh",
   TREND_PICK = "trend_pick",
+  REVOKE_TESTO = "revoke_testo",
+  REVOKE_ROLE = "revoke_role",
 }
 
 export enum UserRole {
@@ -40,7 +42,9 @@ export type MenuCommand =
   | "status"
   | "logs"
   | "queues"
-  | "my_role";
+  | "my_role"
+  | "manage_testo"
+  | "add_testo_prompt";
 
 export interface ParsedCallback {
   action: CallbackAction;
