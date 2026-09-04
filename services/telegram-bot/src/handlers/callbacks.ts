@@ -15,6 +15,9 @@ import { CallbackRouter } from "../routes/callback.router.js";
 import type { TelegramCallbackQuery } from "../types/telegram.types.js";
 
 import { AccessControlService } from "../services/access-control.service.js";
+import { TestoMediaService } from "../services/testo-media.service.js";
+import { TestoCasesService } from "../services/testo-cases.service.js";
+import { TestoController } from "../controllers/testo.controller.js";
 
 const logger = createLogger("telegram-bot:callbacks");
 
@@ -90,13 +93,25 @@ export class CallbackHandler {
       this.accessControl
     );
 
+    const testoMediaService = new TestoMediaService();
+    const testoCasesService = new TestoCasesService();
+    const testoController = new TestoController(
+      this.telegramApi,
+      testoMediaService,
+      testoCasesService,
+      this.testoCurator,
+      this.queues,
+      this.openclawUrl
+    );
+
     this.router = new CallbackRouter(
       this.telegramApi,
       this.approvalController,
       this.curatorController,
       this.trendsController,
       this.systemController,
-      this.accessControl
+      this.accessControl,
+      testoController
     );
   }
 

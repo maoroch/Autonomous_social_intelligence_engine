@@ -157,14 +157,22 @@ export class AccessControlService {
 
     // Роль: Testo Admin
     if (role === UserRole.TESTO_ADMIN) {
-      const allowedTestoCommands = ["/daily_testo", "/curate_testo", "/post_testo", "/testo_trends", "/trends"];
+      const allowedTestoCommands = [
+        "/daily_testo",
+        "/curate_testo",
+        "/post_testo",
+        "/testo_trends",
+        "/trends",
+        "/testo_media",
+        "/testo_cases",
+      ];
       if (allowedTestoCommands.includes(command)) {
         return { allowed: true };
       }
       return {
         allowed: false,
         reason:
-          "⛔ *Доступ ограничен*: Ваш аккаунт назначен администратором портала *Testo Казахстан*. Вы можете управлять только задачами Testo (`/daily_testo`, `/testo_trends`, `/post_testo`).",
+          "⛔ *Доступ ограничен*: Ваш аккаунт назначен администратором портала *Testo Казахстан*. Вы можете управлять только задачами Testo (`/daily_testo`, `/testo_media`, `/testo_cases`, `/post_testo`).",
       };
     }
 
@@ -230,7 +238,7 @@ export class AccessControlService {
       if (param === "main_menu" || param === "status" || param === "my_role") {
         return { allowed: true };
       }
-      if (param === "daily_testo") {
+      if (param === "daily_testo" || param === "testo_media" || param === "testo_cases") {
         return role === UserRole.TESTO_ADMIN
           ? { allowed: true }
           : { allowed: false, reason: "⛔ Портал Testo Казахстан доступен только Testo-администраторам." };
@@ -260,6 +268,10 @@ export class AccessControlService {
       CallbackAction.TESTO_MODE,
       CallbackAction.TESTO_PICK,
       CallbackAction.TESTO_REFRESH,
+      CallbackAction.TESTO_MEDIA_PICK,
+      CallbackAction.TESTO_MEDIA_REFRESH,
+      CallbackAction.TESTO_CASES_PICK,
+      CallbackAction.TESTO_CASES_REFRESH,
     ].includes(action);
 
     if (isTestAction) {

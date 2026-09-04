@@ -5,6 +5,7 @@ import type { TelegramApiService } from "../services/telegram-api.service.js";
 import type { SystemController } from "../controllers/system.controller.js";
 import type { CuratorController } from "../controllers/curator.controller.js";
 import type { TrendsController } from "../controllers/trends.controller.js";
+import type { TestoController } from "../controllers/testo.controller.js";
 import type { AccessControlService } from "../services/access-control.service.js";
 
 const logger = createLogger("telegram-bot:command-router");
@@ -15,7 +16,8 @@ export class CommandRouter {
     private systemController: SystemController,
     private curatorController: CuratorController,
     private trendsController: TrendsController,
-    private accessControl: AccessControlService
+    private accessControl: AccessControlService,
+    private testoController?: TestoController
   ) {}
 
   async route(msg: TelegramMessage): Promise<void> {
@@ -80,6 +82,22 @@ export class CommandRouter {
         await this.trendsController.showTestoTrends(chatId, userId);
         break;
 
+      case "/testo_media":
+        if (this.testoController) {
+          await this.testoController.showMediaMenu(chatId, userId);
+        } else {
+          await this.trendsController.showTestoTrends(chatId, userId);
+        }
+        break;
+
+      case "/testo_cases":
+        if (this.testoController) {
+          await this.testoController.showCasesMenu(chatId, userId);
+        } else {
+          await this.trendsController.showTestoTrends(chatId, userId);
+        }
+        break;
+
       case "/daily_cinema":
       case "/curate_cinema":
         await this.curatorController.showCinemaMenu(chatId);
@@ -92,7 +110,11 @@ export class CommandRouter {
 
       case "/daily_testo":
       case "/curate_testo":
-        await this.curatorController.showTestoMenu(chatId);
+        if (this.testoController) {
+          await this.testoController.showTestoMenu(chatId);
+        } else {
+          await this.curatorController.showTestoMenu(chatId);
+        }
         break;
 
       case "/post_cinema":
