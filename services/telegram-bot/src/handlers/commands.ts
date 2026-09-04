@@ -10,8 +10,10 @@ import { CuratorController } from "../controllers/curator.controller.js";
 import { TrendsController } from "../controllers/trends.controller.js";
 import { CommandRouter } from "../routes/command.router.js";
 import type { TelegramMessage } from "../types/telegram.types.js";
-
 import { AccessControlService } from "../services/access-control.service.js";
+import { TestoMediaService } from "../services/testo-media.service.js";
+import { TestoCasesService } from "../services/testo-cases.service.js";
+import { TestoController } from "../controllers/testo.controller.js";
 
 const logger = createLogger("telegram-bot:commands");
 
@@ -63,12 +65,24 @@ export class CommandHandler {
       this.accessControl
     );
 
+    const testoMediaService = new TestoMediaService();
+    const testoCasesService = new TestoCasesService();
+    const testoController = new TestoController(
+      this.telegramApi,
+      testoMediaService,
+      testoCasesService,
+      this.testoCurator,
+      this.queues,
+      ""
+    );
+
     this.router = new CommandRouter(
       this.telegramApi,
       this.systemController,
       this.curatorController,
       this.trendsController,
-      this.accessControl
+      this.accessControl,
+      testoController
     );
   }
 
