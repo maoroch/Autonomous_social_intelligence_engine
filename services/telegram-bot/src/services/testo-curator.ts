@@ -158,12 +158,60 @@ export class TestoCuratorService {
     return this.getFallbackArticles(mode);
   }
 
+  private cleanText(raw: string): string {
+    if (!raw) return "";
+    return raw
+      .replace(/<!\[CDATA\[|\]\]>/g, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&#038;|&amp;/g, "&")
+      .replace(/&#8217;|&#8216;/g, "'")
+      .replace(/&#8220;|&#8221;/g, '"')
+      .replace(/&#8211;|&#8212;/g, "—")
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+      .replace(/&nbsp;/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  private resolveTestoInstrumentForTopic(title: string, desc: string): { instrument: string; industry: string } {
+    const combined = (title + " " + desc).toLowerCase();
+
+    if (/cleanroom|sterile|pharma|bio|contamination|hepa|autoclave|laboratory|gmp|fda/i.test(combined)) {
+      return {
+        instrument: "Testo 400 & Testo 190 (Аттестация чистых помещений EN ISO 14644 & Валидация автоклавов 21 CFR Part 11)",
+        industry: "Фармацевтика, Чистые помещения & GxP-мониторинг",
+      };
+    }
+
+    if (/cooling|refriger|chiller|hvac|heat pump|leak|refrigerant|f-gas|ventilat/i.test(combined)) {
+      return {
+        instrument: "Testo 300 & Testo 316-1-EX (Смарт-анализатор горения & Взрывобезопасный течеискатель газов)",
+        industry: "Промышленное охлаждение, ОВКВ & Коммерческие котельные",
+      };
+    }
+
+    if (/sensor|instrument|machinery|thermal|switchgear|electrical|transformat|bearing|motor|maintenance/i.test(combined)) {
+      return {
+        instrument: "Testo 883 & Testo Saveris (Инфракрасная термография 320x240 NETD <40мК & Радиомониторинг параметров)",
+        industry: "Предиктивное обслуживание (ТОиР), Энергоаудит & АСУ ТП",
+      };
+    }
+
+    // Default for energy, power, boilers, combustion, emissions
+    return {
+      instrument: "Testo 350 (Промышленный портативный газоанализатор с блоком Пельтье & сенсорами NOlow/CO/SO2)",
+      industry: "Теплоэнергетика, ТЭЦ, Промышленные котлы & Экоконтроль",
+    };
+  }
+
   private async fetchLiveMediaTrends(): Promise<CuratedTestoArticle[]> {
-    // Список проверенных RSS фидов зарубежных инженерных и отраслевых медиа
+    // Реальные живые RSS-ленты ведущих мировых инженерных и отраслевых изданий
     const feeds = [
-      { url: "https://www.process-heating.com/rss", source: "Process Heating Magazine" },
-      { url: "https://www.achrnews.com/rss", source: "ACHR News" },
       { url: "https://cleanroomtechnology.com/rss", source: "Cleanroom Technology" },
+      { url: "https://www.powermag.com/feed/", source: "Power Magazine" },
+      { url: "https://www.processindustryinformer.com/feed/", source: "Process Industry Informer" },
+      { url: "https://www.coolingpost.com/feed/", source: "Cooling Post" },
     ];
 
     const collected: CuratedTestoArticle[] = [];
@@ -177,7 +225,7 @@ export class TestoCuratorService {
         const res = await fetch(feed.url, {
           signal: controller.signal,
           headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) TestoIndustryRadar/1.0",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) TestoGlobalRadar/1.0",
             Accept: "application/rss+xml, application/xml, text/xml, */*",
           },
         });
@@ -191,39 +239,44 @@ export class TestoCuratorService {
             const titleMatch = item.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i);
             const linkMatch = item.match(/<link>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/link>/i);
             const descMatch = item.match(/<description>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/i);
+            const pubDateMatch = item.match(/<pubDate>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/pubDate>/i);
 
-            const title = (titleMatch?.[1] || "").replace(/<[^>]+>/g, "").trim();
+            const title = this.cleanText(titleMatch?.[1] || "");
             const link = (linkMatch?.[1] || "").trim();
-            const desc = (descMatch?.[1] || "").replace(/<[^>]+>/g, "").trim();
+            const desc = this.cleanText(descMatch?.[1] || "");
 
             if (title && link && !seenTitles.has(title)) {
-              // Фильтруем или маппим релевантные темы промышленного контроля
-              const isRelevant = /boiler|combustion|heat|emission|energy|cleanroom|sensor|monitoring|pressure|gas/i.test(
-                title + " " + desc
-              );
-              if (isRelevant) {
-                seenTitles.add(title);
-                const batches = this.batchArticleContent(desc || title);
-                collected.push({
-                  title: `[${feed.source}] ${title}`,
-                  url: link,
-                  summary: desc.slice(0, 200) + (desc.length > 200 ? "..." : ""),
-                  fullArticleText: `${title}\n\n${desc}`,
-                  batches,
-                  source: feed.source,
-                  category: "trends",
-                  instrumentModel: "Testo 350 / Testo 300 / Testo 883",
-                  useCaseIndustry: "Промышленный энергоаудит & Теплотехника",
-                });
-              }
+              seenTitles.add(title);
+              const { instrument, industry } = this.resolveTestoInstrumentForTopic(title, desc);
+
+              const batches = [
+                `Мировой отраслевой тренд (${feed.source}): ${title}.`,
+                desc ? `Контекст публикации: ${desc}` : `Актуальный инфоповод в сфере ${industry}.`,
+                `Практический кейс решения измерительной задачи с оборудованием Testo: использование ${instrument}.`,
+                `Применение передовых измерительных технологий Testo обеспечивает строгое соответствие международным стандартам качества и сокращение операционных расходов.`,
+              ];
+
+              collected.push({
+                title: `[${feed.source}] ${title}`,
+                url: link,
+                summary: desc.length > 200 ? `${desc.slice(0, 197)}...` : desc || title,
+                fullArticleText: `${title}\n\n${desc}\n\nКейс применения оборудования Testo: ${instrument}`,
+                batches,
+                source: feed.source,
+                category: "trends",
+                instrumentModel: instrument,
+                useCaseIndustry: industry,
+                publishedAt: pubDateMatch?.[1]?.trim(),
+              });
             }
           }
         }
-      } catch {
-        // Continue to next feed if one fails
+      } catch (err: any) {
+        logger.warn({ err: err.message, feed: feed.source }, "One industry RSS feed timed out, continuing");
       }
     }
 
+    logger.info({ count: collected.length }, "Fetched live foreign media articles for Testo Trends");
     return collected;
   }
 
